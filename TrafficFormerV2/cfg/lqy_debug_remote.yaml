@@ -1,0 +1,14 @@
+# Config format schema number
+format_version: 4
+
+debug: True
+data_path: "../debug_data"
+max_epoch: 50
+num_workers: 2
+batch_size: 512
+lr: 0.0024
+weight_decay: 0.0004
+device: 'cuda'
+phase: 'training'
+data_usage: 30000
+

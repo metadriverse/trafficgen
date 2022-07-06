@@ -1,0 +1,39 @@
+# Config format schema number
+format_version: 4
+
+debug: True
+data_path: "../debug_data"
+max_epoch: 50
+num_workers: 1
+batch_size: 16
+lr: 0.0003
+weight_decay: 0.0004
+device: 'cuda'
+phase: 'training'
+data_usage: 450
+model: "tt"
+
+# eval config
+need_eval: True
+eval_data_start_index: 25000
+eval_data_usage: 50
+eval_batch_size: 2 # 2 frame * 50 map  will be plotted
+eval_frequency: 1  # eval each epoch
+
+
+# model related
+model_cfg:
+  need_edge: False
+  need_traffic_light: True
+  need_line_type: True
+  lane_dims: 0  # auto determine
+  agent_dims: 10 # auto determine in the future
+  subgraph_width_unit: 32
+  num_subgraph_layers: 2
+  modal_num: 6
+  d_model: 128
+  attention_head: 2
+  dropout: 0.1
+  model_layers_num: 2
+  eval: True
+
