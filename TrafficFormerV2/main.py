@@ -12,7 +12,7 @@ if __name__ == "__main__":
                       cfg=cfg,
                       args=args)
     trainer.load_model('/Users/fenglan/model_120.pt','cpu')
-    trainer.draw_generation_process()
+    #trainer.draw_generation_process()
     #trainer.generate_case_for_dynamic(10000,'/Users/fenglan/Downloads/waymo/dynamic_case')
-    #trainer.eval_model()
+    trainer.eval_model()
     #trainer.train()

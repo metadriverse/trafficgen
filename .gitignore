@@ -11,7 +11,7 @@
 **wandb**
 **out**
 **/exps/**
-
+*.pt
 /TrafficFormerV2/data/
 /TrafficFormerV2/_debug_data/
 /TrafficFormerV2/vis/
