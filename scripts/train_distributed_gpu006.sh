@@ -8,4 +8,4 @@ if [ ! -d "output" ];then
     mkdir output
 fi
 
-python3 -m torch.distributed.launch --nproc_per_node=${NUM_PROC} --master_port=${MASTER_PORT} TrafficGen_demo --cfg="gpu006_act" --distributed=True --exp_name=${EXP_NAME} 2>&1 | tee output/tt_${NOW}.log
+python3 -m torch.distributed.launch --nproc_per_node=${NUM_PROC} --master_port=${MASTER_PORT} TrafficGen_demo.py --cfg="gpu006_act" --distributed=True --exp_name=${EXP_NAME} 2>&1 | tee output/tt_${NOW}.log
