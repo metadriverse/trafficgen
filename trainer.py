@@ -61,10 +61,10 @@ class Trainer:
                                  num_workers=self.cfg['num_workers'])
         if args.distributed:
             torch.distributed.init_process_group(backend="nccl", rank=args.local_rank)
-            args.world_size = torch.distributed.get_world_size()
-            args.rank = torch.distributed.get_rank()
+            world_size = torch.distributed.get_world_size()
+            rank = torch.distributed.get_rank()
             print('[TORCH] Training in distributed mode. Process %d, local %d, total %d.' % (
-                args.rank, args.local_rank, args.world_size))
+                rank, args.local_rank, world_size))
             model.cuda(args.local_rank)
             model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
             model = DistributedDataParallel(model,
