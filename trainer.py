@@ -47,6 +47,13 @@ class Trainer:
 
         self.model_type = cfg['model']
 
+        if args.distributed:
+            torch.distributed.init_process_group(backend="nccl", rank=args.local_rank)
+            args.world_size = torch.distributed.get_world_size()
+            args.rank = torch.distributed.get_rank()
+            print('[TORCH] Training in distributed mode. Process %d, local %d, total %d.' % (
+                args.rank, args.local_rank, args.world_size))
+
         if self.model_type == 'init':
             train_dataset = initDataset(self.cfg, args)
             model = initializer()
@@ -60,11 +67,6 @@ class Trainer:
                                  shuffle=True,
                                  num_workers=self.cfg['num_workers'])
         if args.distributed:
-            torch.distributed.init_process_group(backend="nccl", rank=args.local_rank)
-            world_size = torch.distributed.get_world_size()
-            rank = torch.distributed.get_rank()
-            print('[TORCH] Training in distributed mode. Process %d, local %d, total %d.' % (
-                rank, args.local_rank, world_size))
             model.cuda(args.local_rank)
             model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
             model = DistributedDataParallel(model,
