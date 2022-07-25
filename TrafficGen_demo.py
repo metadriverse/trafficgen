@@ -1,17 +1,23 @@
-from TrafficFormerV2.utils.arg_parse import get_parsed_args
+from utils.arg_parse import get_parsed_args
 from l5kit.configs import load_config_data
-from TrafficFormerV2.utils.train import Trainer
-from TrafficFormerV2.load_for_metadrive import AgentType,RoadEdgeType,RoadLineType
+from trainer import Trainer
+from utils.typedef import AgentType,RoadEdgeType,RoadLineType
+
 # ============================== Main =======================================
 if __name__ == "__main__":
     # ===== parse args =====
     args = get_parsed_args()
-    cfg = load_config_data(f'./TrafficFormerV2/cfg/{args.cfg}.yaml')
+    cfg = load_config_data(f'./cfg/{args.cfg}.yaml')
     trainer = Trainer(exp_name=args.exp_name,
                       cfg=cfg,
                       args=args)
-    trainer.load_model('./TrafficFormerV2/model_weights/model_120.pt','cpu')
-    trainer.draw_generation_process()
-    #trainer.generate_case_for_dynamic(10000,'/Users/fenglan/Downloads/waymo/dynamic_case')
+
+    #trainer.load_model('model_weights/act_20.pt','cpu')
+    #trainer.draw_generation_process(vis=False,save_path="TrafficGen_act/data_sample/eval")
     #trainer.eval_model()
-    #trainer.train()
+    trainer.train()
+
+    #trainer.draw_showcase()
+    #trainer.draw_gifs(vis=False,save_path='/Users/fenglan/Downloads/waymo/generated_metadrive')
+    #trainer.generate_case_for_metadrive('/Users/fenglan/select')
+
