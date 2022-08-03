@@ -96,7 +96,7 @@ class actuator(nn.Module):
         pred['velo'] = velo_pred
         pred['pos'] = pos_pred
         pred['heading'] = heading_pred
-        gt = data['ego_gt']
+
 
         # velo_cov = torch.Tensor([[velo_pred[]],[]])
         # velo_gauss = MultivariateNormal(velo_pred[:,2],)
@@ -107,6 +107,7 @@ class actuator(nn.Module):
         # pos = torch.cat([x, y], dim=-1)
 
         if is_training:
+            gt = data['ego_gt']
             loss, loss_dic = loss_v1(pred, gt)
             # MSE = torch.nn.MSELoss(reduction='none')
             # L1 = torch.nn.L1Loss(reduction='none')

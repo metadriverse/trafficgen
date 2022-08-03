@@ -3,11 +3,18 @@ import numpy as np
 
 import matplotlib
 matplotlib.rcParams.update({'figure.max_open_warning': 0})
-from l5kit.configs import load_config_data
-import torch
-#from TrafficFormerV2.utils.dataLoader import WaymoDataset
-
+from scipy.ndimage.filters import gaussian_filter
+import matplotlib.colors as mcolors
 import matplotlib.cm as cm
+
+
+def get_heatmap(x, y, prob, s, bins=1000):
+    heatmap, xedges, yedges = np.histogram2d(x, y, bins=bins, weights=prob, density=True)
+
+    heatmap = gaussian_filter(heatmap, sigma=s)
+
+    extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
+    return heatmap.T, extent
 
 def transform_coord(x,y, angle):
 
@@ -40,7 +47,7 @@ def draw(center, heat_map,agents, other,cnt=0, save=False, edge=None,path='../vi
     plt.axis('equal')
     # ax.set_xlim(heat_map[1][:2])
     # ax.set_ylim(heat_map[1][2:])
-
+    colors = list(mcolors.TABLEAU_COLORS)
 
     ax.imshow(heat_map[0], extent=heat_map[1],alpha=1, origin='lower', cmap=cm.jet)
     ax.axis('off')
@@ -61,13 +68,13 @@ def draw(center, heat_map,agents, other,cnt=0, save=False, edge=None,path='../vi
 
         if traf_state==1:
             color = 'red'
-            ax.plot((x0, x1), (y0, y1), color=color, alpha=0.5,linewidth=3,zorder=5000)
+            ax.plot((x0, x1), (y0, y1), color=color, alpha=0.12,linewidth=8,zorder=5000)
         elif traf_state==2:
             color = 'yellow'
-            ax.plot((x0, x1), (y0, y1), color=color, alpha=0.5,linewidth=3,zorder=5000)
+            ax.plot((x0, x1), (y0, y1), color=color, alpha=0.12,linewidth=8,zorder=5000)
         elif traf_state==3:
             color ='green'
-            ax.plot((x0, x1), (y0, y1), color=color, alpha=0.5,linewidth=3,zorder=5000)
+            ax.plot((x0, x1), (y0, y1), color=color, alpha=0.12,linewidth=8,zorder=5000)
 
     if edge is not None:
         for j in range(len(edge)):
@@ -88,6 +95,9 @@ def draw(center, heat_map,agents, other,cnt=0, save=False, edge=None,path='../vi
     a,dim = agents.shape
 
     for i in range(a):
+        ind = i % 10
+        col = colors[ind]
+
         agent = agents[i]
         center = agent[:2]
         vel = agent[2:4]
@@ -103,7 +113,7 @@ def draw(center, heat_map,agents, other,cnt=0, save=False, edge=None,path='../vi
         point_x = center[0] - x_
         point_y = center[1] - y_
         rect = plt.Rectangle([point_x, point_y], W, L, -yaw * 180 / np.pi, edgecolor="black",
-                             facecolor="snow", linewidth=1,zorder=10000)
+                             facecolor=col, linewidth=1,zorder=10000)
         ax.plot([center[0], vel[0]+center[0]], [center[1], vel[1]+center[1]],'.-',color='lime',linewidth=1.5,markersize=2.5,zorder=10000)
         #rect.set_zorder(1000)
         ax.add_patch(rect)
@@ -163,28 +173,5 @@ def get_agent_pos_from_vec(vec,long_perc,lat_perc,dir, v_value):
     dir_ = np.stack([np.sin(agent_dir),np.cos(agent_dir)], axis=-1)
     return coord, dir_,vel
 
-
-if __name__ == "__main__":
-    cfg_path = '../cfg/debug.yaml'
-
-
-    cfg = load_config_data(cfg_path)
-    train_dataset = WaymoDataset(cfg, eval=True)
-
-    cnt = 0
-    for i in range(0,10):
-        data = train_dataset[i]
-        mask = data['agent_mask']
-        vec_ind = data['vec_index'].numpy().astype(int)
-        vec = data['center'][vec_ind]
-
-        for key in data.keys():
-
-            if isinstance(data[key], torch.Tensor):
-                data[key] = data[key].numpy()
-
-        agent_pos, agent_dir, agent_vel = get_agent_pos_from_vec(vec,data['long_perc'],data['lat_perc'],data['relative_dir'], data['v_value'])
-        draw(data['center'], data['agent'][mask.to(bool)], edge=data['bound'], cnt=cnt,save=True)
-        cnt+=1
 
 

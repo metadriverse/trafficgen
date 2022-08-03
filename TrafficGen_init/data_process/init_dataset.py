@@ -99,11 +99,10 @@ class initDataset(Dataset):
                 data_file_path = os.path.join(data_path, f'{index}.pkl')
                 with open(data_file_path, 'rb+') as f:
                     datas = pickle.load(f)
-                file_cnt+=1
                 data = self.process(datas)
                 self.data_loaded[cnt] = data
-                cnt+=1
-                self.data_len = cnt
+                cnt += 1
+            self.data_len = cnt
         else:
             while file_cnt+start_index < end_index:
                 index = file_cnt+start_index
@@ -121,9 +120,6 @@ class initDataset(Dataset):
                     self.data_loaded[cnt+case_cnt] = data[i]
                     case_cnt+=1
                 cnt+=case_cnt
-                # else:
-                #     self.data_loaded[cnt]=data
-                #     cnt+=1
             self.data_len = cnt
         print('Dataset len: {} (rank: {}), start_index: {}, end_index: {}'.format(self.data_len, self.rank,
                                                                                        start_index, end_index))
@@ -410,7 +406,7 @@ class initDataset(Dataset):
 
             fut = fut[:agent_num]
             case_info['agent_mask'] = case_info['agent_mask'][:,:agent_num]
-            pad_num=15
+            pad_num=4
             if agent_num<pad_num:
                 pad = torch.zeros(1,pad_num-agent_num,19)
                 line_with_agent = torch.cat([line_with_agent,pad],1)

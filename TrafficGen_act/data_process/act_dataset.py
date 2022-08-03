@@ -132,7 +132,7 @@ class actDataset(Dataset):
         self.total_data_usage = cfg["data_usage"] if not eval else cfg["eval_data_usage"]
         self.data_path = cfg['data_path']
         self.pred_len = cfg['pred_len']
-        self.rank = args.rank if args is not None else 1
+        self.rank = args.rank if args is not None else 0
         self.process_num = args.world_size if args is not None and args.distributed else 1
         self.in_debug = cfg['debug']
         self.recache = cfg['recache']
@@ -152,32 +152,38 @@ class actDataset(Dataset):
         cnt = 0
         file_cnt = 0
 
-        while file_cnt+start_index < end_index and self.eval:
-            case_path = self.data_path
-            case_file_path = os.path.join(case_path, f'{file_cnt+start_index}.pkl')
-            with open(case_file_path, 'rb+') as f:
-                case = pickle.load(f)
-            # self.scene_data[file_cnt] = self.process_scene(case)
-            self.scene_data[file_cnt] = case
-            file_cnt+=1
 
-        while file_cnt+start_index < end_index:
-            index = file_cnt+start_index
-            data_path = self.data_path
+        if self.eval:
+            while file_cnt+start_index < end_index and self.eval:
+            #for data_id in [6]:
+                case_path = self.data_path
+                case_file_path = os.path.join(case_path, f'{file_cnt+start_index}.pkl')
+                #case_file_path = os.path.join(case_path, f'{data_id}.pkl')
+                with open(case_file_path, 'rb+') as f:
+                    case = pickle.load(f)
+                # self.scene_data[file_cnt] = self.process_scene(case)
+                self.scene_data[file_cnt] = case
+                file_cnt+=1
+            self.data_len = file_cnt
 
-            data_file_path = os.path.join(data_path, f'{index}.pkl')
+        else:
+            while file_cnt+start_index < end_index:
+                index = file_cnt+start_index
+                data_path = self.data_path
 
-            with open(data_file_path, 'rb+') as f:
-                datas = pickle.load(f)
-            data = self.process(copy.deepcopy(datas))
+                data_file_path = os.path.join(data_path, f'{index}.pkl')
 
-            file_cnt+=1
-            case_cnt=0
-            for i in range(len(data)):
-                self.data_loaded[cnt+case_cnt] = data[i]
-                case_cnt+=1
-            cnt+=case_cnt
-        self.data_len = cnt
+                with open(data_file_path, 'rb+') as f:
+                    datas = pickle.load(f)
+                data = self.process(copy.deepcopy(datas))
+
+                file_cnt+=1
+                case_cnt=0
+                for i in range(len(data)):
+                    self.data_loaded[cnt+case_cnt] = data[i]
+                    case_cnt+=1
+                cnt+=case_cnt
+            self.data_len = cnt
         print('Dataset len: {} (rank: {}), start_index: {}, end_index: {}'.format(self.data_len, self.rank,
                                                                                        start_index, end_index))
     def __len__(self):

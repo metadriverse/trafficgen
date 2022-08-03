@@ -35,6 +35,105 @@ def draw_heatmap(vector,vector_prob,gt_idx):
     return plt
 
 
+def draw_real(ax,center, edge, rest, context,path=None,save=False,gt=False):
+    colors = list(mcolors.TABLEAU_COLORS)
+
+    #plt.axis('equal')
+    # lim = ax.viewLim
+    # lim.x0,lim.y0,lim.x1,lim.y1 = -50,-50,50,50
+    # ax.set_clip_box(lim)
+    vl = 70
+    # for j in range(center.shape[0]):
+    #     traf_state = center[j, -1]
+    #     x0, y0, x1, y1, = center[j, :4]
+    #     if x0 == 0: break
+    #     if traf_state == 1:
+    #         color = 'red'
+    #         ax.plot((x0, x1), (y0, y1), color=color, alpha=0.1, linewidth=0.5, zorder=5000)
+    #     elif traf_state == 2:
+    #         color = 'yellow'
+    #         ax.plot((x0, x1), (y0, y1), color=color, alpha=0.1, linewidth=0.5, zorder=5000)
+    #     elif traf_state == 3:
+    #         color = 'green'
+    #         ax.plot((x0, x1), (y0, y1), color=color, alpha=0.1, linewidth=0.5, zorder=5000)
+
+    # hist_traj = context[:,:-1,:2]
+    # context = context[:,-1]
+    # for i in range(hist_traj.shape[1]):
+    #     all_agent = hist_traj[:,i]
+    #     valid = (abs(all_agent[:,0])<vl)*(abs(all_agent[:,1])<vl)
+    #     all_agent = all_agent[valid]
+    #     ax.scatter(all_agent[:,0],all_agent[:,1],s=0.3,c='royalblue',alpha=0.015*i,marker='.',edgecolors='none')
+
+    if edge is not None:
+        for j in range(len(edge)):
+
+            # if lane[j, k, -1] == 0: continue
+            x0, y0, x1, y1, = edge[j, :4]
+            if x0 == 0: break
+            if abs(x0)>vl or abs(x1)>vl or abs(y0)>vl or abs(y1)>vl: continue
+            ax.plot((x0, x1), (y0, y1), 'black', linewidth=0.1)
+
+    if rest is not None:
+        for j in range(len(rest)):
+
+            # if lane[j, k, -1] == 0: continue
+            x0, y0, x1, y1, = rest[j, :4]
+            if x0 == 0: break
+            if abs(x0) > vl or abs(x1) > vl or abs(y0) > vl or abs(y1) > vl: continue
+            ax.plot((x0, x1), (y0, y1), 'grey', linewidth=0.05)
+
+    if gt:
+        for i in range(context.shape[0]):
+            ind = i % 10
+            col = colors[ind]
+            agent = context[i]
+            center = agent[:2]
+            vel = agent[2:4]
+            yaw = np.arctan2(agent[6], agent[7])
+            L, W = agent[4:6]
+            l, w = L / 2, W / 2
+            x1 = w / np.cos(yaw)
+            x2 = x1 * np.sin(yaw)
+            x3 = l - x2
+            x4 = x3 * np.sin(yaw)
+            x_ = x1 + x4
+            y_ = x3 * np.cos(yaw)
+            point_x = center[0] - x_
+            point_y = center[1] - y_
+            rect = plt.Rectangle([point_x, point_y], W, L, -yaw * 180 / np.pi, edgecolor="black",
+                                 facecolor=col, linewidth=0.04)
+
+            ax.plot([center[0], vel[0] + center[0]], [center[1], vel[1] + center[1]], '.-r', linewidth=0.04, markersize=0.2,markeredgecolor='none')
+            rect.set_zorder(10000)
+            ax.add_patch(rect)
+    else:
+        for i in range(context.shape[0]):
+            ind = i%10
+            col = colors[ind]
+            agent = context[i]
+            center = agent[:2]
+            if abs(center[0])>vl or abs(center[1])>vl:
+                continue
+            vel = agent[2:4]
+            yaw = -agent[4]-np.pi/2
+            L, W = agent[5:7]
+            l, w = L / 2, W / 2
+            x1 = w / np.cos(yaw)
+            x2 = x1 * np.sin(yaw)
+            x3 = l - x2
+            x4 = x3 * np.sin(yaw)
+            x_ = x1 + x4
+            y_ = x3 * np.cos(yaw)
+            point_x = center[0] - x_
+            point_y = center[1] - y_
+            rect = plt.Rectangle([point_x, point_y], W, L, -yaw * 180 / np.pi, edgecolor="black",
+                                 facecolor=col, linewidth=0.04)
+            ax.plot([center[0], vel[0] + center[0]], [center[1], vel[1] + center[1]], '.-r', linewidth=0.04, markersize=0.2,markeredgecolor='none')
+            ax.add_patch(rect)
+
+
+
 def draw_seq(center, edge, rest, context,path=None,save=False,gt=False):
     colors = list(mcolors.TABLEAU_COLORS)
     fig, ax = plt.subplots(figsize=(10, 10))
@@ -76,6 +175,8 @@ def draw_seq(center, edge, rest, context,path=None,save=False,gt=False):
 
     if gt:
         for i in range(context.shape[0]):
+            ind = i % 10
+            col = colors[ind]
             agent = context[i]
             center = agent[:2]
             vel = agent[2:4]
@@ -91,7 +192,7 @@ def draw_seq(center, edge, rest, context,path=None,save=False,gt=False):
             point_x = center[0] - x_
             point_y = center[1] - y_
             rect = plt.Rectangle([point_x, point_y], W, L, -yaw * 180 / np.pi, edgecolor="black",
-                                 facecolor="royalblue", linewidth=0.2)
+                                 facecolor=col, linewidth=0.2)
             plt.plot([center[0], vel[0] + center[0]], [center[1], vel[1] + center[1]], '.-r', linewidth=0.5,
                      markersize=1, zorder=100000)
             rect.set_zorder(10000)
@@ -122,7 +223,6 @@ def draw_seq(center, edge, rest, context,path=None,save=False,gt=False):
                 ax.plot([center[0], vel[0] + center[0]], [center[1], vel[1] + center[1]], '.-r', linewidth=0.5, markersize=1)
             rect.set_zorder(0)
             ax.add_patch(rect)
-
 
     if save:
         fig.savefig(path, dpi=100,bbox_inches='tight',pad_inches=0)
