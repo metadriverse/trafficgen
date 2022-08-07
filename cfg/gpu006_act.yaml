@@ -9,10 +9,10 @@ lr: 0.0003
 weight_decay: 0.0004
 device: 'cuda'
 phase: 'training'
-data_usage: 100000
+data_usage: 400000
 model: "act"
 recache: "True"
-pred_len: 45
+pred_len: 90
 
 # eval config
 need_eval: False

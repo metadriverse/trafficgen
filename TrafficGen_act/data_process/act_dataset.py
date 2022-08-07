@@ -177,12 +177,14 @@ class actDataset(Dataset):
                     datas = pickle.load(f)
                 data = self.process(copy.deepcopy(datas))
 
+                self.data_loaded[cnt]=data[0]
                 file_cnt+=1
-                case_cnt=0
-                for i in range(len(data)):
-                    self.data_loaded[cnt+case_cnt] = data[i]
-                    case_cnt+=1
-                cnt+=case_cnt
+                # case_cnt=0
+                # for i in range(len(data)):
+                #     self.data_loaded[cnt+case_cnt] = data[i]
+                #     case_cnt+=1
+                # cnt+=case_cnt
+                cnt+=1
             self.data_len = cnt
         print('Dataset len: {} (rank: {}), start_index: {}, end_index: {}'.format(self.data_len, self.rank,
                                                                                        start_index, end_index))
@@ -362,21 +364,22 @@ class actDataset(Dataset):
         #case_info
 
         data_list = []
-        for case in case_list:
-            case_info = {}
-            ego_gt, other_gt, agent, agent_mask = self.process_agent(case)
+        #for case in case_list:
+        case = case_list[0]
+        case_info = {}
+        ego_gt, other_gt, agent, agent_mask = self.process_agent(case)
 
-            case_info['agent'] = agent
-            case_info['ego_gt'] = ego_gt
+        case_info['agent'] = agent
+        case_info['ego_gt'] = ego_gt
 
-            case_info['processed_gt'] = self.process_gt(ego_gt)
-            case_info['other_gt'] = other_gt
-            case_info['agent_mask'] = agent_mask
+        case_info['processed_gt'] = self.process_gt(ego_gt)
+        case_info['other_gt'] = other_gt
+        case_info['agent_mask'] = agent_mask
 
-            case_info['center'], case_info['center_mask'], case_info['bound'], case_info['bound_mask'], \
-            case_info['cross'], case_info['cross_mask'], case_info['rest'] = process_map(case)
+        case_info['center'], case_info['center_mask'], case_info['bound'], case_info['bound_mask'], \
+        case_info['cross'], case_info['cross_mask'], case_info['rest'] = process_map(case)
 
-            data_list.append(case_info)
+        data_list.append(case_info)
 
         return data_list
 

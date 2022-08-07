@@ -17,6 +17,8 @@ if __name__ == "__main__":
         trainer.eval_init()
         #trainer.draw_generation_process(vis=False,save=True)
     else:
-        trainer.load_model('model_weights/act_80.pt', device)
-        trainer.draw_gifs(vis=True)
+        #trainer.load_model('model_weights/act_80.pt', device)
+        trainer.train()
+        #trainer.eval_act()
+        #trainer.draw_gifs(vis=True)
 

@@ -32,7 +32,7 @@ def loss_v1(pred,gt):
     heading_loss = torch.gather(heading_loss, dim=1, index=min_index.unsqueeze(-1)).mean()
 
     loss_sum = 10*pos_loss+velo_loss+heading_loss+cls_loss
-    loss_dict = {}
+
     loss_dict = {}
     loss_dict['cls_loss'] = cls_loss
     loss_dict['velo_loss'] = velo_loss
