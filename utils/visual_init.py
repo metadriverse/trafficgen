@@ -40,7 +40,22 @@ def draw_heatmap(vector,vector_prob,gt_idx):
 
     return plt
 
+def draw_metrics(loss):
+    fig, ax = plt.subplots(figsize=(10, 10))
+    loss = loss.numpy()
+    x = np.arange(1, 11)
 
+    ax.plot(x, loss[0],  label='prob loss')
+    ax.plot(x, loss[1],    label='coord loss')
+    ax.plot(x, loss[2], label='vel loss')
+    ax.plot(x, loss[3],   label='dir loss')
+    ax.legend()
+
+    ax.xlabel('iteration')  # X轴标签
+    ax.ylabel("loss")  # Y轴标签
+    ax.title("evaluation")  # 标题
+
+    return plt
 
 def draw(center, heat_map,agents, other,cnt=0, save=False, edge=None,path='../vis',abn_idx=None):
     fig, ax = plt.subplots(figsize=(10, 10))

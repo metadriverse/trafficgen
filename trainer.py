@@ -14,13 +14,13 @@ from torch import optim
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader
 
-from utils.utils import get_time_str,time_me,transform_to_agent,from_list_to_batch,rotate,get_type_class
+from utils.utils import get_time_str,time_me,transform_to_agent,from_list_to_batch,rotate
 from utils.typedef import AgentType
 
 from TrafficGen_init.models.init_model import initializer
 from TrafficGen_init.data_process.init_dataset import initDataset
 
-from utils.visual_init import get_agent_pos_from_vec,draw,draw_heatmap,get_heatmap
+from utils.visual_init import get_agent_pos_from_vec,draw,draw_heatmap,get_heatmap,draw_metrics
 from utils.visual_act import draw_seq
 from TrafficGen_init.data_process.agent_process import WaymoScene
 
@@ -320,68 +320,120 @@ class Trainer:
                     with open(p, 'wb') as f:
                         pickle.dump(output, f)
 
+    def eval_act(self):
+        return
 
-    def eval_model(self):
+    def eval_init(self):
 
         self.model.eval()
-        ret = {}
-        loss = 0
-        losses = []
-
 
         with torch.no_grad():
-            eval_data = self.eval_data_loader
+            eval_data = self.eval_data_loader.dataset
             cnt = 0
-
-            for batch in eval_data:
+            eval_results = []
+            for i in tqdm(range(len(eval_data))):
+                seed(i)
+                batch = copy.deepcopy(eval_data[i])
                 for key in batch.keys():
-                    if isinstance(batch[key], torch.DoubleTensor):
-                        batch[key] = batch[key].float()
+                    if isinstance(batch[key], np.ndarray):
+                        batch[key] = Tensor(batch[key])
                     if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
                         batch[key] = batch[key].cuda()
-
-                inp_batch = copy.deepcopy(batch)
-                pred, loss_, losses_ = self.model(inp_batch)
-
-                loss+=loss_
-                losses.append(losses_)
-
-                i = 0
-                if cnt <10:
-                    a_case = {}
-                    for key in batch.keys():
-                        if isinstance(batch[key], torch.Tensor):
-                            batch[key] = batch[key].cpu()
-                        a_case[key] = batch[key][[i]]
-
-                    inp = copy.deepcopy(a_case)
-                    pred_agent = self.inference(inp)
-                    agent_num = pred_agent.shape[0]
-                    plt_pred = wandb.Image(draw(a_case['center'][0],pred_agent,edge=a_case['bound'][0]))
-
-                    plt_gt = wandb.Image(draw(a_case['center'][0],a_case['agent'][0,:agent_num],a_case['bound'][0]))
-                    ret[f"pred_{cnt}"] = plt_pred
-                    ret[f'gt_{cnt}'] = plt_gt
-
-                    ret[f'heatmap_{cnt}'] = wandb.Image(self.get_heatmap(copy.deepcopy(a_case)))
-
                 cnt += 1
+                inp = copy.deepcopy(batch)
 
-        loss = loss/cnt
-        dic = {}
-        for i in range(len(losses)):
-            lo = losses[i]
-            for k,v in lo.items():
-                if i == 0:
-                    dic[k] = v
-                else:
-                    dic[k] += v
-        for k,v in dic.items():
-            dic[k] = (v/cnt)
+                other = inp['other']
+                inp_lane = {}
+                inp_lane['traf'] = other['traf'][0]
+                inp_lane['lane'] = other['unsampled_lane']
+                cent, cent_mask, bound, bound_mask, _, _, rest = process_map(inp_lane, 4000, 1000, 50, 0)
 
-        dic['loss'] = loss
-        wandb.log({'eval':dic})
-        wandb.log(ret)
+                pred_agent, prob, coords = self.inference(inp,eval=True)
+
+                pred = {}
+                pred['prob'] = prob
+                pred['agent'] = pred_agent
+                loss = self.metrics(pred,inp)
+                eval_results.append(loss)
+
+            loss = torch.zeros([4,10])
+            for i in range(10):
+                prob_i=0
+                vel_i=0
+                dir_i=0
+                coord_i=0
+                cnt=0
+                for result in eval_results:
+                    if len(result['prob'])<(i+1): continue
+                    prob_i+=result['prob'][i]
+                    vel_i += result['vel'][i]
+                    coord_i += result['coord'][i]
+                    dir_i += result['dir'][i]
+                    cnt+=1
+                loss[0,i] = prob_i/cnt
+                loss[1,i] = coord_i/cnt
+                loss[2,i] = vel_i/cnt
+                loss[3,i] = dir_i/cnt
+
+            plt_pred = wandb.Image(draw_metrics(loss))
+
+            if not self.in_debug:
+                wandb.log(plt_pred)
+
+
+    def metrics(self,pred,gt):
+        gt.pop('other')
+        for k,v in gt.items():
+            gt[k] = gt[k].squeeze(0)
+
+        gt_agent = gt['line_with_agent'][1:]
+        agent_num = gt['agent_mask'].shape[0]
+        line_mask = gt['center_mask'].to(bool)
+        vec_indx = gt['vec_index'].to(int)
+        gt_prob = gt['gt'][:,0][line_mask]
+        pred_prob = torch.Tensor(np.stack(pred['prob']))[:agent_num-1]
+        pred_prob = pred_prob[:,line_mask]
+        pred_agent = pred['agent']
+
+
+        BCE = torch.nn.BCEWithLogitsLoss()
+        MSE = torch.nn.MSELoss()
+        L1 = torch.nn.L1Loss()
+
+        gt_prob[vec_indx[0]]=0
+
+        bce_list = []
+        coord_list = []
+        vel_list = []
+        dir_list = []
+        for i in range(agent_num-1):
+
+            bce_loss = BCE(pred_prob[i],gt_prob)
+            gt_prob[vec_indx[i+1]]=0
+
+            pred_coord = pred_agent[i]['coord']
+            pred_vel = pred_agent[i]['vel']
+            pred_dir = pred_agent[i]['agent_dir']
+
+            gt_coord = gt_agent[i,:2]
+            gt_vel = gt_agent[i,2:4]
+            gt_dir = gt_agent[i,6:8]
+
+            coord_loss = MSE(gt_coord,pred_coord)
+            vel_loss = L1(gt_vel,pred_vel)
+            dir_loss = MSE(gt_dir,pred_dir)
+
+            bce_list.append(bce_loss)
+            coord_list.append(coord_loss)
+            vel_list.append(vel_loss)
+            dir_list.append(dir_loss)
+
+        metrics = {}
+        metrics['prob'] = bce_list
+        metrics['vel'] = vel_list
+        metrics['coord'] = coord_list
+        metrics['dir'] = dir_list
+        return metrics
 
     def get_polygon(self, center, yaw, L, W):
         # agent = WaymoAgentInfo(agent)
@@ -401,11 +453,12 @@ class Trainer:
         p4 = [center[0] - x2, center[1] - y2]
         return Polygon([p1, p3, p2, p4])
 
-    def inference(self, data):
+    def inference(self, data, eval=False):
 
         agent_num = data['agent_mask'].sum().to(int)
 
         idx_list = []
+
         vec_indx = data['vec_index'].cpu().numpy().astype(int)
         idx_list.append(vec_indx[0,0])
         shapes = []
@@ -414,11 +467,13 @@ class Trainer:
                                     5.286 + 0.1, 2.332 + 0.1)
         shapes.append(ego_poly)
         prob_list = []
-        minimum_agent = 4
+        virtual_list = []
+        minimum_agent = self.cfg['pad_num']
         center = data['center'][0].numpy()
         center_mask = data['center_mask'][0].numpy().astype(bool)
         center = center[center_mask]
         coord_list = []
+        pred_list = []
         for i in range(1,max(agent_num,minimum_agent)):
             data['agent_mask'][:, :i] = 1
             data['agent_mask'][:,i:]=0
@@ -431,12 +486,6 @@ class Trainer:
             coord, agent_dir, vel = get_agent_pos_from_vec(vec, the_pred[:, 1], the_pred[:, 2], the_pred[:, 3],
                                                        the_pred[:, 4])
             coord_list.append(coord)
-            # for i in range(center.shape[0]):
-            #     vec = center[i,:4]
-            #     the_pred = pred[0,i]
-            #     coord, agent_dir, vel = get_agent_pos_from_vec(vec, the_pred[:, 1], the_pred[:, 2], the_pred[:, 3],
-            #                                                the_pred[:, 4])
-            #     pred_coord[i,:4] = coord
 
             pred = pred.cpu().numpy()
 
@@ -444,43 +493,55 @@ class Trainer:
             prob[idx_list] = 0
             line_mask = data['center_mask'][0].cpu().numpy()
             prob = prob*line_mask
+            prob_list.append(prob)
 
             # loop 100 times for collision detection
+            if eval == False:
 
-            for j in range(100):
-                sample_list = []
-                # repeat sampling
-                for k in range(1):
-                    indx = choices(list(range(prob.shape[-1])), prob)[0]
-                    sample_list.append((indx,prob[indx]))
-                max_prob = np.argmax([x[1] for x in sample_list])
-                indx = sample_list[max_prob][0]
+                for j in range(100):
+                    sample_list = []
+                    # repeat sampling
+                    for k in range(1):
+                        indx = choices(list(range(prob.shape[-1])), prob)[0]
+                        sample_list.append((indx,prob[indx]))
+                    max_prob = np.argmax([x[1] for x in sample_list])
+                    indx = sample_list[max_prob][0]
+                    vec = data['center'][:,indx].cpu().numpy()
+                    the_pred = pred[:,indx]
+                    coord, agent_dir,vel = get_agent_pos_from_vec(vec,the_pred[:,1],the_pred[:,2],the_pred[:,3],the_pred[:,4])
+                    intersect = False
+                    poly = self.get_polygon(coord[0], np.arctan2(agent_dir[0,0],agent_dir[0,1]), 5.286 + 0.2, 2.332 + 0.2)
+                    for shape in shapes:
+                        if poly.intersects(shape):
+                            intersect = True
+                            break
+                    if not intersect:
+                        shapes.append(poly)
+                        break
+                    else: continue
+
+                pred_one = torch.cat(
+                    [Tensor(coord), Tensor(vel), Tensor([[5.286, 2.332]]), Tensor(agent_dir), Tensor(the_pred[:, 1:]),
+                     Tensor(vec)], dim=-1)
+                pred_list.append(pred_one)
+                data['line_with_agent'][:,i] = pred_one
+                idx_list.append(indx)
+
+            else:
+                indx = data['vec_index'][0,i].to(int).item()
                 vec = data['center'][:,indx].cpu().numpy()
                 the_pred = pred[:,indx]
                 coord, agent_dir,vel = get_agent_pos_from_vec(vec,the_pred[:,1],the_pred[:,2],the_pred[:,3],the_pred[:,4])
+                virtual_pred = {}
+                virtual_pred['coord'] = Tensor(coord[0])
+                virtual_pred['agent_dir'] = Tensor(agent_dir[0])
+                virtual_pred['vel'] = Tensor(vel[0])
+                virtual_list.append(virtual_pred)
+                idx_list.append(indx)
 
-                intersect = False
-                poly = self.get_polygon(coord[0], np.arctan2(agent_dir[0,0],agent_dir[0,1]), 5.286 + 0.2, 2.332 + 0.2)
-                for shape in shapes:
-                    if poly.intersects(shape):
-                        intersect = True
-                        break
-                if not intersect:
-                    shapes.append(poly)
-                    break
-                else: continue
+        agent = torch.vstack(pred_list) if eval==False else virtual_list
 
-            prob_list.append(prob)
-            idx_list.append(indx)
-            data['line_with_agent'][:,i,:2] = Tensor(coord)
-            data['line_with_agent'][:, i, 2:4] = Tensor(vel)
-            data['line_with_agent'][:, i, 4:6] = Tensor([5.286,2.332])
-            data['line_with_agent'][:, i, 6:8] = Tensor(agent_dir)
-            data['line_with_agent'][:, i,8:12] = Tensor(the_pred[:,1:])
-            data['line_with_agent'][:, i, 12:] = Tensor(vec)
-
-        agent = data['line_with_agent'][0,:max(agent_num,minimum_agent),:8]
-        return agent.cpu().numpy(), prob_list,coord_list
+        return agent, prob_list,coord_list
     @time_me
     def train_one_epoch(self, train_data):
         self.current_epoch += 1

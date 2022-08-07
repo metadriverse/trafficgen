@@ -81,7 +81,9 @@ class initDataset(Dataset):
         self.data_len = None
         self.data_loaded = {}
         self.cfg = cfg
+        self.pad_num = cfg['pad_num']
         self.load_data()
+
         super(initDataset, self).__init__()
 
     def load_data(self):
@@ -100,9 +102,9 @@ class initDataset(Dataset):
                 with open(data_file_path, 'rb+') as f:
                     datas = pickle.load(f)
                 data = self.process(datas)
-                self.data_loaded[cnt] = data
-                cnt += 1
-            self.data_len = cnt
+                self.data_loaded[file_cnt] = data
+                file_cnt += 1
+            self.data_len = file_cnt
         else:
             while file_cnt+start_index < end_index:
                 index = file_cnt+start_index
@@ -406,7 +408,7 @@ class initDataset(Dataset):
 
             fut = fut[:agent_num]
             case_info['agent_mask'] = case_info['agent_mask'][:,:agent_num]
-            pad_num=4
+            pad_num=self.pad_num
             if agent_num<pad_num:
                 pad = torch.zeros(1,pad_num-agent_num,19)
                 line_with_agent = torch.cat([line_with_agent,pad],1)

@@ -10,10 +10,13 @@ if __name__ == "__main__":
     trainer = Trainer(exp_name=args.exp_name,
                       cfg=cfg,
                       args=args)
+    device = cfg['device']
+
     if cfg['model']=='init':
-        trainer.load_model('model_weights/init_120.pt','cpu')
-        trainer.draw_generation_process(vis=False,save=True)
+        trainer.load_model('model_weights/init_120.pt',device)
+        trainer.eval_init()
+        #trainer.draw_generation_process(vis=False,save=True)
     else:
-        trainer.load_model('model_weights/act_80.pt', 'cpu')
+        trainer.load_model('model_weights/act_80.pt', device)
         trainer.draw_gifs(vis=True)
 
