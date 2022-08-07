@@ -378,7 +378,7 @@ class Trainer:
     def metrics(self,pred,gt):
         #gt.pop('other')
         for k,v in gt.items():
-            gt[k] = gt[k].squeeze(0)
+            gt[k] = gt[k].squeeze(0).cpu()
 
         gt_agent = gt['line_with_agent'][1:]
         agent_num = gt['agent_mask'].shape[0]
