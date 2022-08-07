@@ -345,6 +345,7 @@ class Trainer:
                 pred_agent, prob, coords = self.inference(inp,eval=True)
 
                 pred = {}
+                if len(prob)<=1:continue
                 pred['prob'] = prob
                 pred['agent'] = pred_agent
                 loss = self.metrics(pred,inp)
