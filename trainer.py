@@ -463,8 +463,8 @@ class Trainer:
         prob_list = []
         virtual_list = []
         minimum_agent = self.cfg['pad_num']
-        center = data['center'][0].numpy()
-        center_mask = data['center_mask'][0].numpy().astype(bool)
+        center = data['center'][0].cpu().numpy()
+        center_mask = data['center_mask'][0].cpu().numpy().astype(bool)
         center = center[center_mask]
         coord_list = []
         pred_list = []
@@ -476,7 +476,7 @@ class Trainer:
 
             #pred_coord = np.zeros_like(center)
             vec = center[:,:4]
-            the_pred = pred[0,:vec.shape[0]].numpy()
+            the_pred = pred[0,:vec.shape[0]].cpu().numpy()
             coord, agent_dir, vel = get_agent_pos_from_vec(vec, the_pred[:, 1], the_pred[:, 2], the_pred[:, 3],
                                                        the_pred[:, 4])
             coord_list.append(coord)
