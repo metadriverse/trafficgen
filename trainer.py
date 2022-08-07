@@ -376,7 +376,7 @@ class Trainer:
 
 
     def metrics(self,pred,gt):
-        gt.pop('other')
+        #gt.pop('other')
         for k,v in gt.items():
             gt[k] = gt[k].squeeze(0)
 
