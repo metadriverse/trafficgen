@@ -12,12 +12,12 @@ phase: 'training'
 data_usage: 50000
 model: "init"
 recache: "True"
-min_agent: 8
+pad_num: 0
 
 # eval config
 need_eval: True
-eval_data_start_index: 50000
-eval_data_usage: 2000
+eval_data_start_index: 100000
+eval_data_usage: 20
 eval_batch_size: 16 # 2 frame * 50 map  will be plotted
 eval_frequency: 5  # eval each epoch
 
