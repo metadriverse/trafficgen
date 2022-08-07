@@ -370,9 +370,10 @@ class Trainer:
                 loss[3,i] = dir_i/cnt
 
             plt_pred = wandb.Image(draw_metrics(loss))
-
+            log = {}
+            log['result'] = plt_pred
             if not self.in_debug:
-                wandb.log(plt_pred)
+                wandb.log(log)
 
 
     def metrics(self,pred,gt):
