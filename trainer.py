@@ -342,12 +342,6 @@ class Trainer:
                 cnt += 1
                 inp = copy.deepcopy(batch)
 
-                other = inp['other']
-                inp_lane = {}
-                inp_lane['traf'] = other['traf'][0]
-                inp_lane['lane'] = other['unsampled_lane']
-                cent, cent_mask, bound, bound_mask, _, _, rest = process_map(inp_lane, 4000, 1000, 50, 0)
-
                 pred_agent, prob, coords = self.inference(inp,eval=True)
 
                 pred = {}
