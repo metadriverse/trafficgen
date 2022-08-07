@@ -51,9 +51,9 @@ def draw_metrics(loss):
     ax.plot(x, loss[3],   label='dir loss')
     ax.legend()
 
-    ax.xlabel('iteration')  # X轴标签
-    ax.ylabel("loss")  # Y轴标签
-    ax.title("evaluation")  # 标题
+    plt.xlabel('iteration')  # X轴标签
+    plt.ylabel("loss")  # Y轴标签
+    plt.title("evaluation")  # 标题
 
     return plt
 
