@@ -49,7 +49,7 @@ def draw_metrics(loss):
     ax[0,1].plot(x, loss[1],    label='coord loss')
     ax[1,0].plot(x, loss[2], label='vel loss')
     ax[1,1].plot(x, loss[3],   label='dir loss')
-    ax.legend()
+    #ax.legend()
 
     plt.xlabel('iteration')  # X轴标签
     plt.ylabel("loss")  # Y轴标签
