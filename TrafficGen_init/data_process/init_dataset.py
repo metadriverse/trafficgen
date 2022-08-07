@@ -427,24 +427,24 @@ class initDataset(Dataset):
             case_info['line_with_agent'] = line_with_agent
 
 
-            pos = data['sdc_pos'][0]
-            lane = data['unsampled_lane']
-            lane[..., :2] -= pos
-            sdc_theta = data['sdc_theta'][0]
-            x = lane[..., 0]
-            y = lane[..., 1]
-            x_transform = np.cos(sdc_theta) * x - np.sin(sdc_theta) * y
-            y_transform = np.cos(sdc_theta) * y + np.sin(sdc_theta) * x
-            output_coords = np.stack((x_transform, y_transform), axis=-1)
-            lane[..., :2] = output_coords
-
-            other = {}
-            other['agent_traj'] = fut
-            other['lane'] = data['lane'][0]
-            other['traf'] = data['traf_p_c_f']
-            other['center_info'] = data['center_info']
-            other['unsampled_lane'] = lane
-            case_info['other'] = other
+            # pos = data['sdc_pos'][0]
+            # lane = data['unsampled_lane']
+            # lane[..., :2] -= pos
+            # sdc_theta = data['sdc_theta'][0]
+            # x = lane[..., 0]
+            # y = lane[..., 1]
+            # x_transform = np.cos(sdc_theta) * x - np.sin(sdc_theta) * y
+            # y_transform = np.cos(sdc_theta) * y + np.sin(sdc_theta) * x
+            # output_coords = np.stack((x_transform, y_transform), axis=-1)
+            # lane[..., :2] = output_coords
+            #
+            # other = {}
+            # other['agent_traj'] = fut
+            # other['lane'] = data['lane'][0]
+            # other['traf'] = data['traf_p_c_f']
+            # other['center_info'] = data['center_info']
+            # other['unsampled_lane'] = lane
+            # case_info['other'] = other
             return case_info
 
         else:
