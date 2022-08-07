@@ -41,14 +41,14 @@ def draw_heatmap(vector,vector_prob,gt_idx):
     return plt
 
 def draw_metrics(loss):
-    fig, ax = plt.subplots(figsize=(10, 10))
+    fig, ax = plt.subplots(2,2)
     loss = loss.numpy()
     x = np.arange(1, 11)
 
-    ax.plot(x, loss[0],  label='prob loss')
-    ax.plot(x, loss[1],    label='coord loss')
-    ax.plot(x, loss[2], label='vel loss')
-    ax.plot(x, loss[3],   label='dir loss')
+    ax[0,0].plot(x, loss[0],  label='prob loss')
+    ax[0,1].plot(x, loss[1],    label='coord loss')
+    ax[1,0].plot(x, loss[2], label='vel loss')
+    ax[1,1].plot(x, loss[3],   label='dir loss')
     ax.legend()
 
     plt.xlabel('iteration')  # X轴标签
