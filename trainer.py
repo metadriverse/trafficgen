@@ -370,6 +370,11 @@ class Trainer:
                 loss[2,i] = vel_i/cnt
                 loss[3,i] = dir_i/cnt
 
+            loss = loss.numpy()
+            p = f'./{self.exp_name}'
+            with open(p, 'wb') as f:
+                pickle.dump(loss, f)
+
             plt_pred = wandb.Image(draw_metrics(loss))
             log = {}
             log['result'] = plt_pred
@@ -390,7 +395,6 @@ class Trainer:
         pred_prob = torch.Tensor(np.stack(pred['prob']))[:agent_num-1]
         pred_prob = pred_prob[:,line_mask]
         pred_agent = pred['agent']
-
 
         BCE = torch.nn.BCEWithLogitsLoss()
         MSE = torch.nn.MSELoss()
@@ -416,8 +420,8 @@ class Trainer:
             gt_dir = gt_agent[i,6:8]
 
             coord_loss = MSE(gt_coord,pred_coord)
-            vel_loss = L1(gt_vel,pred_vel)
-            dir_loss = MSE(gt_dir,pred_dir)
+            vel_loss = MSE(gt_vel,pred_vel)
+            dir_loss = L1(gt_dir,pred_dir)
 
             bce_list.append(bce_loss)
             coord_list.append(coord_loss)

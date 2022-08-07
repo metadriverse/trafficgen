@@ -42,7 +42,6 @@ def draw_heatmap(vector,vector_prob,gt_idx):
 
 def draw_metrics(loss):
     fig, ax = plt.subplots(2,2)
-    loss = loss.numpy()
     x = np.arange(1, 11)
 
     ax[0,0].plot(x, loss[0],  label='prob loss')
