@@ -9,7 +9,7 @@ copy_func = copy.deepcopy
 class initializer(nn.Module):
     """ A transformer model with wider latent space """
 
-    def __init__(self):
+    def __init__(self,cfg):
         super().__init__()
 
         # input embedding stem
@@ -41,7 +41,10 @@ class initializer(nn.Module):
         agent = data['line_with_agent'][...,:-2]
         agent_line_type = data['line_with_agent'][..., -2].to(int)
         agent_line_traf = data['line_with_agent'][..., -1].to(int)
+        agent_line_traf = torch.zeros_like(agent_line_traf).to(agent.device)
+
         agent_line_type_embed = self.type_embedding(agent_line_type)
+
         agent_line_traf_embed = self.traf_embedding(agent_line_traf)
         agent_mask = data['agent_mask']
         if random_mask:
@@ -55,8 +58,12 @@ class initializer(nn.Module):
         polyline = data['center'][...,:5]
         polyline_type = data['center'][...,5].to(int)
         polyline_traf = data['center'][..., 6].to(int)
+
+        polyline_traf = torch.zeros_like(polyline_traf).to(agent.device)
+
         polyline_type_embed = self.type_embedding(polyline_type)
         polyline_traf_embed = self.traf_embedding(polyline_traf)
+        polyline_traf_embed = torch.zeros_like(polyline_traf_embed).to(agent.device)
 
         line_mask = data['center_mask']
 

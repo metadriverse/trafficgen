@@ -54,10 +54,10 @@ class Trainer:
 
         if self.model_type == 'init':
             train_dataset = initDataset(self.cfg, args)
-            model = initializer()
+            model = initializer(cfg)
         elif self.model_type == 'act':
             train_dataset = actDataset(self.cfg, args)
-            model = actuator()
+            model = actuator(cfg)
         else:
             raise NotImplementedError('no such model!')
         if len(train_dataset)>0:
@@ -321,6 +321,25 @@ class Trainer:
                         pickle.dump(output, f)
 
     def eval_act(self):
+        self.model.eval()
+        with torch.no_grad():
+            eval_data = self.train_dataloader.dataset
+            cnt = 0
+            eval_results = []
+            for i in tqdm(range(len(eval_data))):
+                batch = copy.deepcopy(eval_data[i])
+                for key in batch.keys():
+                    if isinstance(batch[key], np.ndarray):
+                        batch[key] = Tensor(batch[key])
+                    if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
+                        batch[key] = batch[key].cuda()
+                cnt += 1
+                inp = copy.deepcopy(batch)
+
+                output = self.inference_control(inp)
+
+                loss = self.metrics(output,inp)
+                eval_results.append(loss)
         return
 
     def eval_init(self):

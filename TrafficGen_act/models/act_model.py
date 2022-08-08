@@ -15,7 +15,7 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 class actuator(nn.Module):
     """ A transformer model with wider latent space """
 
-    def __init__(self):
+    def __init__(self,cfg):
         super().__init__()
 
         # input embedding stem
@@ -33,7 +33,7 @@ class actuator(nn.Module):
         #
         self.apply(self._init_weights)
         # prob,long_perc,lat_perc,dir(2),v_value,v_dir = 1+1+1+2+1+2
-        self.pred_len = 89
+        self.pred_len = cfg['pred_len']-1
 
         self.velo_head = MLP_3([hidden_dim*2,hidden_dim,256,self.pred_len*2])
         self.pos_head = MLP_3([hidden_dim*2,hidden_dim,256,self.pred_len*2])
