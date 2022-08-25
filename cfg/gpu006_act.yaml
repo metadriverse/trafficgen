@@ -12,7 +12,7 @@ phase: 'training'
 data_usage: 400000
 model: "act"
 recache: "True"
-pred_len: 90
+pred_len: 45
 
 # eval config
 need_eval: False

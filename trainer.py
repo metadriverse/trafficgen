@@ -1,6 +1,5 @@
 import copy
 import numpy as np
-from shapely.geometry import Polygon
 import pickle
 
 from tqdm import tqdm
@@ -14,13 +13,13 @@ from torch import optim
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader
 
-from utils.utils import get_time_str,time_me,transform_to_agent,from_list_to_batch,rotate
+from utils.utils import get_time_str,time_me,transform_to_agent,from_list_to_batch,rotate,get_polygon,get_agent_pos_from_vec
 from utils.typedef import AgentType
 
 from TrafficGen_init.models.init_model import initializer
 from TrafficGen_init.data_process.init_dataset import initDataset
 
-from utils.visual_init import get_agent_pos_from_vec,draw,draw_heatmap,get_heatmap,draw_metrics
+from utils.visual_init import draw,draw_heatmap,get_heatmap,draw_metrics
 from utils.visual_act import draw_seq
 from TrafficGen_init.data_process.agent_process import WaymoScene
 
@@ -255,46 +254,36 @@ class Trainer:
         save_path = '/Users/fenglan/Downloads/waymo/onemap'
         self.model.eval()
         with torch.no_grad():
-            eval_data = self.eval_data_loader.dataset
+            eval_data = self.eval_data_loader
             cnt = 0
 
-            #for k in range(20):
-            for i in tqdm(range(len(eval_data))):
-                seed(i)
-                batch = copy.deepcopy(eval_data[i])
-
+            for batch in eval_data:
+                seed(cnt)
                 for key in batch.keys():
-                    if isinstance(batch[key], np.ndarray):
-                        batch[key] = Tensor(batch[key])
+                    if isinstance(batch[key], torch.DoubleTensor):
+                        batch[key] = batch[key].float()
                     if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
                         batch[key] = batch[key].cuda()
-                cnt+=1
-                inp = copy.deepcopy(batch)
 
-                other = inp['other']
-                inp_lane = {}
-                inp_lane['traf'] = other['traf'][0]
-                inp_lane['lane'] = other['unsampled_lane']
-                cent, cent_mask, bound, bound_mask, _, _, rest = process_map(inp_lane, 4000, 1000, 50,0)
-
-                pred_agent, prob,coords = self.inference(inp)
+                pred_agent, prob,coords = self.inference(batch)
                 agent_num = pred_agent.shape[0]
 
                 #heat_maps = []
                 if vis:
                     if not os.path.exists('./vis/heatmap'):
                         os.mkdir('./vis/heatmap')
-                    path = f'./vis/heatmap/{i}'
+                    path = f'./vis/heatmap/{cnt}'
                     if not os.path.exists(path):
                         os.mkdir(path)
                     for j in range(1,agent_num):
                         output_path = os.path.join(path,f'{j}')
-                        draw_agent = pred_agent[:j]
-                        center = inp['center'][0].numpy()
-                        center = cent
-                        center_mask = inp['center_mask'][0].numpy().astype(bool)
-                        heat_map = get_heatmap(coords[j-1][:,0], coords[j-1][:,1], prob[j-1][center_mask], 20)
-                        #heat_maps.append(heat_map)
+                        draw_agent = pred_agent[:j].cpu().numpy()
+
+                        center_mask = batch['center_mask'][0]
+                        heat_map = get_heatmap(coords[j-1][:,0].cpu().numpy(), coords[j-1][:,1].cpu().numpy(), prob[j-1][center_mask].cpu().numpy(), 20)
+                        center = batch['center'][0].cpu().numpy()
+                        rest = batch['rest'][0].cpu().numpy()
+                        bound = batch['bound'][0].cpu().numpy()
                         draw(center, heat_map,draw_agent,rest, edge=bound,save=True,path=output_path)
 
                 # generate case
@@ -320,23 +309,106 @@ class Trainer:
                     with open(p, 'wb') as f:
                         pickle.dump(output, f)
 
+                cnt+=1
+
+    def process_train_to_eval(self,data):
+
+
+        sdc_theta = data['sdc_theta']
+        pos = data['sdc_pos']
+
+        agent_type = data['nbrs_p_c_f'][:,0,-2]==1
+        pred_mask = data['pred_list'].astype(bool)
+        agent_mask = agent_type*pred_mask
+        other = data['nbrs_p_c_f'][agent_mask]
+
+        all_agent = np.concatenate(
+            [data['ego_p_c_f'][np.newaxis], other], axis=0)
+        coord = rotate(all_agent[..., 0], all_agent[..., 1], -sdc_theta) + pos
+        vel = rotate(all_agent[..., 2], all_agent[..., 3], -sdc_theta)
+
+        yaw = -sdc_theta+np.pi/2
+
+        all_agent[..., 4] = all_agent[..., 4] + yaw
+        all_agent[..., :2] = coord
+        all_agent[..., 2:4] = vel
+
+        #for j in range(all_agent.shape[0]):
+        agents = copy.deepcopy(all_agent)
+
+        pos0 = copy.deepcopy(agents[0, 0, :2])
+        theta0 = -(copy.deepcopy(agents[0,0, 4]))
+
+        coord = agents[..., :2]
+        vel = agents[..., 2:4]
+        coord -= pos0
+
+        coord = rotate(coord[..., 0], coord[..., 1], theta0)
+        vel = rotate(vel[..., 0], vel[..., 1], theta0)
+
+        agents[..., :2] = coord
+        agents[..., 2:4] = vel
+        agents[..., 4] = agents[..., 4] - copy.deepcopy(agents[0][0, 4])
+
+        # then recover lane's position
+        lane = copy.deepcopy(data['lane'])
+        lane[..., :2] -= pos0
+
+        output_coords = rotate(lane[..., 0], lane[..., 1], theta0)
+
+        lane[..., :2] = output_coords
+
+        output = {}
+        output['lane'] = lane
+        output['all_agent'] = agents[:,0]
+        other = {}
+        # one_case['traf'] = data['traf_p_c_f'][i]
+
+        other['traf'] = data['traf_p_c_f']
+        output['other'] = other
+
+        return output
+
     def eval_act(self):
         self.model.eval()
         with torch.no_grad():
-            eval_data = self.train_dataloader.dataset
+            eval_data = self.eval_data_loader.dataset
             cnt = 0
             eval_results = []
             for i in tqdm(range(len(eval_data))):
+
+
                 batch = copy.deepcopy(eval_data[i])
+                inp = self.process_train_to_eval(batch)
+
                 for key in batch.keys():
                     if isinstance(batch[key], np.ndarray):
                         batch[key] = Tensor(batch[key])
                     if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
                         batch[key] = batch[key].cuda()
                 cnt += 1
-                inp = copy.deepcopy(batch)
+                #inp = copy.deepcopy(batch)
 
-                output = self.inference_control(inp)
+                output = self.inference_control(inp,ego_gt=False,length=90)
+
+                lane = inp['lane']
+                traf = inp['other']['traf']
+                agent = output['pred']
+                dir_path = f'./vis/gif/{i}'
+                if not os.path.exists(dir_path):
+                    os.mkdir(dir_path)
+                ind = list(range(0,90,5))
+                #agent = np.delete(agent,4,axis=1)
+                #del heat_map[5]
+                agent = agent[ind]
+                for t in range(agent.shape[0]):
+                    agent_t = agent[t]
+                    path = os.path.join(dir_path, f'{t}')
+                    traf_t = traf[t]
+
+                    cent,cent_mask,bound,bound_mask,_,_,rest = process_map(lane,traf_t, 2000, 1000, 70, 0)
+
+                    draw_seq(cent,bound,rest,agent_t,path=path,save=True)
 
                 loss = self.metrics(output,inp)
                 eval_results.append(loss)
@@ -454,69 +526,51 @@ class Trainer:
         metrics['dir'] = dir_list
         return metrics
 
-    def get_polygon(self, center, yaw, L, W):
-        # agent = WaymoAgentInfo(agent)
-        #yaw = yaw.cpu()
 
-        l, w = L / 2, W / 2
-        theta = np.arctan(l / w)
-        s1 = np.sqrt(l ** 2 + w ** 2)
-        x1 = abs(np.cos(theta + yaw) * s1)
-        y1 = abs(np.sin(theta + yaw) * s1)
-        x2 = abs(np.cos(theta - yaw) * s1)
-        y2 = abs(np.sin(theta - yaw) * s1)
-
-        p1 = [center[0] + x1, center[1] - y1]
-        p2 = [center[0] - x1, center[1] + y1]
-        p3 = [center[0] + x2, center[1] + y2]
-        p4 = [center[0] - x2, center[1] - y2]
-        return Polygon([p1, p3, p2, p4])
 
     def inference(self, data, eval=False):
 
-        agent_num = data['agent_mask'].sum().to(int)
+        agent_num = data['agent_mask'].sum().item()
 
         idx_list = []
 
-        vec_indx = data['vec_index'].cpu().numpy().astype(int)
-        idx_list.append(vec_indx[0,0])
+        vec_indx = data['vec_based_rep'][...,0]
+        idx_list.append(vec_indx[0,0].item())
         shapes = []
-        ego_poly = self.get_polygon(data['line_with_agent'][0,0,:2].cpu().numpy(),
-                                    np.arctan2(data['line_with_agent'][0,0,6].cpu().numpy(),data['line_with_agent'][0,0,7].cpu().numpy()),
-                                    5.286 + 0.1, 2.332 + 0.1)
+
+        ego_agent = data['agent'][0,0]
+        ego_poly = get_polygon(ego_agent[:2],ego_agent[4],ego_agent[5] + 0.1, ego_agent[6] + 0.1)
         shapes.append(ego_poly)
+
         prob_list = []
         virtual_list = []
+
         minimum_agent = self.cfg['pad_num']
-        center = data['center'][0].cpu().numpy()
-        center_mask = data['center_mask'][0].cpu().numpy().astype(bool)
+        center = data['center'][0]
+        center_mask = data['center_mask'][0]
         center = center[center_mask]
         coord_list = []
         pred_list = []
+
         for i in range(1,max(agent_num,minimum_agent)):
             data['agent_mask'][:, :i] = 1
             data['agent_mask'][:,i:]=0
 
             pred, _, _ = self.model(data, False)
 
-            #pred_coord = np.zeros_like(center)
             vec = center[:,:4]
-            the_pred = pred[0,:vec.shape[0]].cpu().numpy()
-            coord, agent_dir, vel = get_agent_pos_from_vec(vec, the_pred[:, 1], the_pred[:, 2], the_pred[:, 3],
-                                                       the_pred[:, 4])
+            the_pred = pred[0,:vec.shape[0]]
+            coord, agent_dir, vel = get_agent_pos_from_vec(vec, the_pred[:, 1:])
             coord_list.append(coord)
-
-            pred = pred.cpu().numpy()
 
             prob = pred[0,:,0]
             prob[idx_list] = 0
-            line_mask = data['center_mask'][0].cpu().numpy()
+            line_mask = data['center_mask'][0]
             prob = prob*line_mask
             prob_list.append(prob)
 
             # loop 100 times for collision detection
             if eval == False:
-
                 for j in range(100):
                     sample_list = []
                     # repeat sampling
@@ -525,11 +579,11 @@ class Trainer:
                         sample_list.append((indx,prob[indx]))
                     max_prob = np.argmax([x[1] for x in sample_list])
                     indx = sample_list[max_prob][0]
-                    vec = data['center'][:,indx].cpu().numpy()
+                    vec = data['center'][:,indx]
                     the_pred = pred[:,indx]
-                    coord, agent_dir,vel = get_agent_pos_from_vec(vec,the_pred[:,1],the_pred[:,2],the_pred[:,3],the_pred[:,4])
+                    coord, agent_dir,vel = get_agent_pos_from_vec(vec,the_pred[:,1:])
                     intersect = False
-                    poly = self.get_polygon(coord[0], np.arctan2(agent_dir[0,0],agent_dir[0,1]), 5.286 + 0.2, 2.332 + 0.2)
+                    poly = get_polygon(coord[0], agent_dir, Tensor([5.286 + 0.1]), Tensor([2.332 + 0.1]))
                     for shape in shapes:
                         if poly.intersects(shape):
                             intersect = True
@@ -540,10 +594,10 @@ class Trainer:
                     else: continue
 
                 pred_one = torch.cat(
-                    [Tensor(coord), Tensor(vel), Tensor([[5.286, 2.332]]), Tensor(agent_dir), Tensor(the_pred[:, 1:]),
-                     Tensor(vec)], dim=-1)
+                    [coord[0], vel[0], torch.cos(agent_dir),torch.sin(agent_dir), Tensor([5.286, 2.332]),the_pred[0, 1:],
+                     vec[0]], dim=-1)
                 pred_list.append(pred_one)
-                data['line_with_agent'][:,i] = pred_one
+                data['agent_feat'][:,i] = pred_one
                 idx_list.append(indx)
 
             else:
@@ -608,7 +662,7 @@ class Trainer:
                 data_inp = scene_data[i]
                 #heat_map = data_inp['heat_map']
                 pred_i = self.inference_control(data_inp)
-                pred_i['pred']=np.delete(pred_i['pred'],4,axis=1)
+                #pred_i['pred']=np.delete(pred_i['pred'],4,axis=1)
                 pred_list.append(pred_i)
 
                 if vis:
@@ -644,18 +698,20 @@ class Trainer:
             if save_path:
                 self.save_as_metadrive_data(pred_list,scene_data,save_path)
 
-    def inference_control(self, data, length = 190, per_time = 10):
+    def inference_control(self, data, ego_gt=True,length = 190, per_time = 10):
         # for every x time step, pred then update
-        future_traj = data['other']['agent_traj']
-        pred_agent = np.zeros([length,*data['all_agent'].shape])
-        pred_agent[0] = copy.deepcopy(data['all_agent'])
-        # vel = (pred_agent[0,:,2]**2 + pred_agent[0,:,3]**2)**0.5
-        # pred_agent[0][vel<0.05,2:4]=0
-        pred_agent[1:,:,5:] = pred_agent[0,:,5:]
 
-        #ind = list(range(0,190,5))
-        pred_agent[:,0] = future_traj[0]
+        pred_agent = np.zeros([length,*data['all_agent'].shape])
+
+        pred_agent[0] = copy.deepcopy(data['all_agent'])
+        pred_agent[1:,:,5:] = pred_agent[0,:,5:]
         agent_num = data['all_agent'].shape[0]
+        start_idx = 0
+
+        if ego_gt==True:
+            future_traj = data['other']['agent_traj']
+            pred_agent[:,0] = future_traj[0]
+            start_idx = 1
 
         for i in range(0,length-1,per_time):
 
@@ -673,7 +729,7 @@ class Trainer:
 
             batch = from_list_to_batch(inp_list)
             # for inp in inp_list:
-            #     draw(inp['center'], inp['agent'][inp['agent_mask'].astype(bool)][np.newaxis], context=inp['agent'][inp['agent_mask'].astype(bool)])
+            #     draw_seq(center=inp['center'],context=inp['agent'][inp['agent_mask'].astype(bool)],edge=inp['bound'],rest=inp['rest'],gt=True)
             for key in batch.keys():
                 if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
                     batch[key] = batch[key].cuda()
@@ -692,22 +748,15 @@ class Trainer:
             best_pred = torch.gather(all_pred,dim=1,index=best_pred_idx).squeeze(1).cpu().numpy()
 
             ## update all the agent
-            for j in range(1,agent_num):
+            for j in range(start_idx,agent_num):
                 pred_j = best_pred[j]
                 agent_j = copy.deepcopy(current_agent[j])
                 center = copy.deepcopy(agent_j[:2])
                 center_yaw = copy.deepcopy(agent_j[4])
                 rotate_theta = -(center_yaw-np.pi/2)
+
                 pos = rotate(pred_j[:, 0], pred_j[:, 1], -rotate_theta)
                 heading = pred_j[...,-1]+center_yaw
-
-
-                pos_ = np.concatenate([np.zeros([1,2]),pos],axis=0)
-                vel = (pos_[1:]-pos_[:-1])/0.1
-
-                speed = (vel[...,0] ** 2 + vel[...,1] ** 2) ** 0.5
-                vx = (speed*np.cos(heading))[:,np.newaxis]
-                vy = (speed*np.sin(heading))[:,np.newaxis]
                 vel = rotate(pred_j[:, 2], pred_j[:, 3], -rotate_theta)
 
                 pos = pos + center

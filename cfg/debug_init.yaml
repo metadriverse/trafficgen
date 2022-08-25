@@ -2,7 +2,8 @@
 format_version: 4
 
 debug: True
-data_path: "./TrafficGen_init/data_sample"
+#data_path: "./TrafficGen_init/data_sample"
+data_path: "/Users/fenglan/Downloads/waymo/v2_data"
 max_epoch: 50
 num_workers: 0
 batch_size: 16
@@ -10,9 +11,10 @@ lr: 0.0003
 weight_decay: 0.0004
 device: 'cpu'
 phase: 'training'
-data_usage: 4
+data_usage: 20
 model: "init"
 recache: True
+pad_num: 0
 
 min_agent: 8
 
@@ -20,7 +22,7 @@ min_agent: 8
 # eval config
 need_eval: True
 eval_data_start_index: 0
-eval_data_usage: 4
+eval_data_usage: 20
 eval_batch_size: 1 # 2 frame * 50 map  will be plotted
 eval_frequency: 1  # eval each epoch
 

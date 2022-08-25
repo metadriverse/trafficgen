@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-
+import pickle
 import matplotlib
 matplotlib.rcParams.update({'figure.max_open_warning': 0})
 from scipy.ndimage.filters import gaussian_filter
@@ -15,14 +15,6 @@ def get_heatmap(x, y, prob, s, bins=1000):
 
     extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
     return heatmap.T, extent
-
-def transform_coord(x,y, angle):
-
-    x_transform = np.cos(angle) * x - np.sin(angle) * y
-    y_transform = np.cos(angle) * y + np.sin(angle) * x
-    output_coords = np.stack((x_transform, y_transform), axis=-1)
-
-    return output_coords
 
 def draw_heatmap(vector,vector_prob,gt_idx):
     fig, ax = plt.subplots(figsize=(10, 10))
@@ -40,19 +32,29 @@ def draw_heatmap(vector,vector_prob,gt_idx):
 
     return plt
 
-def draw_metrics(loss):
-    fig, ax = plt.subplots(2,2)
+def draw_metrics(losses):
+
+
+    fig, ax = plt.subplots(1,3)
     x = np.arange(1, 11)
+    #fig.tight_layout()
 
-    ax[0,0].plot(x, loss[0],  label='prob loss')
-    ax[0,1].plot(x, loss[1],    label='coord loss')
-    ax[1,0].plot(x, loss[2], label='vel loss')
-    ax[1,1].plot(x, loss[3],   label='dir loss')
-    #ax.legend()
+    for loss in losses:
+        ax[0].plot(x, loss[0])
+        ax[0].set_xlabel('iteration')
+        ax[0].set_ylabel("prob loss")
 
-    plt.xlabel('iteration')  # X轴标签
-    plt.ylabel("loss")  # Y轴标签
-    plt.title("evaluation")  # 标题
+        ax[1].plot(x, loss[2])
+        ax[1].set_xlabel('iteration')
+        ax[1].set_ylabel("velocity loss")
+        #ax[1,0].plot(x, loss[2], label='vel loss')
+        ax[2].plot(x, loss[3])
+        ax[2].set_xlabel('iteration')
+        ax[2].set_ylabel("heading loss")
+
+    # ax.xlabel('iteration')  # X轴标签
+    # ax.ylabel("loss")  # Y轴标签
+    # ax.title("evaluation")  # 标题
 
     return plt
 
@@ -63,7 +65,7 @@ def draw(center, heat_map,agents, other,cnt=0, save=False, edge=None,path='../vi
     # ax.set_ylim(heat_map[1][2:])
     colors = list(mcolors.TABLEAU_COLORS)
 
-    ax.imshow(heat_map[0], extent=heat_map[1],alpha=1, origin='lower', cmap=cm.jet)
+    #ax.imshow(heat_map[0], extent=heat_map[1],alpha=1, origin='lower', cmap=cm.jet)
     ax.axis('off')
 
     for j in range(center.shape[0]):
@@ -78,7 +80,7 @@ def draw(center, heat_map,agents, other,cnt=0, save=False, edge=None,path='../vi
 
         if x0 == 0:break
         #order = int(prob*100)
-        ax.plot((x0, x1), (y0, y1),'--', color='white', linewidth=2,alpha=0.2)
+        ax.plot((x0, x1), (y0, y1),'--', color='black', linewidth=2,alpha=0.2)
 
         if traf_state==1:
             color = 'red'
@@ -96,7 +98,7 @@ def draw(center, heat_map,agents, other,cnt=0, save=False, edge=None,path='../vi
             # if lane[j, k, -1] == 0: continue
             x0, y0, x1, y1, = edge[j,  :4]
             if x0 == 0:break
-            ax.plot((x0, x1), (y0, y1), 'white', linewidth=1)
+            ax.plot((x0, x1), (y0, y1), 'black', linewidth=1)
             # ax.arrow(x0, y0, x1-x0, y1-y0,head_width=1.5,head_length=0.75,width = 0.1)
     if other is not None:
         for j in range(len(other)):
@@ -104,7 +106,7 @@ def draw(center, heat_map,agents, other,cnt=0, save=False, edge=None,path='../vi
             # if lane[j, k, -1] == 0: continue
             x0, y0, x1, y1, = other[j,  :4]
             if x0 == 0:break
-            ax.plot((x0, x1), (y0, y1), 'white', linewidth=0.7)
+            ax.plot((x0, x1), (y0, y1), 'black', linewidth=0.7)
 
     a,dim = agents.shape
 
@@ -115,7 +117,7 @@ def draw(center, heat_map,agents, other,cnt=0, save=False, edge=None,path='../vi
         agent = agents[i]
         center = agent[:2]
         vel = agent[2:4]
-        yaw = np.arctan2(agent[6],agent[7])
+        yaw = agent[4]
         L, W = agent[4:6]
         l, w = L / 2, W / 2
         x1 = w / np.cos(yaw)
@@ -164,28 +166,16 @@ def draw(center, heat_map,agents, other,cnt=0, save=False, edge=None,path='../vi
 
     return plt
 
-def get_agent_pos_from_vec(vec,long_perc,lat_perc,dir, v_value):
-    x1,y1,x2,y2 = vec[:,0],vec[:,1],vec[:,2],vec[:,3]
-    vec_len = ((x1-x2)**2+(y1-y2)**2)**0.5
-
-    vec_dir = -np.arctan2(y2 - y1, x2 - x1)+np.pi/2
-
-    long_pos = vec_len*long_perc
-    lat_pos = lat_perc*4
-
-    coord = transform_coord(lat_pos,long_pos,-vec_dir)
-
-    coord[:,0]+=x1
-    coord[:,1]+=y1
-
-    agent_dir = vec_dir+dir
-    #v_dir=v_dir+agent_dir
-    v_dir = agent_dir
-
-    vel = np.stack([np.sin(v_dir)*v_value,np.cos(v_dir)*v_value], axis=-1)
-
-    dir_ = np.stack([np.sin(agent_dir),np.cos(agent_dir)], axis=-1)
-    return coord, dir_,vel
 
 
+if __name__ == "__main__":
+    loss_path = '/Users/fenglan/v2_baseline_22_08_08-05_40_27'
+    with open(loss_path,'rb+') as f:
+        loss1 = pickle.load(f)
+    loss_path = '/Users/fenglan/v2_traffic_ablation_22_08_09-04_56_21'
+    with open(loss_path,'rb+') as f:
+        loss2 = pickle.load(f)
 
+    losses = [loss1,loss2]
+
+    draw_metrics(losses)

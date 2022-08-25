@@ -11,10 +11,7 @@ RANGE = 60
 MAX_AGENT = 32
 
 
-def process_map(data, center_num=128, edge_num=128, lane_range=60, offest=-40):
-    lane = data['lane']
-
-    traf = data['traf']
+def process_map(lane,traf, center_num=128, edge_num=128, lane_range=60, offest=-40):
 
     lane_with_traf = np.zeros([*lane.shape[:-1], 5])
     lane_with_traf[..., :4] = lane
@@ -72,7 +69,7 @@ def process_case_to_input(case, agent_range=60, center_num=128, edge_num=128):
     inp['agent_mask'] = mask
 
     inp['center'], inp['center_mask'], inp['bound'], inp['bound_mask'], \
-    inp['cross'], inp['cross_mask'], inp['rest'] = process_map(case, center_num, edge_num, agent_range)
+    inp['cross'], inp['cross_mask'], inp['rest'] = process_map(case['lane'],case['traf'], center_num, edge_num, agent_range)
     return inp
 
 def process_lane(lane,  max_vec,lane_range,offset = -40):
@@ -152,7 +149,6 @@ class actDataset(Dataset):
         cnt = 0
         file_cnt = 0
 
-
         if self.eval:
             while file_cnt+start_index < end_index and self.eval:
             #for data_id in [6]:
@@ -162,7 +158,7 @@ class actDataset(Dataset):
                 with open(case_file_path, 'rb+') as f:
                     case = pickle.load(f)
                 # self.scene_data[file_cnt] = self.process_scene(case)
-                self.scene_data[file_cnt] = case
+                self.data_loaded[file_cnt] = case
                 file_cnt+=1
             self.data_len = file_cnt
 
@@ -239,10 +235,10 @@ class actDataset(Dataset):
         case_list = []
         timestep = data['ego_p_c_f'].shape[0]
         pred_list = data['pred_list']
-        for i in range(0,timestep,self.pred_len):
+        #for i in range(0,timestep,self.pred_len):
+        for i in range(1):
             if i+self.pred_len>=timestep:
                 break
-
             sdc_theta = data['sdc_theta'][i:i + self.pred_len]
             pos = data['sdc_pos'][i:i + self.pred_len]
             all_agent = np.concatenate([data['ego_p_c_f'][np.newaxis,i:i+self.pred_len],data['nbrs_p_c_f'][:,i:i+self.pred_len]],axis=0)
@@ -293,7 +289,8 @@ class actDataset(Dataset):
                 one_case['ego'] = agents[j]
                 one_case['other'] = other_agent
 
-                one_case['traf'] = data['traf_p_c_f'][i]
+                #one_case['traf'] = data['traf_p_c_f'][i]
+                one_case['traf'] = data['traf_p_c_f']
                 case_list.append(one_case)
 
         return case_list
@@ -360,9 +357,37 @@ class actDataset(Dataset):
 
     def process(self, data):
 
+        # if self.eval:
+        #     case_list = self.transform_coordinate_map(data)
+        #     # case_info
+        #
+        #     data_list = []
+        #     # for case in case_list:
+        #     case = case_list[0]
+        #     case_info = {}
+        #     ego_gt, other_gt, agent, agent_mask = self.process_agent(case)
+        #
+        #     case_info['all_agent'] = agent[agent_mask.astype(bool)]
+        #     other = {}
+        #     case_info['lane'] = case['lane']
+        #     other['traf'] = case['traf']
+        #
+        #     case_info['other'] = other
+        #     case_info['ego_gt'] = ego_gt
+        #     #other['fut_traj'] = ego_gt
+        #
+        #     case_info['processed_gt'] = self.process_gt(ego_gt)
+        #     case_info['other_gt'] = other_gt
+        #     case_info['agent_mask'] = agent_mask
+        #
+        #     case_info['center'], case_info['center_mask'], case_info['bound'], case_info['bound_mask'], \
+        #     case_info['cross'], case_info['cross_mask'], case_info['rest'] = process_map(case['lane'],case['traf'][0])
+        #
+        #     data_list.append(case_info)
+        # else:
+
         case_list = self.transform_coordinate_map(data)
         #case_info
-
         data_list = []
         #for case in case_list:
         case = case_list[0]
@@ -377,7 +402,7 @@ class actDataset(Dataset):
         case_info['agent_mask'] = agent_mask
 
         case_info['center'], case_info['center_mask'], case_info['bound'], case_info['bound_mask'], \
-        case_info['cross'], case_info['cross_mask'], case_info['rest'] = process_map(case)
+        case_info['cross'], case_info['cross_mask'], case_info['rest'] = process_map(case['lane'],case['traf'][0])
 
         data_list.append(case_info)
 

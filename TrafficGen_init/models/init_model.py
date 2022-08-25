@@ -11,19 +11,19 @@ class initializer(nn.Module):
 
     def __init__(self,cfg):
         super().__init__()
-
+        self.cfg = cfg
         # input embedding stem
         hidden_dim = 1024
         self.CG_agent = CG_stacked(5,hidden_dim)
         self.CG_line = CG_stacked(5, hidden_dim)
         self.agent_encode = MLP_3([17,256,512,hidden_dim])
-        self.line_encode = MLP_3([5,256,512,hidden_dim])
+        self.line_encode = MLP_3([4,256,512,hidden_dim])
         self.type_embedding = nn.Embedding(20, hidden_dim)
         self.traf_embedding = nn.Embedding(4, hidden_dim)
         #
         self.apply(self._init_weights)
         # prob,long_perc,lat_perc,dir(2),v_value,v_dir = 1+1+1+2+1+2
-        self.output_head = MLP_3([hidden_dim*2,hidden_dim,256,4])
+        self.output_head = MLP_3([hidden_dim*2,hidden_dim,256,5])
 
         self.prob_head = MLP_3([hidden_dim * 2, hidden_dim, 256, 1])
 
@@ -38,28 +38,29 @@ class initializer(nn.Module):
 
 
     def forward(self, data, random_mask=True):
-        agent = data['line_with_agent'][...,:-2]
-        agent_line_type = data['line_with_agent'][..., -2].to(int)
-        agent_line_traf = data['line_with_agent'][..., -1].to(int)
-        agent_line_traf = torch.zeros_like(agent_line_traf).to(agent.device)
+        agent = data['agent_feat'][...,:-2]
+
+        agent_line_type = data['agent_feat'][..., -2].to(int)
+        agent_line_traf = data['agent_feat'][..., -1].to(int)
+        #agent_line_traf = torch.zeros_like(agent_line_traf).to(agent.device)
 
         agent_line_type_embed = self.type_embedding(agent_line_type)
-
         agent_line_traf_embed = self.traf_embedding(agent_line_traf)
         agent_mask = data['agent_mask']
-        if random_mask:
 
+        min_agent_num = self.cfg['min_agent']
+        if random_mask:
             agent_mask[:,0]=1
             for i in range(agent_mask.shape[0]):
-                masked_num = i%8
+                masked_num = i%min_agent_num
                 agent_mask[i, 1 + masked_num:] = 0
 
 
-        polyline = data['center'][...,:5]
-        polyline_type = data['center'][...,5].to(int)
-        polyline_traf = data['center'][..., 6].to(int)
+        polyline = data['lane_inp'][...,:4]
+        polyline_type = data['lane_inp'][...,4].to(int)
+        polyline_traf = data['lane_inp'][..., 5].to(int)
 
-        polyline_traf = torch.zeros_like(polyline_traf).to(agent.device)
+        #polyline_traf = torch.zeros_like(polyline_traf).to(agent.device)
 
         polyline_type_embed = self.type_embedding(polyline_type)
         polyline_traf_embed = self.traf_embedding(polyline_traf)
@@ -85,41 +86,42 @@ class initializer(nn.Module):
         context_line = context_line.unsqueeze(1).repeat(1,line_enc.shape[1],1)
         line_enc = torch.cat([line_enc,context_line],dim=-1)
 
-        prob = self.prob_head(line_enc).squeeze(-1)
-        output = self.output_head(line_enc)
+        prob_pred = self.prob_head(line_enc).squeeze(-1)
+        coord_pred = self.output_head(line_enc)
 
-        pred = torch.cat([prob.unsqueeze(-1),output],dim=-1)
+        #pred = torch.cat([prob_pred.unsqueeze(-1),output],dim=-1)
 
-        prob_gt = data['gt'][...,0]
-        output_gt = data['gt'][...,1:]
+        prob_gt = data['gt_distribution']
+        coord_gt = data['gt_vec_based_coord']
 
         BCE = torch.nn.BCEWithLogitsLoss()
-
         MSE = torch.nn.MSELoss(reduction='none')
-        other_loss = MSE(output,output_gt)
 
-        prob_loss = BCE(prob,prob_gt)
+        coord_loss = MSE(coord_pred,coord_gt)
+
+        prob_loss = BCE(prob_pred,prob_gt)
         prob_loss = torch.sum(prob_loss*line_mask)/max(torch.sum(line_mask),1)
 
         gt_mask = prob_gt
         losses = {}
         gt_sum = torch.sum(gt_mask,dim=1).unsqueeze(-1)
         gt_sum = torch.clip(gt_sum,min=1)
-        other_loss = torch.sum(other_loss*gt_mask.unsqueeze(-1),dim=1)/gt_sum
+        coord_loss = torch.sum(coord_loss*gt_mask.unsqueeze(-1),dim=1)/gt_sum
 
-        pos_loss = other_loss[...,:2].mean()
+        pos_loss = coord_loss[...,:2].mean()
+        speed_loss = coord_loss[...,2].mean()
+        v_dir_loss = coord_loss[...,3].mean()
+        dir_loss = coord_loss[...,4].mean()
 
-        dir_loss = other_loss[...,2].mean()
-        v_value_loss = other_loss[...,3].mean()
-        #v_dir_loss = other_loss[...,4].mean()
 
         losses['prob_loss'] = prob_loss
         losses['pos_loss'] = pos_loss
         losses['dir_loss'] = dir_loss
-        losses['v_value_loss'] = 0.01*v_value_loss
-        #losses['v_dir_loss'] = v_dir_loss
+        losses['speed_loss'] = speed_loss
+        losses['v_dir_loss'] = v_dir_loss
 
-        total_loss = pos_loss+prob_loss+dir_loss+0.01*v_value_loss#+v_dir_loss
+        total_loss = pos_loss+prob_loss+dir_loss+speed_loss+v_dir_loss
 
+        pred = torch.cat([prob_pred.unsqueeze(-1),coord_pred],dim=-1)
         pred[...,0] = nn.Sigmoid()(pred[...,0])
         return pred,total_loss,losses

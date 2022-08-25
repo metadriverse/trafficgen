@@ -207,6 +207,7 @@ def draw_seq(center, edge, rest, context,path=None,save=False,gt=False):
                 continue
             vel = agent[2:4]
             yaw = -agent[4]-np.pi
+            #yaw = -agent[4]
             L, W = agent[5:7]
             l, w = L / 2, W / 2
             x1 = w / np.cos(yaw)
@@ -229,79 +230,79 @@ def draw_seq(center, edge, rest, context,path=None,save=False,gt=False):
 
 
 
-def draw(center, context, cnt=0,agents=None, save=False, edge=None,rest=None, path='../vis'):
-    fig, ax = plt.subplots(figsize=(10, 10))
-    plt.axis('equal')
-    #ax.axis('off')
-
-    for j in range(center.shape[0]):
-        traf_state = center[j,-1]
-        x0, y0, x1, y1, = center[j, :4]
-        if x0 == 0:break
-        if traf_state==1:
-            color = 'red'
-            ax.plot((x0, x1), (y0, y1), color=color, alpha=0.1,linewidth=5,zorder=5000)
-        elif traf_state==2:
-            color = 'yellow'
-            ax.plot((x0, x1), (y0, y1), color=color, alpha=0.1,linewidth=5,zorder=5000)
-        elif traf_state==3:
-            color ='green'
-            ax.plot((x0, x1), (y0, y1), color=color, alpha=0.1,linewidth=5,zorder=5000)
-
-    if edge is not None:
-        for j in range(len(edge)):
-
-            # if lane[j, k, -1] == 0: continue
-            x0, y0, x1, y1, = edge[j,  :4]
-            if x0 == 0:break
-            ax.plot((x0, x1), (y0, y1), 'black', linewidth=0.5)
-
-    if rest is not None:
-        for j in range(len(rest)):
-
-            # if lane[j, k, -1] == 0: continue
-            x0, y0, x1, y1, = rest[j,  :4]
-            if x0 == 0:break
-            ax.plot((x0, x1), (y0, y1), 'grey', linewidth=0.5)
-
-
-
-    for i in range(context.shape[0]):
-        agent = context[i]
-        center = agent[:2]
-        vel = agent[2:4]
-        yaw = np.arctan2(agent[6],agent[7])
-        L, W = agent[4:6]
-        l, w = L / 2, W / 2
-        x1 = w / np.cos(yaw)
-        x2 = x1 * np.sin(yaw)
-        x3 = l - x2
-        x4 = x3 * np.sin(yaw)
-        x_ = x1 + x4
-        y_ = x3 * np.cos(yaw)
-        point_x = center[0] - x_
-        point_y = center[1] - y_
-        rect = plt.Rectangle([point_x, point_y], W, L, -yaw * 180 / np.pi, edgecolor="black",
-                             facecolor="royalblue", linewidth=0.2)
-        plt.plot([center[0], vel[0]+center[0]], [center[1], vel[1]+center[1]],'.-r',linewidth=0.5,markersize=1,zorder=100000)
-        rect.set_zorder(10000)
-        ax.add_patch(rect)
-
-    if agents is not None:
-        t,a,_ = agents.shape
-        for i in range(a):
-            agent_pos = agents[:,i,:2]
-            mask = (abs(agent_pos[:,0])<100) * (abs(agent_pos[:,1])<100)
-            agent_pos= agent_pos[mask]
-
-            ax.plot(agent_pos[:,0],agent_pos[:,1],'--',color='royalblue')
-
-    plt.autoscale()
-    if save:
-        pa = os.path.join(path)
-        fig.savefig(pa, dpi=1000)
-
-    return plt
+# def draw(center, context, cnt=0,agents=None, save=False, edge=None,rest=None, path='../vis'):
+#     fig, ax = plt.subplots(figsize=(10, 10))
+#     plt.axis('equal')
+#     #ax.axis('off')
+#
+#     for j in range(center.shape[0]):
+#         traf_state = center[j,-1]
+#         x0, y0, x1, y1, = center[j, :4]
+#         if x0 == 0:break
+#         if traf_state==1:
+#             color = 'red'
+#             ax.plot((x0, x1), (y0, y1), color=color, alpha=0.1,linewidth=5,zorder=5000)
+#         elif traf_state==2:
+#             color = 'yellow'
+#             ax.plot((x0, x1), (y0, y1), color=color, alpha=0.1,linewidth=5,zorder=5000)
+#         elif traf_state==3:
+#             color ='green'
+#             ax.plot((x0, x1), (y0, y1), color=color, alpha=0.1,linewidth=5,zorder=5000)
+#
+#     if edge is not None:
+#         for j in range(len(edge)):
+#
+#             # if lane[j, k, -1] == 0: continue
+#             x0, y0, x1, y1, = edge[j,  :4]
+#             if x0 == 0:break
+#             ax.plot((x0, x1), (y0, y1), 'black', linewidth=0.5)
+#
+#     if rest is not None:
+#         for j in range(len(rest)):
+#
+#             # if lane[j, k, -1] == 0: continue
+#             x0, y0, x1, y1, = rest[j,  :4]
+#             if x0 == 0:break
+#             ax.plot((x0, x1), (y0, y1), 'grey', linewidth=0.5)
+#
+#
+#
+#     for i in range(context.shape[0]):
+#         agent = context[i]
+#         center = agent[:2]
+#         vel = agent[2:4]
+#         yaw = np.arctan2(agent[6],agent[7])
+#         L, W = agent[4:6]
+#         l, w = L / 2, W / 2
+#         x1 = w / np.cos(yaw)
+#         x2 = x1 * np.sin(yaw)
+#         x3 = l - x2
+#         x4 = x3 * np.sin(yaw)
+#         x_ = x1 + x4
+#         y_ = x3 * np.cos(yaw)
+#         point_x = center[0] - x_
+#         point_y = center[1] - y_
+#         rect = plt.Rectangle([point_x, point_y], W, L, -yaw * 180 / np.pi, edgecolor="black",
+#                              facecolor="royalblue", linewidth=0.2)
+#         plt.plot([center[0], vel[0]+center[0]], [center[1], vel[1]+center[1]],'.-r',linewidth=0.5,markersize=1,zorder=100000)
+#         rect.set_zorder(10000)
+#         ax.add_patch(rect)
+#
+#     if agents is not None:
+#         t,a,_ = agents.shape
+#         for i in range(a):
+#             agent_pos = agents[:,i,:2]
+#             mask = (abs(agent_pos[:,0])<100) * (abs(agent_pos[:,1])<100)
+#             agent_pos= agent_pos[mask]
+#
+#             ax.plot(agent_pos[:,0],agent_pos[:,1],'--',color='royalblue')
+#
+#     plt.autoscale()
+#     if save:
+#         pa = os.path.join(path)
+#         fig.savefig(pa, dpi=1000)
+#
+#     return plt
 
 def get_agent_pos_from_vec(vec,long_perc,lat_perc,dir, v_value):
     x1,y1,x2,y2 = vec[:,0],vec[:,1],vec[:,2],vec[:,3]
