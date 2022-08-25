@@ -1,3 +1,28 @@
+# Waymo Dataset
+https://waymo.com/open/
+
+Download one proto file from
+'waymo_open_dataset_motion_v_1_1_0/uncompressed/scenario/training_20s' for debug
+
+Run "
+python trans20.py /inp_path /outp_path None " to preprocess the proto file
+
+The processed data can be used for training
+
+processed data {
+
+'id': scenario id
+
+'all_agent': [190,n,9] 190 frames, n agents, 9 dim feature [coord,velocity,heading,length,width,type,validity]
+
+'traffic_light'
+
+'lane': [n,4] n points, [coord,type,id(which lane this point belongs to)]
+}
+
+
+
+
 # TrafficGen
 
 0. pip install -e .
