@@ -13,10 +13,10 @@ if __name__ == "__main__":
     device = cfg['device']
 
     if cfg['model']=='init':
-        #trainer.train()
+        trainer.train()
         #trainer.load_model('model_weights/init_120.pt',device)
         #trainer.eval_init()
-        trainer.draw_generation_process(vis=True,save=False)
+        #trainer.draw_generation_process(vis=True,save=False)
     else:
         trainer.load_model('model_weights/act_80.pt', device)
         #trainer.train()

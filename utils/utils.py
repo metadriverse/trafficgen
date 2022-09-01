@@ -6,6 +6,7 @@ from torch import Tensor
 import torch
 from utils.typedef import RoadLineType,RoadEdgeType
 from shapely.geometry import Polygon
+from TrafficGen_init.data_process.agent_process import WaymoAgent
 
 def time_me(fn):
     def _wrapper(*args, **kwargs):
@@ -14,6 +15,7 @@ def time_me(fn):
         return ret, time.clock() - start
 
     return _wrapper
+
 
 def get_polygon(center, yaw, L, W):
 
@@ -53,8 +55,16 @@ def get_agent_pos_from_vec(vec,pred):
     #v_dir = agent_dir
 
     vel = torch.stack([torch.cos(v_dir)*speed,torch.sin(v_dir)*speed], axis=-1)
+    agent_num,_ = vel.shape
     #dir_ = np.stack([np.cos(agent_dir),np.sin(agent_dir)], axis=-1)
-    return coord, agent_dir,vel
+    lw = Tensor([[5.286,2.332]]).repeat(agent_num,1)
+    type = Tensor([[1]]).repeat(agent_num,1)
+    agent = torch.cat([coord,vel,agent_dir.unsqueeze(1),lw,type],dim=-1).numpy()
+    vec_based_rep = torch.cat([pred,vec],dim=-1).numpy()
+
+    agent = WaymoAgent(agent,vec_based_rep)
+
+    return agent
 
 def process_lane(lane,  max_vec,lane_range,offset = -40):
 
@@ -115,6 +125,7 @@ def process_lane(lane,  max_vec,lane_range,offset = -40):
 
     return all_vec,all_mask.astype(bool)
 
+
 def process_map(lane,traf, center_num=128, edge_num=128, lane_range=60, offest=-40):
 
     lane_with_traf = np.zeros([*lane.shape[:-1], 5])
@@ -156,6 +167,7 @@ def process_map(lane,traf, center_num=128, edge_num=128, lane_range=60, offest=-
     rest, rest_mask = process_lane(lane[:,rest], center_num, lane_range, offest)
 
     return cent, cent_mask, bound, bound_mask, cross, cross_mask, rest,rest_mask
+
 
 def get_time_str():
     return datetime.datetime.now().strftime("%y_%m_%d-%H_%M_%S")

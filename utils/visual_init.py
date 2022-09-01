@@ -58,14 +58,16 @@ def draw_metrics(losses):
 
     return plt
 
-def draw(center, heat_map,agents, other,cnt=0, save=False, edge=None,path='../vis',abn_idx=None):
+def draw(center, agents, other,heat_map=None,save=False, edge=None,path='../vis',abn_idx=None):
     fig, ax = plt.subplots(figsize=(10, 10))
     plt.axis('equal')
     # ax.set_xlim(heat_map[1][:2])
     # ax.set_ylim(heat_map[1][2:])
     colors = list(mcolors.TABLEAU_COLORS)
-
-    #ax.imshow(heat_map[0], extent=heat_map[1],alpha=1, origin='lower', cmap=cm.jet)
+    if heat_map:
+        ax.imshow(heat_map[0], extent=heat_map[1],alpha=1, origin='lower', cmap=cm.jet)
+        plt.xlim(heat_map[1][:2])
+        plt.ylim(heat_map[1][2:])
     ax.axis('off')
 
     for j in range(center.shape[0]):
@@ -108,58 +110,18 @@ def draw(center, heat_map,agents, other,cnt=0, save=False, edge=None,path='../vi
             if x0 == 0:break
             ax.plot((x0, x1), (y0, y1), 'black', linewidth=0.7)
 
-    a,dim = agents.shape
-
-    for i in range(a):
+    for i in range(len(agents)):
         ind = i % 10
         col = colors[ind]
-
         agent = agents[i]
-        center = agent[:2]
-        vel = agent[2:4]
-        yaw = agent[4]
-        L, W = agent[4:6]
-        l, w = L / 2, W / 2
-        x1 = w / np.cos(yaw)
-        x2 = x1 * np.sin(yaw)
-        x3 = l - x2
-        x4 = x3 * np.sin(yaw)
-        x_ = x1 + x4
-        y_ = x3 * np.cos(yaw)
-        point_x = center[0] - x_
-        point_y = center[1] - y_
-        rect = plt.Rectangle([point_x, point_y], W, L, -yaw * 180 / np.pi, edgecolor="black",
+        center = agent.position[0]
+        vel = agent.velocity[0]
+        rect = agent.get_rect()[0]
+        rect = plt.Polygon(rect, edgecolor="black",
                              facecolor=col, linewidth=1,zorder=10000)
         ax.plot([center[0], vel[0]+center[0]], [center[1], vel[1]+center[1]],'.-',color='lime',linewidth=1.5,markersize=2.5,zorder=10000)
-        #rect.set_zorder(1000)
         ax.add_patch(rect)
 
-    # for i in range(agents.shape[0]):
-    #     agent = agents[i]
-    #     center = agent[:2]
-    #     if abs(center[0])>100 or abs(center[1]-25)>80:
-    #         continue
-    #     vel = agent[2:4]
-    #     yaw = -agent[4]-np.pi
-    #     L, W = agent[5:7]
-    #     l, w = L / 2, W / 2
-    #     x1 = w / np.cos(yaw)
-    #     x2 = x1 * np.sin(yaw)
-    #     x3 = l - x2
-    #     x4 = x3 * np.sin(yaw)
-    #     x_ = x1 + x4
-    #     y_ = x3 * np.cos(yaw)
-    #     point_x = center[0] - x_
-    #     point_y = center[1] - y_
-    #     rect = plt.Rectangle([point_x, point_y], W, L, -yaw * 180 / np.pi, edgecolor="black",
-    #                          facecolor="snow", linewidth=1,zorder=10000)
-    #     ax.plot([center[0], vel[0]+center[0]], [center[1], vel[1]+center[1]],'.-',color='lime',linewidth=1.5,markersize=2.5,zorder=10000)
-    #     #rect.set_zorder(1000)
-    #     ax.add_patch(rect)
-
-
-    plt.xlim(heat_map[1][:2])
-    plt.ylim(heat_map[1][2:])
     plt.autoscale()
     if save:
         fig.savefig(path, dpi=100,bbox_inches='tight',pad_inches=0)

@@ -1,5 +1,5 @@
 import os
-from TrafficGen_init.data_process.agent_process import WaymoScene
+from TrafficGen_init.data_process.agent_process import WaymoAgent
 import pickle
 import numpy as np
 from torch.utils.data import Dataset
@@ -7,9 +7,11 @@ import torch
 from torch import Tensor
 import copy
 from utils.utils import process_map,rotate,cal_rel_dir
+from shapely.geometry import Polygon
 
 LANE_SAMPLE = 10
 RANGE = 50
+
 
 class initDataset(Dataset):
     """
@@ -206,7 +208,8 @@ class initDataset(Dataset):
         # case_info['v_value'] = info[..., 4]
         # case_info['v_dir'] = info[..., 5]
 
-        case_info['vec_based_rep'] = info_
+        case_info['vec_based_rep'] = info_[...,1:]
+        case_info['agent_vec_indx'] = info_[...,0]
         case_info['agent_mask'] = agent_mask_
         case_info["agent"] = agent_
 
@@ -251,127 +254,25 @@ class initDataset(Dataset):
         agent_range_mask = (abs(agent[...,0])<RANGE)*(abs(agent[...,1])<RANGE)
         mask = agent_mask*agent_type_mask*agent_range_mask
 
-        return agent,mask
+        return agent[...,:-1],mask
 
-    def process_as_inp(self,data):
-        max_speed = 30
-
-        agent = copy.deepcopy(data['agent'])
-        lane_inp = copy.deepcopy(data['center'])
-        vec_based_rep = copy.deepcopy(data['vec_based_rep'])
-
-        # normalize
-        agent[...,:2]/=RANGE
-        agent[..., 2:4]/=max_speed
-
-        lane_inp[...,:4]/=RANGE
-        vec_based_rep[...,6:10]/=RANGE
-        vec_based_rep[..., 3]/=max_speed
-
-        cos_head = np.cos(agent[...,4])
-        sin_head = np.sin(agent[...,4])
-
-        agent_feat = np.concatenate([agent[...,:4],cos_head[...,np.newaxis],sin_head[...,np.newaxis],agent[...,5:7],vec_based_rep[...,1:]],axis=-1)
-
-        data['agent_feat'] = agent_feat
-        data['lane_inp'] = lane_inp
-
+    def get_gt(self,lane_inp,agent_vec_indx,vec_based_rep):
         # 0: vec_index
         # 1-2 long and lat percent
         # 3-5 speed, angle between velocity and car heading, angle between car heading and lane vector
         # 6-9 lane vector
         # 10-11 lane type and traff state
-
         b, lane_num, _ = lane_inp.shape
         gt_distribution = np.zeros([b, lane_num])
         gt_vec_based_coord = np.zeros([b, lane_num, 5])
         for i in range(b):
-            indx = vec_based_rep[i, :, 0].astype(int)
+            indx = agent_vec_indx[i, :].astype(int)
             gt_distribution[i][indx] = 1
-            gt_vec_based_coord[i, indx] = vec_based_rep[i,:,1:6]
+            gt_vec_based_coord[i, indx] = vec_based_rep[i,:,:5]
 
-
-        data['gt_distribution'] = gt_distribution
-        data['gt_vec_based_coord'] = gt_vec_based_coord
-
-        return
+        return gt_distribution,gt_vec_based_coord
 
     def process(self, data):
-        # if self.eval:
-        #     case_info = {}
-        #     data['lane'] = self.transform_coordinate_map(data)
-        #     case_info["agent"],fut, case_info["agent_mask"] = self.process_agent(data)
-        #
-        #     case_info['center'], case_info['center_mask'], case_info['bound'], case_info['bound_mask'], \
-        #     case_info['cross'], case_info['cross_mask'], case_info['rest'] = self.process_map(data)
-        #
-        #     for k,v in case_info.items():
-        #         if v.shape[0]==19:
-        #             case_info[k] = v[[0]]
-        #     self.filter_agent(case_info)
-        #
-        #     vec_ind = case_info['vec_index'].to(int)
-        #     line_seg = Tensor(case_info['center'])
-        #
-        #     # agent info in world coord[:8] and vector coord[8:]
-        #     padding_content = torch.cat([case_info['agent'], case_info['long_perc'].unsqueeze(-1),
-        #                                  case_info['lat_perc'].unsqueeze(-1), case_info['relative_dir'].unsqueeze(-1),
-        #                                  case_info['v_value'].unsqueeze(-1)], dim=-1)
-        #
-        #     gather_vec = vec_ind.view(*vec_ind.shape, 1).repeat(1, 1, 7)
-        #     the_vec = torch.gather(line_seg, 1, gather_vec)
-        #     line_with_agent = torch.cat([padding_content, the_vec], -1)
-        #
-        #     b, v, _ = line_seg.shape
-        #     gt = torch.zeros([b, v, 5])
-        #     padding_content = padding_content[..., 8:]
-        #     agent_mask = case_info["agent_mask"]
-        #     case_info["agent"] = case_info["agent"][case_info["agent_mask"].to(bool)].unsqueeze(0)
-        #     line_with_agent = line_with_agent[case_info["agent_mask"].to(bool)].unsqueeze(0)
-        #     agent_num = case_info["agent"].shape[1]
-        #
-        #     fut = fut[:agent_num]
-        #     case_info['agent_mask'] = case_info['agent_mask'][:,:agent_num]
-        #     pad_num=self.pad_num
-        #     if agent_num<pad_num:
-        #         pad = torch.zeros(1,pad_num-agent_num,19)
-        #         line_with_agent = torch.cat([line_with_agent,pad],1)
-        #         pad = torch.zeros(1,pad_num-agent_num)
-        #         case_info["agent_mask"] = torch.cat([case_info["agent_mask"],pad],1)
-        #
-        #     for i in range(b):
-        #         mask = agent_mask[i]
-        #         agent_info = padding_content[i]
-        #         indx = vec_ind[i]
-        #         indx = indx[mask.to(bool)]
-        #         gt[i, indx, 0] = 1
-        #         gt[i, indx, 1:] = agent_info[mask.to(bool)]
-        #
-        #     case_info['gt'] = gt
-        #     case_info['line_with_agent'] = line_with_agent
-        #
-        #
-        #     # pos = data['sdc_pos'][0]
-        #     # lane = data['unsampled_lane']
-        #     # lane[..., :2] -= pos
-        #     # sdc_theta = data['sdc_theta'][0]
-        #     # x = lane[..., 0]
-        #     # y = lane[..., 1]
-        #     # x_transform = np.cos(sdc_theta) * x - np.sin(sdc_theta) * y
-        #     # y_transform = np.cos(sdc_theta) * y + np.sin(sdc_theta) * x
-        #     # output_coords = np.stack((x_transform, y_transform), axis=-1)
-        #     # lane[..., :2] = output_coords
-        #     #
-        #     # other = {}
-        #     # other['agent_traj'] = fut
-        #     # other['lane'] = data['lane'][0]
-        #     # other['traf'] = data['traf_p_c_f']
-        #     # other['center_info'] = data['center_info']
-        #     # other['unsampled_lane'] = lane
-        #     # case_info['other'] = other
-        #     return case_info
-        #
-        # else:
 
         case_info = {}
         gap = 20
@@ -387,7 +288,16 @@ class initDataset(Dataset):
 
         self.filter_agent(case_info)
 
-        self.process_as_inp(case_info)
+        agent = WaymoAgent(case_info['agent'],case_info['vec_based_rep'])
+
+        case_info['agent_feat'] = agent.get_inp()
+
+        center_lane = copy.deepcopy(case_info['center'])
+        center_lane[..., :4] /= RANGE
+
+        case_info['lane_inp'] = center_lane
+
+        case_info['gt_distribution'],case_info['gt_vec_based_coord'] = self.get_gt(case_info['lane_inp'],case_info['agent_vec_indx'],case_info['vec_based_rep'])
 
         case_num = case_info['agent'].shape[0]
         case_list = []
@@ -399,50 +309,3 @@ class initDataset(Dataset):
         return case_list
 
 
-
-    # def process_agent(self,data):
-    #     case = {}
-    #
-    #     sdc_theta = data['sdc_theta']
-    #     pos = data['sdc_pos']
-    #     all_agent = np.concatenate([data['ego_p_c_f'][np.newaxis],data['nbrs_p_c_f']],axis=0)
-    #     coord = self.rotate(all_agent[..., 0], all_agent[..., 1], -sdc_theta) + pos
-    #     vel = self.rotate(all_agent[..., 2], all_agent[..., 3], -sdc_theta)
-    #     yaw = -sdc_theta+np.pi/2
-    #     all_agent[..., 4] = all_agent[..., 4] + yaw
-    #     all_agent[..., :2] = coord
-    #     all_agent[..., 2:4] = vel
-    #
-    #     pos = all_agent[0,0,:2]
-    #
-    #     rotate_theta = -all_agent[0,0,4]+np.pi/2
-    #
-    #     all_agent[...,:2] -= pos
-    #
-    #     coord = self.rotate(all_agent[..., 0], all_agent[..., 1], rotate_theta)
-    #     vel = self.rotate(all_agent[..., 2], all_agent[..., 3], rotate_theta)
-    #     all_agent[..., :2] = coord
-    #     all_agent[..., 2:4] = vel
-    #     all_agent[..., 4] = all_agent[..., 4] - all_agent[0,0,4]
-    #
-    #     valid_mask = all_agent[:,0, -1] == 1.
-    #     type_mask = all_agent[:,0, -2] == 1.
-    #     range_mask = (abs(all_agent[:,0, 0]) < RANGE) * (abs(all_agent[:,0, 1]) < RANGE)
-    #
-    #     mask = valid_mask * type_mask*range_mask
-    #     all_agent = all_agent[mask]
-    #     all_agent[...,5] = 5.286
-    #     all_agent[..., 6] = 2.332
-    #
-    #     agent_mask = np.ones([1,all_agent.shape[0]]).astype(bool)
-    #
-    #     current_agent = all_agent[:,0,:-1]
-    #     headings = -current_agent[..., 4][..., np.newaxis]
-    #     sin_h = np.sin(headings)
-    #     cos_h = np.cos(headings)
-    #     current_agent = np.concatenate([current_agent, sin_h, cos_h], -1)
-    #     current_agent = np.delete(current_agent, [4, 7], axis=-1)
-    #
-    #     all_agent[..., 4] = all_agent[..., 4] + np.pi/2
-    #
-    #     return current_agent[np.newaxis],all_agent, agent_mask
