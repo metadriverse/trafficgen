@@ -466,9 +466,6 @@ class Trainer:
             #     pickle.dump(loss, f)
             # plt_pred = wandb.Image(draw_metrics(loss))
 
-
-
-
     def metrics(self,pred,gt):
         #gt.pop('other')
         for k,v in gt.items():
@@ -522,6 +519,45 @@ class Trainer:
         metrics['dir'] = dir_list
         return metrics
 
+    def sample_from_distribution(self, pred,center_lane,repeat_num=10):
+        prob = pred['prob'][0]
+
+        pos = pred['pos'].sample()
+        pos_logprob = pred['pos'].log_prob(pos)
+
+        heading = pred['heading'].sample()
+        heading_logprob = pred['heading'].log_prob(heading)
+
+        vel_heading = pred['vel_heading'].sample()
+        vel_heading_logprob = pred['vel_heading'].log_prob(vel_heading)
+
+        bbox = pred['bbox'].sample()
+        bbox_logprob = pred['bbox'].log_prob(bbox)
+
+        speed = pred['speed'].sample()
+        speed_logprob = pred['speed'].log_prob(speed)
+
+        agents = get_agent_pos_from_vec(center_lane, pos[0], speed[0], vel_heading[0], heading[0], bbox[0])
+
+        idx_list = []
+        prob_list = []
+        for i in range(repeat_num):
+            indx = choices(list(range(prob.shape[-1])), prob)[0]
+            vec_logprob_ = prob[indx]
+            pos_logprob_ = pos_logprob[0,indx]
+            heading_logprob_ = heading_logprob[0,indx]
+            vel_heading_logprob_ = vel_heading_logprob[0,indx]
+            bbox_logprob_ = bbox_logprob[0,indx]
+            speed_logprob_ = speed_logprob[0,indx]
+            all_prob = vec_logprob_+pos_logprob_+heading_logprob_+vel_heading_logprob_+heading_logprob_+bbox_logprob_+speed_logprob_
+            prob_list.append(all_prob)
+            idx_list.append(indx)
+
+        max_indx = np.argmax(prob_list)
+        the_indx = idx_list[max_indx]
+
+        return agents,prob,the_indx
+
     def inference(self, data, eval=False):
 
         agent_num = data['agent_mask'].sum().item()
@@ -542,7 +578,6 @@ class Trainer:
         minimum_agent = self.cfg['pad_num']
         center = data['center'][0]
         center_mask = data['center_mask'][0]
-        center = center[center_mask]
         pred_list = []
         pred_list.append(ego_agent)
         heat_maps = []
@@ -553,30 +588,15 @@ class Trainer:
             data['agent_mask'][:,i:]=0
 
             pred, _, _ = self.model(data, False)
-            vec = center[:,:4]
-            the_pred = pred[0,center_mask]
-            agents = get_agent_pos_from_vec(vec, the_pred[:, 1:])
-            coord = agents.position
+            pred['prob'][:,idx_list]=0
 
-            prob = pred[0,:,0]
-            prob[idx_list] = 0
-            prob = prob[center_mask]
+            while True:
+                agents,prob, indx = self.sample_from_distribution(pred,center)
+                the_agent = agents.get_agent(indx)
 
-            # loop 100 times for collision detection
-            #if eval == False:
-            for j in range(100):
-                sample_list = []
-                # repeat sampling
-                for k in range(1):
-                    indx = choices(list(range(prob.shape[-1])), prob)[0]
-                    sample_list.append((indx,prob[indx]))
-                max_prob = np.argmax([x[1] for x in sample_list])
-                indx = sample_list[max_prob][0]
-                vec = data['center'][:,indx]
-                the_pred = pred[:,indx]
-                pred_agent = get_agent_pos_from_vec(vec,the_pred[:,1:])
+                poly = the_agent.get_polygon()[0]
+
                 intersect = False
-                poly = pred_agent.get_polygon()[0]
                 for shape in shapes:
                     if poly.intersects(shape):
                         intersect = True
@@ -586,23 +606,13 @@ class Trainer:
                     break
                 else: continue
 
-            pred_list.append(pred_agent)
-            data['agent_feat'][:,i] = Tensor(pred_agent.get_inp())
+            pred_list.append(the_agent)
+            data['agent_feat'][:,i] = Tensor(the_agent.get_inp())
             idx_list.append(indx)
-            heat_maps.append(get_heatmap(coord[:,0], coord[:, 1],prob, 20))
-            prob_list.append(prob)
 
-            # else:
-            #     indx = data['vec_index'][0,i].to(int).item()
-            #     vec = data['center'][:,indx].cpu().numpy()
-            #     the_pred = pred[:,indx]
-            #     coord, agent_dir,vel = get_agent_pos_from_vec(vec,the_pred[:,1],the_pred[:,2],the_pred[:,3],the_pred[:,4])
-            #     virtual_pred = {}
-            #     virtual_pred['coord'] = Tensor(coord[0])
-            #     virtual_pred['agent_dir'] = Tensor(agent_dir[0])
-            #     virtual_pred['vel'] = Tensor(vel[0])
-            #     virtual_list.append(virtual_pred)
-            #     idx_list.append(indx)
+
+            heat_maps.append(get_heatmap(agents.position[:,0][center_mask], agents.position[:, 1][center_mask],prob[center_mask], 20))
+            prob_list.append(prob)
 
         output = {}
         output['agent'] = pred_list

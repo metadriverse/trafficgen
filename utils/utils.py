@@ -34,33 +34,31 @@ def get_polygon(center, yaw, L, W):
     p4 = [center[0] - x2, center[1] + y2]
     return Polygon([p1, p3, p2, p4])
 
-def get_agent_pos_from_vec(vec,pred):
-    long_perc,lat_perc,speed,v_dir, dir = pred[...,0],pred[...,1],pred[...,2],pred[...,3],pred[...,4]
+def get_agent_pos_from_vec(vec,long_lat,speed,vel_heading,heading,bbox):
 
     x1,y1,x2,y2 = vec[:,0],vec[:,1],vec[:,2],vec[:,3]
     vec_len = ((x1-x2)**2+(y1-y2)**2)**0.5
 
     vec_dir = torch.atan2(y2 - y1, x2 - x1)
 
-    long_pos = vec_len*long_perc
-    lat_pos = lat_perc*5
+    long_pos = vec_len*long_lat[...,0]
+    lat_pos = vec_len**long_lat[...,1]
 
     coord = Tensor(rotate(lat_pos,long_pos,-vec_dir))
 
     coord[:,0]+=x1
     coord[:,1]+=y1
 
-    agent_dir = vec_dir+dir
-    v_dir=v_dir+agent_dir
-    #v_dir = agent_dir
+    agent_dir = vec_dir+heading
+    v_dir=vel_heading+agent_dir
 
     vel = torch.stack([torch.cos(v_dir)*speed,torch.sin(v_dir)*speed], axis=-1)
     agent_num,_ = vel.shape
-    #dir_ = np.stack([np.cos(agent_dir),np.sin(agent_dir)], axis=-1)
-    lw = Tensor([[5.286,2.332]]).repeat(agent_num,1)
+
     type = Tensor([[1]]).repeat(agent_num,1)
-    agent = torch.cat([coord,vel,agent_dir.unsqueeze(1),lw,type],dim=-1).numpy()
-    vec_based_rep = torch.cat([pred,vec],dim=-1).numpy()
+    agent = torch.cat([coord,vel,agent_dir.unsqueeze(1),bbox,type],dim=-1).numpy()
+
+    vec_based_rep = torch.cat([long_lat,speed.unsqueeze(-1),vel_heading.unsqueeze(-1),heading.unsqueeze(-1),vec],dim=-1).numpy()
 
     agent = WaymoAgent(agent,vec_based_rep)
 

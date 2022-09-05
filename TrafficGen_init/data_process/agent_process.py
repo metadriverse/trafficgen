@@ -11,12 +11,18 @@ class WaymoAgent:
         self.MAX_SPEED = max_speed
 
         #self.bs,self.agent_num,_ = feature.shape
+        self.feature = feature
+
         self.position = feature[...,:2]
         self.velocity = feature[...,2:4]
         self.heading = feature[...,[4]]
         self.length_width = feature[...,5:7]
         self.type = feature[...,[7]]
         self.vec_based_info = vec_based_info
+
+    def get_agent(self,indx):
+        return WaymoAgent(self.feature[[indx]],self.vec_based_info[[indx]])
+
 
     def get_inp(self):
         pos = self.position / self.RANGE

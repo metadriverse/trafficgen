@@ -157,13 +157,14 @@ class initDataset(Dataset):
         dist_to_start = np.square(agent_x-x1) + np.square(agent_y-y1)
         long_dist = np.sqrt(dist_to_start-np.square(lat_dist))
 
-        long_perc = long_dist/vec_len
-        long_perc[np.isnan(long_perc)]=0
-        long_perc = np.clip(long_perc,a_min=0,a_max=1)
-        lat_perc = lat_dist/thres
-        lat_perc = np.clip(lat_perc, a_min=-1, a_max=1)
+        lat_perc = np.clip(lat_dist,a_min=-vec_len/2,a_max=vec_len/2)/vec_len
+        long_perc = np.clip(long_dist,a_min=0,a_max=vec_len)/vec_len-0.5
 
-
+        # long_perc = long_dist/vec_len
+        # long_perc[np.isnan(long_perc)]=0
+        # long_perc = np.clip(long_perc,a_min=0,a_max=1)
+        # lat_perc = lat_dist/vec_len
+        # lat_perc = np.clip(lat_perc, a_min=-1, a_max=1)
         total_mask = min_dist_mask*agent_mask*v_dir_mask*dir_mask
         total_mask[:,0]=1
         total_mask = total_mask.astype(bool)
@@ -256,21 +257,30 @@ class initDataset(Dataset):
 
         return agent[...,:-1],mask
 
-    def get_gt(self,lane_inp,agent_vec_indx,vec_based_rep):
+    def get_gt(self,case_info):
         # 0: vec_index
         # 1-2 long and lat percent
         # 3-5 speed, angle between velocity and car heading, angle between car heading and lane vector
         # 6-9 lane vector
         # 10-11 lane type and traff state
+        lane_inp,agent_vec_indx,vec_based_rep,bbox =  \
+            case_info['lane_inp'], case_info['agent_vec_indx'], case_info['vec_based_rep'],case_info['agent'][...,5:7]
         b, lane_num, _ = lane_inp.shape
         gt_distribution = np.zeros([b, lane_num])
         gt_vec_based_coord = np.zeros([b, lane_num, 5])
+        gt_bbox = np.zeros([b, lane_num, 2])
         for i in range(b):
             indx = agent_vec_indx[i, :].astype(int)
             gt_distribution[i][indx] = 1
             gt_vec_based_coord[i, indx] = vec_based_rep[i,:,:5]
+            gt_bbox[i,indx] = bbox[i]
+        case_info['gt_bbox'] = gt_bbox
+        case_info['gt_distribution'] = gt_distribution
+        case_info['gt_long_lat'] = gt_vec_based_coord[...,:2]
+        case_info['gt_speed'] = gt_vec_based_coord[...,2]
+        case_info['gt_vel_heading'] = gt_vec_based_coord[...,3]
+        case_info['gt_heading'] = gt_vec_based_coord[..., 4]
 
-        return gt_distribution,gt_vec_based_coord
 
     def process(self, data):
 
@@ -297,7 +307,7 @@ class initDataset(Dataset):
 
         case_info['lane_inp'] = center_lane
 
-        case_info['gt_distribution'],case_info['gt_vec_based_coord'] = self.get_gt(case_info['lane_inp'],case_info['agent_vec_indx'],case_info['vec_based_rep'])
+        self.get_gt(case_info)
 
         case_num = case_info['agent'].shape[0]
         case_list = []
