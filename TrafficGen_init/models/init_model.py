@@ -50,7 +50,7 @@ class initializer(nn.Module):
             loc,tril,diag = para[...,:2],para[...,2],para[...,3:]
             loc = torch.clip(loc,min=range[0],max=range[1])
             diag = 1+nn.functional.elu(diag)
-            z = torch.zeros([*loc.shape[:-1]])
+            z = torch.zeros([*loc.shape[:-1]],device=para.device)
             scale_tril = torch.stack([
                 diag[...,0],z,
                 tril,diag[...,1]
