@@ -577,7 +577,7 @@ class Trainer:
         virtual_list = []
         minimum_agent = self.cfg['pad_num']
         center = data['center'][0]
-        center_mask = data['center_mask'][0]
+        center_mask = data['center_mask'][0].cpu().numpy()
         pred_list = []
         pred_list.append(ego_agent)
         heat_maps = []
