@@ -648,7 +648,7 @@ class Trainer:
             loss_info['loss'] = self.gather_loss_stat(loss)
 
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5)
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 10)
             self.optimizer.step()
             # log data
             if self.main_process:
