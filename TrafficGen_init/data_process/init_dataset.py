@@ -147,7 +147,7 @@ class initDataset(Dataset):
         A = y2-y1
         B = x1-x2
         C = -x1*A-y1*B
-        vec_len = np.sqrt(np.square(A) + np.square(B))
+        vec_len = np.clip(np.sqrt(np.square(A) + np.square(B)),a_min=4.5,a_max=5.5)
         lat_dist = np.abs(A*agent_x+B*agent_y+C)/vec_len
         lat_dist[np.isnan(lat_dist)] = 0
 
