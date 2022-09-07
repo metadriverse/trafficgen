@@ -59,6 +59,7 @@ class Trainer:
             model = actuator(cfg)
         elif self.model_type == 'sceneGen':
             train_dataset = initDataset(self.cfg, args)
+            model = sceneGen(cfg)
         else:
             raise NotImplementedError('no such model!')
 
@@ -85,7 +86,7 @@ class Trainer:
         self.eval_data_loader = None
 
         if self.main_process and self.cfg["need_eval"]:
-            test_set = initDataset(self.cfg, args, eval=True) if self.model_type=='init' else actDataset(self.cfg, args, eval=True)
+            test_set = initDataset(self.cfg, args, eval=True) #if self.model_type=='init' else actDataset(self.cfg, args, eval=True)
             self.eval_data_loader = DataLoader(test_set, shuffle=False, batch_size=cfg['eval_batch_size'],
                                                num_workers=self.cfg['num_workers'])
 

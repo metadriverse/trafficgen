@@ -12,7 +12,7 @@ if __name__ == "__main__":
                       args=args)
     device = cfg['device']
 
-    if cfg['model']=='init':
+    if cfg['model']=='init' or cfg['model']=='sceneGen':
         trainer.train()
         #trainer.load_model('model_weights/init_120.pt',device)
         #trainer.eval_init()

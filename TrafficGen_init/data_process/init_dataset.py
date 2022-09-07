@@ -24,7 +24,7 @@ class initDataset(Dataset):
         self.rank = args.rank if args is not None else 1
         self.process_num = args.world_size if args is not None and args.distributed else 1
         self.in_debug = cfg['debug']
-        self.recache = cfg['recache']
+        #self.recache = cfg['recache']
         self.eval = eval
         self.data_len = None
         self.data_loaded = {}

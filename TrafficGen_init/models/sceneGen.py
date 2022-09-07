@@ -54,6 +54,7 @@ class sceneGen(nn.Module):
 
         context_agent = torch.ones([b,d]).to(device)
         # agent information fusion with CG block
+        # for
         agent_enc, context_agent = self.CG_agent(agent_enc, context_agent,agent_mask)
 
         # map information fusion with CG block
