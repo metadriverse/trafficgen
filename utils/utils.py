@@ -37,6 +37,9 @@ def get_polygon(center, yaw, L, W):
 def get_agent_pos_from_vec(vec,long_lat,speed,vel_heading,heading,bbox):
 
     x1,y1,x2,y2 = vec[:,0],vec[:,1],vec[:,2],vec[:,3]
+    x_center,y_center = (x1+x2)/2,(y1+y2)/2
+
+
     vec_len = ((x1-x2)**2+(y1-y2)**2)**0.5
 
     vec_dir = torch.atan2(y2 - y1, x2 - x1)
@@ -46,8 +49,8 @@ def get_agent_pos_from_vec(vec,long_lat,speed,vel_heading,heading,bbox):
 
     coord = rotate(lat_pos,long_pos,-vec_dir)
 
-    coord[:,0]+=x1
-    coord[:,1]+=y1
+    coord[:,0]+=x_center
+    coord[:,1]+=y_center
 
     agent_dir = vec_dir+heading
     v_dir=vel_heading+agent_dir
