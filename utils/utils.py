@@ -44,7 +44,7 @@ def get_agent_pos_from_vec(vec,long_lat,speed,vel_heading,heading,bbox):
     long_pos = vec_len*long_lat[...,0]
     lat_pos = vec_len**long_lat[...,1]
 
-    coord = Tensor(rotate(lat_pos,long_pos,-vec_dir))
+    coord = rotate(lat_pos,long_pos,-vec_dir)
 
     coord[:,0]+=x1
     coord[:,1]+=y1
@@ -182,9 +182,15 @@ def cal_rel_dir(dir1,dir2):
     return dist
 
 def rotate(x, y, angle):
-    other_x_trans = np.cos(angle) * x - np.sin(angle) * y
-    other_y_trans = np.cos(angle) * y + np.sin(angle) * x
-    output_coords = np.stack((other_x_trans, other_y_trans), axis=-1)
+    if isinstance(x, torch.Tensor):
+        other_x_trans = torch.cos(angle) * x - torch.sin(angle) * y
+        other_y_trans = torch.cos(angle) * y + torch.sin(angle) * x
+        output_coords = torch.stack((other_x_trans, other_y_trans), axis=-1)
+
+    else:
+        other_x_trans = np.cos(angle) * x - np.sin(angle) * y
+        other_y_trans = np.cos(angle) * y + np.sin(angle) * x
+        output_coords = np.stack((other_x_trans, other_y_trans), axis=-1)
     return output_coords
 
 def from_list_to_batch(inp_list):
