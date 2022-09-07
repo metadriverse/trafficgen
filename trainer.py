@@ -568,7 +568,7 @@ class Trainer:
         idx_list.append(vec_indx[0,0].item())
         shapes = []
 
-        ego_agent = data['agent'][0,[0]].numpy()
+        ego_agent = data['agent'][0,[0]].cpu().numpy()
         ego_agent = WaymoAgent(ego_agent)
         ego_poly = ego_agent.get_polygon()[0]
             #get_polygon(ego_agent[:2],ego_agent[4],ego_agent[5] + 0.1, ego_agent[6] + 0.1)
