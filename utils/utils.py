@@ -99,8 +99,8 @@ def process_lane(lane,  max_vec,lane_range,offset = -40):
         vec_list.append(vector)
         vec_mask_list.append(vec_mask)
 
-    vector = np.concatenate(vec_list,axis=1) if vec_list else np.zeros([0,0,vec_dim])
-    vector_mask = np.concatenate(vec_mask_list,axis=1) if vec_mask_list else np.zeros([0,0],dtype=bool)
+    vector = np.concatenate(vec_list,axis=1) if vec_list else np.zeros([b_s,0,vec_dim])
+    vector_mask = np.concatenate(vec_mask_list,axis=1) if vec_mask_list else np.zeros([b_s,0],dtype=bool)
 
     all_vec = np.zeros([b_s,max_vec,vec_dim])
     all_mask = np.zeros([b_s,max_vec])
