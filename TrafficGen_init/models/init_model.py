@@ -50,7 +50,9 @@ class initializer(nn.Module):
         if n==2:
             loc,tril,diag = para[...,:2],para[...,2],para[...,3:]
             loc = torch.clip(loc,min=range[0],max=range[1])
-            diag = 1+nn.functional.elu(diag)
+
+            diag = torch.clip(1 + nn.functional.elu(diag),min=1e-4,max=5)
+
             z = torch.zeros([*loc.shape[:-1]],device=para.device)
             scale_tril = torch.stack([
                 diag[...,0],z,
@@ -63,7 +65,10 @@ class initializer(nn.Module):
         if n==1:
             loc, scale = para[...,0],para[...,1]
             loc = torch.clip(loc,min=range[0],max=range[1])
-            scale = 1 + nn.functional.elu(scale)
+
+            scale = torch.clip(1 + nn.functional.elu(scale),min=1e-4,max=5)
+            #scale = torch.clip(scale, min=1e-4,max=5)
+
             distri = torch.distributions.Normal(loc,scale)
 
             return distri
@@ -168,7 +173,10 @@ class initializer(nn.Module):
         # prob loss
         BCE = torch.nn.BCEWithLogitsLoss()
         prob_loss = BCE(prob_pred,data['gt_distribution'])
+
         prob_loss = torch.sum(prob_loss*line_mask)/max(torch.sum(line_mask),1)
+        if torch.isnan(prob_loss):
+            print(data['gt_distribution'])
 
         gt_mask = data['gt_distribution']
         gt_sum = torch.clip(torch.sum(gt_mask, dim=1).unsqueeze(-1), min=1)

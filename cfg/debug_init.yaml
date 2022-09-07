@@ -12,8 +12,8 @@ weight_decay: 0.0004
 device: 'cpu'
 phase: 'training'
 data_usage: 20
-#model: "init"
-model: "sceneGen"
+model: "init"
+#model: "sceneGen"
 
 pad_num: 0
 min_agent: 8
