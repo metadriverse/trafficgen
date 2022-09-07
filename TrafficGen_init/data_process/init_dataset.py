@@ -150,12 +150,13 @@ class initDataset(Dataset):
         vec_len = np.clip(np.sqrt(np.square(A) + np.square(B)),a_min=4.5,a_max=5.5)
         lat_dist = np.abs(A*agent_x+B*agent_y+C)/vec_len
         lat_dist[np.isnan(lat_dist)] = 0
+        #lat_dist =
 
         side_dir = cal_rel_dir(np.arctan2(agent_y-y1,agent_x-x1),dir)
         lat_dist[side_dir>0] *= -1
 
         dist_to_start = np.square(agent_x-x1) + np.square(agent_y-y1)
-        long_dist = np.sqrt(dist_to_start-np.square(lat_dist))
+        long_dist = np.sqrt(np.clip(dist_to_start-np.square(lat_dist),a_min=0,a_max=5))
 
         lat_perc = np.clip(lat_dist,a_min=-vec_len/2,a_max=vec_len/2)/vec_len
         long_perc = np.clip(long_dist,a_min=0,a_max=vec_len)/vec_len-0.5
