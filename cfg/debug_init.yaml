@@ -13,9 +13,9 @@ device: 'cpu'
 phase: 'training'
 data_usage: 20
 model: "init"
-recache: True
-pad_num: 0
+#model: "sceneGen"
 
+pad_num: 0
 min_agent: 8
 
 

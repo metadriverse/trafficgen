@@ -17,6 +17,7 @@ from utils.utils import get_time_str,time_me,transform_to_agent,from_list_to_bat
 from utils.typedef import AgentType
 
 from TrafficGen_init.models.init_model import initializer
+from TrafficGen_init.models.sceneGen import sceneGen
 from TrafficGen_init.data_process.init_dataset import initDataset,WaymoAgent
 
 from utils.visual_init import draw,draw_heatmap,get_heatmap,draw_metrics
@@ -56,8 +57,12 @@ class Trainer:
         elif self.model_type == 'act':
             train_dataset = actDataset(self.cfg, args)
             model = actuator(cfg)
+        elif self.model_type == 'sceneGen':
+            train_dataset = initDataset(self.cfg, args)
         else:
             raise NotImplementedError('no such model!')
+
+
         if len(train_dataset)>0:
             data_loader = DataLoader(train_dataset, batch_size=cfg['batch_size'],
                                      shuffle=True,

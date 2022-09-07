@@ -6,7 +6,7 @@ import copy
 
 copy_func = copy.deepcopy
 
-class initializer(nn.Module):
+class sceneGen(nn.Module):
 
 
     def __init__(self,cfg):
@@ -64,6 +64,8 @@ class initializer(nn.Module):
         # this is the vector feature for each of 128 lane vectors, each lane vector is a 5m long road center lane
         # this feature equals to the grid feature of a image. For example, in sceneGen the image is splited as 0.25m grid.
         feature = torch.cat([line_enc,context_line],dim=-1)
+
+        # TODO: implement a LSTM structure to process the vector feature and output a distribution
 
 
 
