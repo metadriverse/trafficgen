@@ -3,6 +3,7 @@ import torch.nn as nn
 
 from utils.model_utils import MLP_3,CG_stacked
 import copy
+import numpy as np
 
 copy_func = copy.deepcopy
 
@@ -142,7 +143,7 @@ class initializer(nn.Module):
         heading_out = self.heading_head(feature).view([*feature.shape[:-1], K, -1])
         heading_weight = heading_out[...,0]
         heading_param = heading_out[...,1:]
-        heading_distri = self.output_to_dist(heading_param,1,[-torch.pi/2,torch.pi/2])
+        heading_distri = self.output_to_dist(heading_param,1,[-np.pi/2,np.pi/2])
         heading_weight = torch.distributions.Categorical(logits=heading_weight)
         heading_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(heading_weight,heading_distri)
 
@@ -158,7 +159,7 @@ class initializer(nn.Module):
         vel_heading_out = self.vel_heading_head(feature).view([*feature.shape[:-1], K, -1])
         vel_heading_weight = vel_heading_out[...,0]
         vel_heading_param = vel_heading_out[...,1:]
-        vel_heading_distri = self.output_to_dist(vel_heading_param,1,[-torch.pi/2,torch.pi/2])
+        vel_heading_distri = self.output_to_dist(vel_heading_param,1,[-np.pi/2,np.pi/2])
         vel_heading_weight = torch.distributions.Categorical(logits=vel_heading_weight)
         vel_heading_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(vel_heading_weight,vel_heading_distri)
 
