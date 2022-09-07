@@ -55,10 +55,10 @@ def get_agent_pos_from_vec(vec,long_lat,speed,vel_heading,heading,bbox):
     vel = torch.stack([torch.cos(v_dir)*speed,torch.sin(v_dir)*speed], axis=-1)
     agent_num,_ = vel.shape
 
-    type = Tensor([[1]]).repeat(agent_num,1)
-    agent = torch.cat([coord,vel,agent_dir.unsqueeze(1),bbox,type],dim=-1).numpy()
+    type = Tensor([[1]],device = coord.device).repeat(agent_num,1)
+    agent = torch.cat([coord,vel,agent_dir.unsqueeze(1),bbox,type],dim=-1).cpu().numpy()
 
-    vec_based_rep = torch.cat([long_lat,speed.unsqueeze(-1),vel_heading.unsqueeze(-1),heading.unsqueeze(-1),vec],dim=-1).numpy()
+    vec_based_rep = torch.cat([long_lat,speed.unsqueeze(-1),vel_heading.unsqueeze(-1),heading.unsqueeze(-1),vec],dim=-1).cpu().numpy()
 
     agent = WaymoAgent(agent,vec_based_rep)
 
