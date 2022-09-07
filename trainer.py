@@ -611,7 +611,7 @@ class Trainer:
             idx_list.append(indx)
 
 
-            heat_maps.append(get_heatmap(agents.position[:,0][center_mask], agents.position[:, 1][center_mask],prob[center_mask], 20))
+            heat_maps.append(get_heatmap(agents.position[:,0][center_mask], agents.position[:, 1][center_mask],prob[center_mask].cpu().numpy(), 20))
             prob_list.append(prob)
 
         output = {}
