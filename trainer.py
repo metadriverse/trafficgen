@@ -530,7 +530,7 @@ class Trainer:
         metrics['dir'] = dir_list
         return metrics
 
-    def sample_from_distribution(self, pred,center_lane,repeat_num=10):
+    def sample_from_distribution(self, pred,center_lane,repeat_num=3):
         prob = pred['prob'][0]
 
         # pos = pred['pos'].sample()
