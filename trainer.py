@@ -435,6 +435,11 @@ class Trainer:
                 rest = batch['rest'][0].cpu().numpy()
                 bound = batch['bound'][0].cpu().numpy()
                 pred_agent = output['agent']
+                # agent = []
+                # agent_ = pred_agent[0]
+                # agent_.heading[0,0] = np.pi/4
+                # agent_.velocity[0,0],agent_.velocity[0,1] = 10,10
+                # agent.append(agent_)
 
                 imgs[f'vis_{cnt}'] = wandb.Image(draw(center, pred_agent, rest, edge=bound))
                 cnt+=1

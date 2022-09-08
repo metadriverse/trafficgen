@@ -1,7 +1,19 @@
 import numpy as np
 import copy
 from shapely.geometry import Polygon
+import torch
 
+def rotate(x, y, angle):
+    if isinstance(x, torch.Tensor):
+        other_x_trans = torch.cos(angle) * x - torch.sin(angle) * y
+        other_y_trans = torch.cos(angle) * y + torch.sin(angle) * x
+        output_coords = torch.stack((other_x_trans, other_y_trans), axis=-1)
+
+    else:
+        other_x_trans = np.cos(angle) * x - np.sin(angle) * y
+        other_y_trans = np.cos(angle) * y + np.sin(angle) * x
+        output_coords = np.stack((other_x_trans, other_y_trans), axis=-1)
+    return output_coords
 
 class WaymoAgent:
     def __init__(self, feature, vec_based_info=None,range=50,max_speed=30):
@@ -44,22 +56,21 @@ class WaymoAgent:
 
     def get_rect(self):
 
-        l, w = self.length_width[...,[0]] / 2, self.length_width[...,[1]] / 2
-        yaw = self.heading
-        center = self.position
-        theta = np.arctan(w / l)
-        theta[np.where(np.isnan(theta))]=0
+        l, w = self.length_width[...,0] / 2, self.length_width[...,1] / 2
+        x1,y1 = l,w
+        x2,y2 = l,-w
 
-        s1 = np.sqrt(l ** 2 + w ** 2)
-        x1 = abs(np.cos(theta + yaw) * s1)
-        y1 = abs(np.sin(theta + yaw) * s1)
-        x2 = abs(np.cos(theta - yaw) * s1)
-        y2 = abs(np.sin(theta - yaw) * s1)
+        point1 = rotate(x1,y1,self.heading[...,0])
+        point2 = rotate(x2,y2,self.heading[...,0])
+        center = self.position
+
+        x1,y1 = point1[...,[0]],point1[...,[1]]
+        x2,y2 = point2[...,[0]], point2[...,[1]]
 
         p1 = np.concatenate([center[...,[0]] + x1, center[...,[1]] + y1],axis=-1)
-        p2 = np.concatenate([center[...,[0]] + x2, center[...,[1]] - y2],axis=-1)
+        p2 = np.concatenate([center[...,[0]] + x2, center[...,[1]] + y2],axis=-1)
         p3 = np.concatenate([center[...,[0]] - x1, center[...,[1]] - y1],axis=-1)
-        p4 = np.concatenate([center[...,[0]] - x2, center[...,[1]] + y2],axis=-1)
+        p4 = np.concatenate([center[...,[0]] - x2, center[...,[1]] - y2],axis=-1)
 
         p1 = p1.reshape(-1, p1.shape[-1])
         p2 = p2.reshape(-1, p1.shape[-1])

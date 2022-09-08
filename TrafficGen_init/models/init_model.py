@@ -26,13 +26,13 @@ class initializer(nn.Module):
         # prob,long_perc,lat_perc,dir(2),v_value,v_dir = 1+1+1+2+1+2
         middle_layer_shape = [hidden_dim*2,hidden_dim,256]
 
-        #self.output_head = MLP_3([*middle_layer_shape,5])
-        self.prob_head = MLP_3([*middle_layer_shape, 1])
-        self.pos_head = MLP_3([*middle_layer_shape, 10*(1+5)])
         self.bbox_head = MLP_3([*middle_layer_shape,10*(1+5)])
-        self.heading_head = MLP_3([*middle_layer_shape,10*(1+2)])
-        self.vel_heading_head = MLP_3([*middle_layer_shape,10*(1+2)])
-        self.speed_head = MLP_3([*middle_layer_shape,10*(1+2)])
+        self.prob_head = MLP_3([*middle_layer_shape, 1])
+        K=3
+        self.pos_head = MLP_3([*middle_layer_shape, K*(1+5)])
+        self.heading_head = MLP_3([*middle_layer_shape,K*(1+2)])
+        self.vel_heading_head = MLP_3([*middle_layer_shape,K*(1+2)])
+        self.speed_head = MLP_3([*middle_layer_shape,K*(1+2)])
 
     def _init_weights(self, module):
         if isinstance(module, (nn.Linear, nn.Embedding)):
@@ -124,18 +124,11 @@ class initializer(nn.Module):
         feature = torch.cat([line_enc,context_line],dim=-1)
 
         # Sample location, bounding box, heading and velocity.
-        K = 10
+
         # vector distribution
         prob_pred = self.prob_head(feature).squeeze(-1)
 
-        # position distribution
-        pos_out = self.pos_head(feature).view([*feature.shape[:-1], K, -1])
-        pos_weight = pos_out[..., 0]
-        pos_param = pos_out[..., 1:]
-        pos_distri = self.output_to_dist(pos_param, 2, [-0.5, 0.5])
-        pos_weight = torch.distributions.Categorical(logits=pos_weight)
-        pos_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(pos_weight, pos_distri)
-
+        K = 10
         # bbox distribution
         bbox_out = self.bbox_head(feature).view([*feature.shape[:-1], K, -1])
         bbox_weight = bbox_out[...,0]
@@ -143,6 +136,15 @@ class initializer(nn.Module):
         bbox_distri = self.output_to_dist(bbox_param,2,[0,30])
         bbox_weight = torch.distributions.Categorical(logits=bbox_weight)
         bbox_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(bbox_weight,bbox_distri)
+
+        K=3
+        # position distribution
+        pos_out = self.pos_head(feature).view([*feature.shape[:-1], K, -1])
+        pos_weight = pos_out[..., 0]
+        pos_param = pos_out[..., 1:]
+        pos_distri = self.output_to_dist(pos_param, 2, [-0.5, 0.5])
+        pos_weight = torch.distributions.Categorical(logits=pos_weight)
+        pos_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(pos_weight, pos_distri)
 
         # heading distribution
         heading_out = self.heading_head(feature).view([*feature.shape[:-1], K, -1])

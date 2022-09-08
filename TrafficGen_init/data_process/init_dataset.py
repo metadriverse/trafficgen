@@ -67,7 +67,7 @@ class initDataset(Dataset):
 
             for i in range(data_len):
                 agent_num = data[i]['agent_mask'].sum()
-                if agent_num<self.cfg['min_agent'] and not self.eval:
+                if agent_num<self.cfg['min_agent']:
                     continue
                 self.data_loaded[cnt+case_cnt] = data[i]
                 case_cnt+=1
