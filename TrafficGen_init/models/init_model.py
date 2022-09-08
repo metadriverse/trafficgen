@@ -140,7 +140,7 @@ class initializer(nn.Module):
         bbox_out = self.bbox_head(feature).view([*feature.shape[:-1], K, -1])
         bbox_weight = bbox_out[...,0]
         bbox_param = bbox_out[...,1:]
-        bbox_distri = self.output_to_dist(bbox_param,2,[1,30])
+        bbox_distri = self.output_to_dist(bbox_param,2,[0,30])
         bbox_weight = torch.distributions.Categorical(logits=bbox_weight)
         bbox_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(bbox_weight,bbox_distri)
 
