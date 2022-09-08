@@ -533,8 +533,9 @@ class Trainer:
     def sample_from_distribution(self, pred,center_lane,repeat_num=10):
         prob = pred['prob'][0]
 
-        pos = pred['pos'].sample()
-        pos_logprob = pred['pos'].log_prob(pos)
+        # pos = pred['pos'].sample()
+        # pos_logprob = pred['pos'].log_prob(pos)
+        pos = pred['pos']
 
         heading = pred['heading'].sample()
         heading_logprob = pred['heading'].log_prob(heading)
@@ -545,8 +546,9 @@ class Trainer:
         bbox = pred['bbox'].sample()
         bbox_logprob = pred['bbox'].log_prob(bbox)
 
-        speed = pred['speed'].sample()
-        speed_logprob = pred['speed'].log_prob(speed)
+        # speed = pred['speed'].sample()
+        # speed_logprob = pred['speed'].log_prob(speed)
+        speed = pred['speed'][...,0]
 
         agents = get_agent_pos_from_vec(center_lane, pos[0], speed[0], vel_heading[0], heading[0], bbox[0])
 
@@ -555,12 +557,13 @@ class Trainer:
         for i in range(repeat_num):
             indx = choices(list(range(prob.shape[-1])), prob)[0]
             vec_logprob_ = prob[indx]
-            pos_logprob_ = pos_logprob[0,indx]
+            #pos_logprob_ = pos_logprob[0,indx]
             heading_logprob_ = heading_logprob[0,indx]
             vel_heading_logprob_ = vel_heading_logprob[0,indx]
             bbox_logprob_ = bbox_logprob[0,indx]
-            speed_logprob_ = speed_logprob[0,indx]
-            all_prob = vec_logprob_+pos_logprob_+heading_logprob_+vel_heading_logprob_+heading_logprob_+bbox_logprob_+speed_logprob_
+            #speed_logprob_ = speed_logprob[0,indx]
+            #all_prob = vec_logprob_+pos_logprob_+heading_logprob_+vel_heading_logprob_+heading_logprob_+bbox_logprob_+speed_logprob_\
+            all_prob = vec_logprob_  + heading_logprob_ + vel_heading_logprob_ + heading_logprob_ + bbox_logprob_
             prob_list.append(all_prob)
             idx_list.append(indx)
 
@@ -601,7 +604,8 @@ class Trainer:
             pred, _, _ = self.model(data, False)
             pred['prob'][:,idx_list]=0
 
-            while True:
+            cnt=0
+            while cnt<10:
                 agents,prob, indx = self.sample_from_distribution(pred,center)
                 the_agent = agents.get_agent(indx)
 
@@ -615,7 +619,9 @@ class Trainer:
                 if not intersect:
                     shapes.append(poly)
                     break
-                else: continue
+                else:
+                    cnt+=1
+                    continue
 
             pred_list.append(the_agent)
             data['agent_feat'][:,i] = Tensor(the_agent.get_inp())

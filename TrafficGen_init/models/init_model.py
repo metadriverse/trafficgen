@@ -29,10 +29,13 @@ class initializer(nn.Module):
         self.bbox_head = MLP_3([*middle_layer_shape,10*(1+5)])
         self.prob_head = MLP_3([*middle_layer_shape, 1])
         K=3
-        self.pos_head = MLP_3([*middle_layer_shape, K*(1+5)])
+        #self.pos_head = MLP_3([*middle_layer_shape, K*(1+5)])
+        #self.heading_head = MLP_3([*middle_layer_shape,K*(1+2)])
+        self.pos_head = MLP_3([*middle_layer_shape, 2])
         self.heading_head = MLP_3([*middle_layer_shape,K*(1+2)])
         self.vel_heading_head = MLP_3([*middle_layer_shape,K*(1+2)])
-        self.speed_head = MLP_3([*middle_layer_shape,K*(1+2)])
+        #self.speed_head = MLP_3([*middle_layer_shape,K*(1+2)])
+        self.speed_head = MLP_3([*middle_layer_shape, 1])
 
     def _init_weights(self, module):
         if isinstance(module, (nn.Linear, nn.Embedding)):
@@ -139,12 +142,13 @@ class initializer(nn.Module):
 
         K=3
         # position distribution
-        pos_out = self.pos_head(feature).view([*feature.shape[:-1], K, -1])
-        pos_weight = pos_out[..., 0]
-        pos_param = pos_out[..., 1:]
-        pos_distri = self.output_to_dist(pos_param, 2, [-0.5, 0.5])
-        pos_weight = torch.distributions.Categorical(logits=pos_weight)
-        pos_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(pos_weight, pos_distri)
+        #pos_out = self.pos_head(feature).view([*feature.shape[:-1], K, -1])
+        pos_out = self.pos_head(feature)
+        # pos_weight = pos_out[..., 0]
+        # pos_param = pos_out[..., 1:]
+        # pos_distri = self.output_to_dist(pos_param, 2, [-0.5, 0.5])
+        # pos_weight = torch.distributions.Categorical(logits=pos_weight)
+        # pos_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(pos_weight, pos_distri)
 
         # heading distribution
         heading_out = self.heading_head(feature).view([*feature.shape[:-1], K, -1])
@@ -155,12 +159,13 @@ class initializer(nn.Module):
         heading_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(heading_weight,heading_distri)
 
         # speed distribution
-        speed_out = self.speed_head(feature).view([*feature.shape[:-1], K, -1])
-        speed_weight = speed_out[...,0]
-        speed_param = speed_out[...,1:]
-        speed_distri = self.output_to_dist(speed_param,1,[0,50])
-        speed_weight = torch.distributions.Categorical(logits=speed_weight)
-        speed_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(speed_weight,speed_distri)
+        #speed_out = self.speed_head(feature).view([*feature.shape[:-1], K, -1])
+        speed_out = self.speed_head(feature)
+        # speed_weight = speed_out[...,0]
+        # speed_param = speed_out[...,1:]
+        # speed_distri = self.output_to_dist(speed_param,1,[0,50])
+        # speed_weight = torch.distributions.Categorical(logits=speed_weight)
+        # speed_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(speed_weight,speed_distri)
 
         # vel heading distribution
         vel_heading_out = self.vel_heading_head(feature).view([*feature.shape[:-1], K, -1])
@@ -174,6 +179,7 @@ class initializer(nn.Module):
         # calculate loss
         # prob loss
         BCE = torch.nn.BCEWithLogitsLoss()
+        MSE = torch.nn.MSELoss(reduction='none')
         prob_loss = BCE(prob_pred,data['gt_distribution'])
 
         prob_loss = torch.sum(prob_loss*line_mask)/max(torch.sum(line_mask),1)
@@ -183,14 +189,18 @@ class initializer(nn.Module):
         gt_mask = data['gt_distribution']
         gt_sum = torch.clip(torch.sum(gt_mask, dim=1).unsqueeze(-1), min=1)
         # long lat loss
-        pos_loss = -pos_gmm.log_prob(data['gt_long_lat'])
-        pos_loss = (torch.sum(pos_loss*gt_mask,dim=1)/gt_sum).mean()
+        # pos_loss = -pos_gmm.log_prob(data['gt_long_lat'])
+        # pos_loss = (torch.sum(pos_loss*gt_mask,dim=1)/gt_sum).mean()
+        pos_loss = MSE(pos_out,data['gt_long_lat'])
+        pos_loss = (torch.sum(pos_loss * gt_mask.unsqueeze(-1), dim=1) / gt_sum).mean()
 
         bbox_loss = -bbox_gmm.log_prob(data['gt_bbox'])
         bbox_loss = (torch.sum(bbox_loss * gt_mask, dim=1) / gt_sum).mean()
 
-        speed_loss = -speed_gmm.log_prob(data['gt_speed'])
-        speed_loss = (torch.sum(speed_loss * gt_mask, dim=1) / gt_sum).mean()
+        # speed_loss = -speed_gmm.log_prob(data['gt_speed'])
+        # speed_loss = (torch.sum(speed_loss * gt_mask, dim=1) / gt_sum).mean()
+        speed_loss = MSE(speed_out,data['gt_speed'].unsqueeze(-1))
+        speed_loss = (torch.sum(speed_loss * gt_mask.unsqueeze(-1), dim=1) / gt_sum).mean()
 
         vel_heading_loss = -vel_heading_gmm.log_prob(data['gt_vel_heading'])
         vel_heading_loss = (torch.sum(vel_heading_loss * gt_mask, dim=1) / gt_sum).mean()
@@ -211,9 +221,9 @@ class initializer(nn.Module):
 
         pred = {}
         pred['prob'] = nn.Sigmoid()(prob_pred)
-        pred['pos'] = pos_gmm
+        pred['pos'] = pos_out
         pred['heading'] = heading_gmm
-        pred['speed'] = speed_gmm
+        pred['speed'] = speed_out
         pred['vel_heading'] = vel_heading_gmm
         pred['bbox'] = bbox_gmm
         pred['heading'] = heading_gmm
