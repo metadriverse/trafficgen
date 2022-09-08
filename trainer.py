@@ -422,7 +422,7 @@ class Trainer:
 
             imgs = {}
             for batch in eval_data:
-                if cnt>10:break
+                if cnt>30:break
                 seed(cnt)
                 for key in batch.keys():
                     if isinstance(batch[key], torch.DoubleTensor):
