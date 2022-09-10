@@ -78,7 +78,7 @@ class initializer(nn.Module):
         # vector distribution
         prob_pred = self.prob_head(feature).squeeze(-1)
 
-        # position distribution
+        # position distribution： 2 dimension x y, range(-1/2,1/2)
         # pos_out dim (batch,128,10,6),
         # 10 mixtures
         # 0: mixture weight
@@ -91,7 +91,7 @@ class initializer(nn.Module):
         pos_weight = torch.distributions.Categorical(logits=pos_weight)
         pos_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(pos_weight, pos_distri)
 
-        # bbox distribution
+        # bbox distribution： 2 dimension length width
         bbox_out = self.bbox_head(feature).view([*feature.shape[:-1], K, -1])
         bbox_weight = bbox_out[..., 0]
         bbox_param = bbox_out[..., 1:]
@@ -99,7 +99,7 @@ class initializer(nn.Module):
         bbox_weight = torch.distributions.Categorical(logits=bbox_weight)
         bbox_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(bbox_weight, bbox_distri)
 
-        # heading distribution
+        # heading distribution: 1 dimension,range(-pi/2,pi/2)
         heading_out = self.heading_head(feature).view([*feature.shape[:-1], K, -1])
         heading_weight = heading_out[..., 0]
         heading_param = heading_out[..., 1:]
@@ -107,7 +107,7 @@ class initializer(nn.Module):
         heading_weight = torch.distributions.Categorical(logits=heading_weight)
         heading_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(heading_weight, heading_distri)
 
-        # speed distribution
+        # speed distribution: 1 dimension
         speed_out = self.speed_head(feature).view([*feature.shape[:-1], K, -1])
         speed_weight = speed_out[..., 0]
         speed_param = speed_out[..., 1:]
@@ -115,7 +115,7 @@ class initializer(nn.Module):
         speed_weight = torch.distributions.Categorical(logits=speed_weight)
         speed_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(speed_weight, speed_distri)
 
-        # vel heading distribution
+        # vel heading distribution: 1 dimension,range(-pi/2,pi/2)
         vel_heading_out = self.vel_heading_head(feature).view([*feature.shape[:-1], K, -1])
         vel_heading_weight = vel_heading_out[..., 0]
         vel_heading_param = vel_heading_out[..., 1:]
