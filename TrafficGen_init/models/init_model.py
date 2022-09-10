@@ -49,25 +49,38 @@ class initializer(nn.Module):
         if n == 2:
             loc, tril, diag = para[..., :2], para[..., 2], para[..., 3:]
             loc = torch.clip(loc, min=range[0], max=range[1])
+            # diag = torch.clip(1 + nn.functional.elu(diag), min=1e-4, max=5)
+            
+            sigma_1 = torch.exp(diag[..., 0])
+            sigma_2 = torch.exp(diag[..., 1])
+            rho = torch.tanh(tril)
+            
+            # z = torch.zeros([*loc.shape[:-1]], device=para.device)
+            # scale_tril = torch.stack([
+            #     diag[..., 0], z,
+            #     tril, diag[..., 1]
+            # ], dim=-1).view(*loc.shape[:-1], 2, 2)
+            # distri = torch.distributions.multivariate_normal.MultivariateNormal(loc=loc, scale_tril=scale_tril)
 
-            diag = torch.clip(1 + nn.functional.elu(diag), min=1e-4, max=5)
-
-            z = torch.zeros([*loc.shape[:-1]], device=para.device)
-            scale_tril = torch.stack([
-                diag[..., 0], z,
-                tril, diag[..., 1]
+            cov = torch.stack([
+                sigma_1 ** 2, rho * sigma_1 * sigma_2,
+                rho * sigma_1 * sigma_2, sigma_2 ** 2
             ], dim=-1).view(*loc.shape[:-1], 2, 2)
 
-            distri = torch.distributions.multivariate_normal.MultivariateNormal(loc=loc, scale_tril=scale_tril)
+            distri = torch.distributions.multivariate_normal.MultivariateNormal(loc=loc, covariance_matrix=cov)
+
             return distri
 
         if n == 1:
             loc, scale = para[..., 0], para[..., 1]
             loc = torch.clip(loc, min=range[0], max=range[1])
 
-            scale = torch.clip(1 + nn.functional.elu(scale), min=1e-4, max=5)
+            # scale = torch.clip(1 + nn.functional.elu(scale), min=1e-4, max=5)
             # scale = torch.clip(scale, min=1e-4,max=5)
+            # distri = torch.distributions.Normal(loc, scale)
 
+            # predict in log scale
+            scale = torch.exp(scale)
             distri = torch.distributions.Normal(loc, scale)
 
             return distri
