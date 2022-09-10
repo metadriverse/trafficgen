@@ -22,7 +22,7 @@ min_agent: 8
 # eval config
 need_eval: True
 eval_data_start_index: 0
-eval_data_usage: 20
+eval_data_usage: 5
 eval_batch_size: 1 # 2 frame * 50 map  will be plotted
 eval_frequency: 1  # eval each epoch
 
