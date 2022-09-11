@@ -197,8 +197,6 @@ class initializer(nn.Module):
 
         line_mask = data['center_mask']
         prob_loss = torch.sum(prob_loss * line_mask) / max(torch.sum(line_mask), 1)
-        if torch.isnan(prob_loss):
-            print(data['gt_distribution'])
 
         gt_mask = data['gt_distribution']
         gt_sum = torch.clip(torch.sum(gt_mask, dim=1).unsqueeze(-1), min=1)

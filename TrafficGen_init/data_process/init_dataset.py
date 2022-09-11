@@ -211,7 +211,7 @@ class initDataset(Dataset):
         # case_info['v_dir'] = info[..., 5]
 
         case_info['vec_based_rep'] = info_[...,1:]
-        case_info['agent_vec_indx'] = info_[...,0]
+        case_info['agent_vec_indx'] = info_[...,0].astype(int)
         case_info['agent_mask'] = agent_mask_
         case_info["agent"] = agent_
 
