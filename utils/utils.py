@@ -165,7 +165,7 @@ def process_map(lane,traf, center_num=512, edge_num=128, lane_range=60, offest=-
     cent, cent_mask = process_lane(lane[:,center_ind], center_num, lane_range, offest)
     bound, bound_mask = process_lane(lane[:,bound_ind], edge_num, lane_range, offest)
     cross, cross_mask = process_lane(lane[:,cross_ind], 64, lane_range, offest)
-    rest, rest_mask = process_lane(lane[:,rest], 256, lane_range, offest)
+    rest, rest_mask = process_lane(lane[:,rest], 192, lane_range, offest)
 
     return cent, cent_mask, bound, bound_mask, cross, cross_mask, rest,rest_mask
 
