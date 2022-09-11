@@ -17,12 +17,14 @@ class sceneGen(initializer):
         self.hidden_dim = 1024
         self.feat_lstm = nn.LSTM(self.hidden_dim * 2, self.hidden_dim * 2, 2, batch_first=True)
 
+
     def _obtain_step_input(self, step_idx, data):
         # TODO Obtain the input data for the current step for feature extraction:
         # 1. process the data as if there are only agent (0, 1, ..., step_idx-1) in the scene.
         # 2. if step_idx == 0, then there is no agent in the scene.
-
-        raise NotImplementedError
+        data['agent_mask'][:,:step_idx-1] = True
+        data['agent_mask'][:, step_idx-1:] = False
+        return
 
     def _obtain_step_output(self, step_idx, data):
         # TODO Obtain the output data for the current step for loss computation
@@ -32,13 +34,13 @@ class sceneGen(initializer):
         raise NotImplementedError
 
     def forward(self, data, random_mask=True):
-        max_agent_num = torch.max(torch.sum(data['gt_distribution'], dim=1))
+        max_agent_num = torch.max(torch.sum(data['gt_distribution'], dim=1)).to(int).item()
 
         all_losses = []
         all_total_loss = 0
         all_preds = []
 
-        for step_idx in range(max_agent_num):
+        for step_idx in range(1, max_agent_num):
 
             # construct the input data that contain only the agents (0, 1, ..., step_idx-1)
             step_input = self._obtain_step_input(step_idx, data)

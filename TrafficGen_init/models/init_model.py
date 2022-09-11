@@ -43,12 +43,12 @@ class initializer(nn.Module):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
 
-    def output_to_dist(self, para, n, range):
+    def output_to_dist(self, para, n):
         # if n = 2, dim = 5 = 2 + 3, if n = 1, dim = 2 = 1 + 1
 
         if n == 2:
             loc, tril, diag = para[..., :2], para[..., 2], para[..., 3:]
-            loc = torch.clip(loc, min=range[0], max=range[1])
+            #loc = torch.clip(loc, min=range[0], max=range[1])
             # diag = torch.clip(1 + nn.functional.elu(diag), min=1e-4, max=5)
             
             sigma_1 = torch.exp(diag[..., 0])
@@ -73,7 +73,7 @@ class initializer(nn.Module):
 
         if n == 1:
             loc, scale = para[..., 0], para[..., 1]
-            loc = torch.clip(loc, min=range[0], max=range[1])
+            #loc = torch.clip(loc, min=range[0], max=range[1])
 
             # scale = torch.clip(1 + nn.functional.elu(scale), min=1e-4, max=5)
             # scale = torch.clip(scale, min=1e-4,max=5)
@@ -100,7 +100,7 @@ class initializer(nn.Module):
         pos_out = self.pos_head(feature).view([*feature.shape[:-1], K, -1])
         pos_weight = pos_out[..., 0]
         pos_param = pos_out[..., 1:]
-        pos_distri = self.output_to_dist(pos_param, 2, [-0.5, 0.5])
+        pos_distri = self.output_to_dist(pos_param, 2)
         pos_weight = torch.distributions.Categorical(logits=pos_weight)
         pos_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(pos_weight, pos_distri)
 
@@ -108,7 +108,7 @@ class initializer(nn.Module):
         bbox_out = self.bbox_head(feature).view([*feature.shape[:-1], K, -1])
         bbox_weight = bbox_out[..., 0]
         bbox_param = bbox_out[..., 1:]
-        bbox_distri = self.output_to_dist(bbox_param, 2, [1, 30])
+        bbox_distri = self.output_to_dist(bbox_param, 2)
         bbox_weight = torch.distributions.Categorical(logits=bbox_weight)
         bbox_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(bbox_weight, bbox_distri)
 
@@ -116,7 +116,7 @@ class initializer(nn.Module):
         heading_out = self.heading_head(feature).view([*feature.shape[:-1], K, -1])
         heading_weight = heading_out[..., 0]
         heading_param = heading_out[..., 1:]
-        heading_distri = self.output_to_dist(heading_param, 1, [-np.pi / 2, np.pi / 2])
+        heading_distri = self.output_to_dist(heading_param, 1)
         heading_weight = torch.distributions.Categorical(logits=heading_weight)
         heading_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(heading_weight, heading_distri)
 
@@ -124,7 +124,7 @@ class initializer(nn.Module):
         speed_out = self.speed_head(feature).view([*feature.shape[:-1], K, -1])
         speed_weight = speed_out[..., 0]
         speed_param = speed_out[..., 1:]
-        speed_distri = self.output_to_dist(speed_param, 1, [0, 50])
+        speed_distri = self.output_to_dist(speed_param, 1)
         speed_weight = torch.distributions.Categorical(logits=speed_weight)
         speed_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(speed_weight, speed_distri)
 
@@ -132,23 +132,21 @@ class initializer(nn.Module):
         vel_heading_out = self.vel_heading_head(feature).view([*feature.shape[:-1], K, -1])
         vel_heading_weight = vel_heading_out[..., 0]
         vel_heading_param = vel_heading_out[..., 1:]
-        vel_heading_distri = self.output_to_dist(vel_heading_param, 1, [-np.pi / 2, np.pi / 2])
+        vel_heading_distri = self.output_to_dist(vel_heading_param, 1)
         vel_heading_weight = torch.distributions.Categorical(logits=vel_heading_weight)
         vel_heading_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(vel_heading_weight,
                                                                                     vel_heading_distri)
         return {'prob': prob_pred, 'pos': pos_gmm, 'bbox': bbox_gmm, 'heading': heading_gmm, 'speed': speed_gmm,
                 'vel_heading': vel_heading_gmm}
 
-    def feature_extract(self, data, random_mask):
-        agent = data['agent_feat'][..., :-2]
-
-        agent_line_type = data['agent_feat'][..., -2].to(int)
-        agent_line_traf = data['agent_feat'][..., -1].to(int)
+    def agent_feature_extract(self, agent_feat,agent_mask, random_mask):
+        agent = agent_feat[..., :-2]
+        agent_line_type = agent_feat[..., -2].to(int)
+        agent_line_traf = agent_feat[..., -1].to(int)
         # agent_line_traf = torch.zeros_like(agent_line_traf).to(agent.device)
 
         agent_line_type_embed = self.type_embedding(agent_line_type)
         agent_line_traf_embed = self.traf_embedding(agent_line_traf)
-        agent_mask = data['agent_mask']
 
         min_agent_num = self.cfg['min_agent']
         if random_mask:
@@ -157,30 +155,29 @@ class initializer(nn.Module):
                 masked_num = i % min_agent_num
                 agent_mask[i, 1 + masked_num:] = 0
 
-        polyline = data['lane_inp'][..., :4]
-        polyline_type = data['lane_inp'][..., 4].to(int)
-        polyline_traf = data['lane_inp'][..., 5].to(int)
+        agent_enc = self.agent_encode(agent) + agent_line_type_embed + agent_line_traf_embed
+        b, a, d = agent_enc.shape
 
+        context_agent = torch.ones([b, d], device=agent_feat.device)
+        # agent information fusion with CG block
+        agent_enc, context_agent = self.CG_agent(agent_enc, context_agent, agent_mask)
+
+        return context_agent
+
+    def map_feature_extract(self,lane_inp,line_mask,context_agent):
+        device = lane_inp.device
+
+        polyline = lane_inp[..., :4]
+        polyline_type = lane_inp[..., 4].to(int)
+        polyline_traf = lane_inp[..., 5].to(int)
         # polyline_traf = torch.zeros_like(polyline_traf).to(agent.device)
 
         polyline_type_embed = self.type_embedding(polyline_type)
         polyline_traf_embed = self.traf_embedding(polyline_traf)
-        polyline_traf_embed = torch.zeros_like(polyline_traf_embed).to(agent.device)
-
-        line_mask = data['center_mask']
+        polyline_traf_embed = torch.zeros_like(polyline_traf_embed,device=device)
 
         # agent features
-        agent_enc = self.agent_encode(agent) + agent_line_type_embed + agent_line_traf_embed
-        # map features
         line_enc = self.line_encode(polyline) + polyline_traf_embed + polyline_type_embed
-        b, a, d = agent_enc.shape
-
-        device = agent_enc.device
-
-        context_agent = torch.ones([b, d]).to(device)
-        # agent information fusion with CG block
-        agent_enc, context_agent = self.CG_agent(agent_enc, context_agent, agent_mask)
-
         # map information fusion with CG block
         line_enc, context_line = self.CG_line(line_enc, context_agent, line_mask)
         # map context feature
@@ -188,6 +185,11 @@ class initializer(nn.Module):
         feature = torch.cat([line_enc, context_line], dim=-1)
 
         return feature
+
+    # def feature_extract(self, data, random_mask):
+    #
+    #     # map features
+    #     return feature
 
     def compute_loss(self, data, pred_dists):
         BCE = torch.nn.BCEWithLogitsLoss()
@@ -231,7 +233,9 @@ class initializer(nn.Module):
 
     def forward(self, data, random_mask=True):
 
-        feature = self.feature_extract(data, random_mask)
+        context_agent = self.agent_feature_extract(data['agent_feat'],data['agent_mask'],random_mask)
+
+        feature = self.map_feature_extract(data['lane_inp'],data['center_mask'],context_agent)
 
         # Sample location, bounding box, heading and velocity.
         K = 10

@@ -238,7 +238,7 @@ class initDataset(Dataset):
         lane[...,:2] = rotate(x,y,-ego_heading)
         return lane
 
-    def process_agent(self,data):
+    def process_agent(self,data,sort_agent):
 
         agent = data['all_agent']
         ego = agent[:,0]
@@ -256,7 +256,38 @@ class initDataset(Dataset):
         agent_range_mask = (abs(agent[...,0])<RANGE)*(abs(agent[...,1])<RANGE)
         mask = agent_mask*agent_type_mask*agent_range_mask
 
-        return agent[...,:-1],mask
+        if not sort_agent:
+            return agent[...,:-1], agent_mask
+
+        bs, agent_num,_ = agent.shape
+        sorted_agent = np.zeros_like(agent)
+        sorted_mask = np.zeros_like(agent_mask).astype(bool)
+        sorted_agent[:,0] = agent[:,0]
+        sorted_mask[:,0]=True
+        for i in range(bs):
+            xy = copy.deepcopy(agent[i,1:,:2])
+            agent_i = copy.deepcopy(agent[i,1:])
+            mask_i = mask[i,1:]
+
+            # put invalid agent to the right down side
+            xy[mask_i==False,0] = 10e8
+            xy[mask_i==False,1] = -10e8
+
+            raster = np.floor(xy/0.25)
+            raster = np.concatenate([raster, agent_i,mask_i[:,np.newaxis]], -1)
+            y_index = np.argsort(-raster[:, 1])
+            raster = raster[y_index]
+            y_set = np.unique(raster[:, 1])[::-1]
+            for y in y_set:
+                ind = np.argwhere(raster[:, 1] == y)[:, 0]
+                ys = raster[ind]
+                x_index = np.argsort(ys[:, 0])
+                raster[ind] = ys[x_index]
+            #scene = np.delete(raster, [0, 1], axis=-1)
+            sorted_agent[i,1:]=raster[...,2:-1]
+            sorted_mask[i,1:]=raster[...,-1]
+
+        return sorted_agent[...,:-1],sorted_mask
 
     def get_gt(self,case_info):
         # 0: vec_index
@@ -292,7 +323,12 @@ class initDataset(Dataset):
 
         data['lane'] = self.transform_coordinate_map(data)
 
-        case_info["agent"],case_info["agent_mask"] = self.process_agent(data)
+
+        if self.cfg['model']=='sceneGen':
+            sort_agent = True
+        else:
+            sort_agent = False
+        case_info["agent"],case_info["agent_mask"] = self.process_agent(data,sort_agent)
 
         case_info['center'],case_info['center_mask'],case_info['bound'], case_info['bound_mask'],\
         case_info['cross'],case_info['cross_mask'],case_info['rest'],_ = process_map(data['lane'],data['traffic_light'],lane_range=RANGE, offest=0)
