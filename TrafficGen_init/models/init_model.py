@@ -235,8 +235,9 @@ class initializer(nn.Module):
 
         context_agent = self.agent_feature_extract(data['agent_feat'],data['agent_mask'],random_mask)
 
-        feature = self.map_feature_extract(data['lane_inp'],data['center_mask'],context_agent)
-
+        feature = self.map_feature_extract(data['lane_inp'],data['lane_mask'],context_agent)
+        center_num = data['center'].shape[1]
+        feature = feature[:,:center_num]
         # Sample location, bounding box, heading and velocity.
         K = 10
 

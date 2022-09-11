@@ -54,9 +54,9 @@ class WaymoAgent:
             axis=-1)
         return agent_feat
 
-    def get_rect(self):
+    def get_rect(self,pad=0):
 
-        l, w = self.length_width[...,0] / 2, self.length_width[...,1] / 2
+        l, w = (self.length_width[...,0]+pad) / 2, (self.length_width[...,1]+pad) / 2
         x1,y1 = l,w
         x2,y2 = l,-w
 
@@ -87,7 +87,7 @@ class WaymoAgent:
 
 
     def get_polygon(self):
-        rect_list = self.get_rect()
+        rect_list = self.get_rect(pad=0.1)
 
         poly_list = []
         for i in range(len(rect_list)):

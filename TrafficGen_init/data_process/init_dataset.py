@@ -295,8 +295,9 @@ class initDataset(Dataset):
         # 3-5 speed, angle between velocity and car heading, angle between car heading and lane vector
         # 6-9 lane vector
         # 10-11 lane type and traff state
+        center_num = case_info['center'].shape[1]
         lane_inp,agent_vec_indx,vec_based_rep,bbox =  \
-            case_info['lane_inp'], case_info['agent_vec_indx'], case_info['vec_based_rep'],case_info['agent'][...,5:7]
+            case_info['lane_inp'][:,:center_num], case_info['agent_vec_indx'], case_info['vec_based_rep'],case_info['agent'][...,5:7]
         b, lane_num, _ = lane_inp.shape
         gt_distribution = np.zeros([b, lane_num])
         gt_vec_based_coord = np.zeros([b, lane_num, 5])
@@ -313,7 +314,19 @@ class initDataset(Dataset):
         case_info['gt_vel_heading'] = gt_vec_based_coord[...,3]
         case_info['gt_heading'] = gt_vec_based_coord[..., 4]
 
+    def _process_map_inp(self,case_info):
+        center = copy.deepcopy(case_info['center'])
+        center[..., :4] /= RANGE
+        edge = copy.deepcopy(case_info['bound'])
+        edge[..., :4] /= RANGE
+        cross = copy.deepcopy(case_info['cross'])
+        cross[..., :4] /= RANGE
+        rest = copy.deepcopy(case_info['rest'])
+        rest[..., :4] /= RANGE
 
+        case_info['lane_inp'] = np.concatenate([center,edge,cross,rest],axis=1)
+        case_info['lane_mask'] = np.concatenate([case_info['center_mask'],case_info['bound_mask'],case_info['cross_mask'],case_info['rest_mask']],axis=1)
+        return
     def process(self, data):
 
         case_info = {}
@@ -323,7 +336,6 @@ class initDataset(Dataset):
 
         data['lane'] = self.transform_coordinate_map(data)
 
-
         if self.cfg['model']=='sceneGen':
             sort_agent = True
         else:
@@ -331,7 +343,7 @@ class initDataset(Dataset):
         case_info["agent"],case_info["agent_mask"] = self.process_agent(data,sort_agent)
 
         case_info['center'],case_info['center_mask'],case_info['bound'], case_info['bound_mask'],\
-        case_info['cross'],case_info['cross_mask'],case_info['rest'],_ = process_map(data['lane'],data['traffic_light'],lane_range=RANGE, offest=0)
+        case_info['cross'],case_info['cross_mask'],case_info['rest'],case_info['rest_mask'] = process_map(data['lane'],data['traffic_light'], lane_range=RANGE, offest=0)
 
         self.filter_agent(case_info)
 
@@ -339,10 +351,7 @@ class initDataset(Dataset):
 
         case_info['agent_feat'] = agent.get_inp()
 
-        center_lane = copy.deepcopy(case_info['center'])
-        center_lane[..., :4] /= RANGE
-
-        case_info['lane_inp'] = center_lane
+        self._process_map_inp(case_info)
 
         self.get_gt(case_info)
 

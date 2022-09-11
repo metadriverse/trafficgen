@@ -127,7 +127,7 @@ def process_lane(lane,  max_vec,lane_range,offset = -40):
     return all_vec,all_mask.astype(bool)
 
 
-def process_map(lane,traf, center_num=128, edge_num=128, lane_range=60, offest=-40):
+def process_map(lane,traf, center_num=384, edge_num=192, lane_range=60, offest=-40):
 
     lane_with_traf = np.zeros([*lane.shape[:-1], 5])
     lane_with_traf[..., :4] = lane
