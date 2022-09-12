@@ -530,44 +530,48 @@ class Trainer:
         metrics['dir'] = dir_list
         return metrics
 
-    def sample_from_distribution(self, pred,center_lane,repeat_num=3):
+    def sample_from_distribution(self, pred,center_lane,repeat_num=10):
         prob = pred['prob'][0]
-
-        pos = pred['pos'].sample()
-        pos_logprob = pred['pos'].log_prob(pos)
-
-        heading = pred['heading'].sample()
-        heading_logprob = pred['heading'].log_prob(heading)
-
-        vel_heading = pred['vel_heading'].sample()
-        vel_heading_logprob = pred['vel_heading'].log_prob(vel_heading)
-
-        bbox = pred['bbox'].sample()
-        bbox_logprob = pred['bbox'].log_prob(bbox)
-
-        speed = pred['speed'].sample()
-        speed_logprob = pred['speed'].log_prob(speed)
-
-        agents = get_agent_pos_from_vec(center_lane, pos[0], speed[0], vel_heading[0], heading[0], bbox[0])
-
-        idx_list = []
-        prob_list = []
-        for i in range(repeat_num):
+        max_prob=0
+        for i in range(3):
             indx = choices(list(range(prob.shape[-1])), prob)[0]
             vec_logprob_ = prob[indx]
-            pos_logprob_ = pos_logprob[0,indx]
-            heading_logprob_ = heading_logprob[0,indx]
-            vel_heading_logprob_ = vel_heading_logprob[0,indx]
-            bbox_logprob_ = bbox_logprob[0,indx]
-            speed_logprob_ = speed_logprob[0,indx]
-            all_prob = vec_logprob_+pos_logprob_+heading_logprob_+vel_heading_logprob_+heading_logprob_+bbox_logprob_+speed_logprob_
+            if vec_logprob_>max_prob:
+                the_indx = indx
+                max_prob = max(vec_logprob_,max_prob)
+
+        #idx_list = []
+        prob_list = []
+        agents_list = []
+        for i in range(repeat_num):
+            pos = torch.clip(pred['pos'].sample(),min=-0.5,max=0.5)
+            pos_logprob = pred['pos'].log_prob(pos)
+
+            heading = torch.clip(pred['heading'].sample(),min=-np.pi/2,max=np.pi/2)
+            heading_logprob = pred['heading'].log_prob(heading)
+
+            vel_heading = torch.clip(pred['vel_heading'].sample(),min=-np.pi/2,max=np.pi/2)
+            vel_heading_logprob = pred['vel_heading'].log_prob(vel_heading)
+
+            bbox = torch.clip(pred['bbox'].sample(),min=1.5)
+            bbox_logprob = pred['bbox'].log_prob(bbox)
+
+            speed = torch.clip(pred['speed'].sample(),min=0)
+            speed_logprob = pred['speed'].log_prob(speed)
+
+            agents = get_agent_pos_from_vec(center_lane, pos[0], speed[0], vel_heading[0], heading[0], bbox[0])
+            agents_list.append(agents)
+            pos_logprob_ = pos_logprob[0,the_indx]
+            heading_logprob_ = heading_logprob[0,the_indx]
+            vel_heading_logprob_ = vel_heading_logprob[0,the_indx]
+            bbox_logprob_ = bbox_logprob[0,the_indx]
+            speed_logprob_ = speed_logprob[0,the_indx]
+            all_prob = pos_logprob_+heading_logprob_+vel_heading_logprob_+heading_logprob_+bbox_logprob_+speed_logprob_
             prob_list.append(all_prob)
-            idx_list.append(indx)
 
         max_indx = np.argmax(prob_list)
-        the_indx = idx_list[max_indx]
-
-        return agents,prob,the_indx
+        max_agents = agents_list[max_indx]
+        return max_agents,prob,the_indx
 
 
     def inference(self, data, eval=False):
@@ -604,7 +608,7 @@ class Trainer:
             pred['prob'][:,idx_list]=0
             cnt=0
             while cnt<10:
-                agents,prob, indx = self.sample_from_distribution(pred,center)
+                agents, prob, indx = self.sample_from_distribution(pred,center)
                 the_agent = agents.get_agent(indx)
 
                 poly = the_agent.get_polygon()[0]

@@ -256,8 +256,6 @@ class initDataset(Dataset):
         agent_range_mask = (abs(agent[...,0])<RANGE)*(abs(agent[...,1])<RANGE)
         mask = agent_mask*agent_type_mask*agent_range_mask
 
-        if not sort_agent:
-            return agent[...,:-1], agent_mask
 
         bs, agent_num,_ = agent.shape
         sorted_agent = np.zeros_like(agent)
@@ -287,7 +285,17 @@ class initDataset(Dataset):
             sorted_agent[i,1:]=raster[...,2:-1]
             sorted_mask[i,1:]=raster[...,-1]
 
-        return sorted_agent[...,:-1],sorted_mask
+
+        if sort_agent:
+            return sorted_agent[..., :-1], sorted_mask
+        else:
+            agent_nums = np.sum(sorted_mask, axis=-1)
+            for i in range(sorted_agent.shape[0]):
+                agent_num = int(agent_nums[i])
+                permut_idx = np.random.permutation(np.arange(1, agent_num)) - 1
+                sorted_agent[i, 1:agent_num] = sorted_agent[i, 1:agent_num][permut_idx]
+            return sorted_agent[..., :-1], sorted_mask
+
 
     def get_gt(self,case_info):
         # 0: vec_index
@@ -303,8 +311,9 @@ class initDataset(Dataset):
         gt_vec_based_coord = np.zeros([b, lane_num, 5])
         gt_bbox = np.zeros([b, lane_num, 2])
         for i in range(b):
-            indx = agent_vec_indx[i, :].astype(int)
-            gt_distribution[i][indx] = 1
+            mask = case_info['agent_mask'][i].sum()
+            indx = agent_vec_indx[i].astype(int)
+            gt_distribution[i][indx[:mask]] = 1
             gt_vec_based_coord[i, indx] = vec_based_rep[i,:,:5]
             gt_bbox[i,indx] = bbox[i]
         case_info['gt_bbox'] = gt_bbox
