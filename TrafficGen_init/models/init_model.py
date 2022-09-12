@@ -85,7 +85,7 @@ class initializer(nn.Module):
             vel_heading_logprob_ = vel_heading_logprob[0,the_indx]
             bbox_logprob_ = bbox_logprob[0,the_indx]
             #speed_logprob_ = speed_logprob[0,the_indx]
-            all_prob = +heading_logprob_+vel_heading_logprob_+heading_logprob_+bbox_logprob_
+            all_prob = heading_logprob_+vel_heading_logprob_+heading_logprob_+bbox_logprob_
             prob_list.append(all_prob)
 
         max_indx = np.argmax(prob_list)
