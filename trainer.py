@@ -437,6 +437,14 @@ class Trainer:
                 bound = batch['bound'][0].cpu().numpy()
                 pred_agent = output['agent']
 
+                # pred= []
+                # vec_b = batch['vec_based_rep'][0]
+                # agent = batch['agent'][0]
+                # for i in range(4):
+                #     vec_i = vec_b[i]
+                #     agent_i = agent[i]
+                #     pred.append(get_agent_pos_from_vec(batch['center'][0],vec_i[:2],vec_i[[2]],vec_i[[3]],vec_i[[4]],agent_i[5:7]))
+
                 imgs[f'vis_{cnt}'] = wandb.Image(draw(center, pred_agent, rest, edge=bound))
                 cnt+=1
 

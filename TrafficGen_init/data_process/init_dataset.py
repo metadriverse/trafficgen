@@ -125,9 +125,7 @@ class initDataset(Dataset):
 
         vx,vy = agent[...,2], agent[...,3]
         v_value = np.sqrt(vx**2+vy**2)
-
         low_vel = v_value<0.5
-        #v_value[low_vel] = 0
 
         dir_v = np.arctan2(vy,vx)
         x1,y1,x2,y2 = selected_vec[...,0],selected_vec[...,1],selected_vec[...,2],selected_vec[...,3]
@@ -144,28 +142,20 @@ class initDataset(Dataset):
 
         agent_x = agent[...,0]
         agent_y = agent[...,1]
-        A = y2-y1
-        B = x1-x2
-        C = -x1*A-y1*B
-        vec_len = np.clip(np.sqrt(np.square(A) + np.square(B)),a_min=4.5,a_max=5.5)
-        lat_dist = np.abs(A*agent_x+B*agent_y+C)/vec_len
-        lat_dist[np.isnan(lat_dist)] = 0
-        #lat_dist =
+        vec_x = (x1+x2)/2
+        vec_y = (y1+y2)/2
 
-        side_dir = cal_rel_dir(np.arctan2(agent_y-y1,agent_x-x1),dir)
-        lat_dist[side_dir>0] *= -1
+        cent_to_agent_x = agent_x - vec_x
+        cent_to_agent_y = agent_y - vec_y
 
-        dist_to_start = np.square(agent_x-x1) + np.square(agent_y-y1)
-        long_dist = np.sqrt(np.clip(dist_to_start-np.square(lat_dist),a_min=0,a_max=5))
+        #rel_angle = cal_rel_dir()
+        coord = rotate(cent_to_agent_x,cent_to_agent_y,-dir)
 
-        lat_perc = np.clip(lat_dist,a_min=-vec_len/2,a_max=vec_len/2)/vec_len
-        long_perc = np.clip(long_dist,a_min=0,a_max=vec_len)/vec_len-0.5
+        vec_len = np.clip(np.sqrt(np.square(y2-y1) + np.square(x1-x2)), a_min=4.5, a_max=5.5)
 
-        # long_perc = long_dist/vec_len
-        # long_perc[np.isnan(long_perc)]=0
-        # long_perc = np.clip(long_perc,a_min=0,a_max=1)
-        # lat_perc = lat_dist/vec_len
-        # lat_perc = np.clip(lat_perc, a_min=-1, a_max=1)
+        lat_perc = np.clip(-coord[...,1],a_min=-vec_len/2,a_max=vec_len/2)/vec_len
+        long_perc = np.clip(coord[...,0],a_min=-vec_len/2,a_max=vec_len/2)/vec_len
+
         total_mask = min_dist_mask*agent_mask*v_dir_mask*dir_mask
         total_mask[:,0]=1
         total_mask = total_mask.astype(bool)
