@@ -429,17 +429,13 @@ class Trainer:
                         batch[key] = batch[key].float()
                     if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
                         batch[key] = batch[key].cuda()
-                output, heat_maps = self.inference(batch)
 
+                #output, heat_maps = self.inference(batch)
+                output, heat_maps = self.model(batch,eval=True)
                 center = batch['center'][0].cpu().numpy()
                 rest = batch['rest'][0].cpu().numpy()
                 bound = batch['bound'][0].cpu().numpy()
                 pred_agent = output['agent']
-                # agent = []
-                # agent_ = pred_agent[0]
-                # agent_.heading[0,0] = np.pi/4
-                # agent_.velocity[0,0],agent_.velocity[0,1] = 10,10
-                # agent.append(agent_)
 
                 imgs[f'vis_{cnt}'] = wandb.Image(draw(center, pred_agent, rest, edge=bound))
                 cnt+=1
@@ -448,34 +444,6 @@ class Trainer:
             log['imgs'] = imgs
             if not self.in_debug:
                 wandb.log(log)
-            #     if len(output['prob'])<=1:continue
-            #     loss = self.metrics(output,batch)
-            #     eval_results.append(loss)
-            #
-            # loss = torch.zeros([4,10])
-            # for i in range(10):
-            #     prob_i=0
-            #     vel_i=0
-            #     dir_i=0
-            #     coord_i=0
-            #     cnt=0
-            #     for result in eval_results:
-            #         if len(result['prob'])<(i+1): continue
-            #         prob_i+=result['prob'][i]
-            #         vel_i += result['vel'][i]
-            #         coord_i += result['coord'][i]
-            #         dir_i += result['dir'][i]
-            #         cnt+=1
-            #     loss[0,i] = prob_i/cnt
-            #     loss[1,i] = coord_i/cnt
-            #     loss[2,i] = vel_i/cnt
-            #     loss[3,i] = dir_i/cnt
-            #
-            # loss = loss.numpy()
-            # p = f'./{self.exp_name}'
-            # with open(p, 'wb') as f:
-            #     pickle.dump(loss, f)
-            # plt_pred = wandb.Image(draw_metrics(loss))
 
     def metrics(self,pred,gt):
         #gt.pop('other')
@@ -573,7 +541,6 @@ class Trainer:
         max_agents = agents_list[max_indx]
         return max_agents,prob,the_indx
 
-
     def inference(self, data, eval=False):
 
         agent_num = data['agent_mask'].sum().item()
@@ -624,7 +591,6 @@ class Trainer:
                 else:
                     cnt+=1
                     continue
-
             pred_list.append(the_agent)
             data['agent_feat'][:,i] = Tensor(the_agent.get_inp())
             idx_list.append(indx)
