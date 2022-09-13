@@ -311,15 +311,15 @@ class initializer(nn.Module):
             data['agent_feat'][:,i] = Tensor(the_agent.get_inp())
             idx_list.append(indx)
 
-
             heat_maps.append(get_heatmap(agents.position[:,0][center_mask], agents.position[:, 1][center_mask],prob[center_mask].cpu().numpy(), 20))
             prob_list.append(prob)
 
         output = {}
         output['agent'] = pred_list
         output['prob'] = prob_list
+        output['heat_maps'] = heat_maps
 
-        return output, heat_maps
+        return output
     def forward(self, data, random_mask=True, eval=False):
         if eval==True:
             return self.inference(data)
@@ -337,7 +337,6 @@ class initializer(nn.Module):
 
         pred = pred_dists
         pred['prob'] = nn.Sigmoid()(pred['prob'])
-
 
 
         return pred, total_loss, losses

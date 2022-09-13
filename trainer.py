@@ -13,9 +13,9 @@ from torch import optim
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader
 
-from utils.utils import get_time_str,time_me,transform_to_agent,from_list_to_batch,rotate,get_polygon,get_agent_pos_from_vec
+from utils.utils import get_time_str,time_me,transform_to_agent,from_list_to_batch,rotate,normalize_angle
 from utils.typedef import AgentType
-
+from metrics.mmd.mmd import MMD
 from TrafficGen_init.models.init_model import initializer
 from TrafficGen_init.models.sceneGen import sceneGen
 from TrafficGen_init.data_process.init_dataset import initDataset,WaymoAgent
@@ -141,17 +141,6 @@ class Trainer:
                         self.eval_init()
 
 
-    def get_heatmap(self,inp):
-
-        gt_num = 4
-
-        inp['agent_mask'][:,gt_num:] = 0
-        pred, _, _ = self.model(inp,False)
-        gt_idx = inp['vec_index'][:,:gt_num]
-        plt = draw_heatmap(inp['center'][0],pred[0,:,0],gt_idx)
-
-        return plt
-
     def process_case_for_eval(self,data_path,data_num):
         self.data_for_gen = {}
         cnt = 0
@@ -162,7 +151,6 @@ class Trainer:
                 datas = pickle.load(f)
 
             self.data_for_gen[cnt] = self.process(datas)
-
             cnt+=1
 
     def transform_coordinate_map(self,data,lane):
@@ -178,81 +166,7 @@ class Trainer:
         y_transform = np.cos(sdc_theta) * y + np.sin(sdc_theta) * x
         output_coords = np.stack((x_transform, y_transform), axis=-1)
         lane[..., :2] = output_coords
-
         return lane
-
-    def process(self,data):
-        case_info = {}
-
-        data['lane'] = self.transform_coordinate_map(data,data['lane'])
-        data['unsampled_lane'] = self.transform_coordinate_map(data, data['unsampled_lane'])
-        # case_info
-
-        scene = WaymoScene(data)
-        # agent: x,y,vx,vy,l,w,sin_head,cos_head
-        case_info["agent"] = scene.agent_data
-        case_info['agent'][..., 4] = 5.286
-        case_info['agent'][..., 5] = 2.332
-        case_info["agent_mask"] = scene.agent_mask
-
-        case_info['center'], case_info['center_mask'], case_info['bound'], case_info['bound_mask'], \
-        case_info['cross'], case_info['cross_mask'], case_info['rest'] = self.process_map(data)
-
-        self.filter_agent(case_info)
-
-        vec_ind = case_info['vec_index'].to(int)
-        line_seg = Tensor(case_info['center'])
-
-        # agent info in world coord[:8] and vector coord[8:]
-        padding_content = torch.cat([case_info['agent'], case_info['long_perc'].unsqueeze(-1),
-                                     case_info['lat_perc'].unsqueeze(-1), case_info['relative_dir'].unsqueeze(-1),
-                                     case_info['v_value'].unsqueeze(-1)], dim=-1)
-
-        gather_vec = vec_ind.view(*vec_ind.shape, 1).repeat(1, 1, 7)
-        the_vec = torch.gather(line_seg, 1, gather_vec)
-        line_with_agent = torch.cat([padding_content, the_vec], -1)
-
-        b, v, _ = line_seg.shape
-        gt = torch.zeros([b, v, 5])
-        padding_content = padding_content[..., 8:]
-        agent_mask = case_info["agent_mask"]
-        for i in range(b):
-            mask = agent_mask[i]
-            agent_info = padding_content[i]
-            indx = vec_ind[i]
-            indx = indx[mask.to(bool)]
-            gt[i, indx, 0] = 1
-            gt[i, indx, 1:] = agent_info[mask.to(bool)]
-
-        case_info['gt'] = gt
-        case_info['line_with_agent'] = line_with_agent
-
-        ind = list(range(0, 190, 10))
-        lane = data['lane'][ind]
-        case_info['lane'] = lane
-        case_list = []
-
-        for i in range(1):
-            dic = {}
-            for k, v in case_info.items():
-                dic[k] = v[i]
-            case_list.append(dic)
-
-        pos = data['sdc_pos'][0]
-        lane = data['unsampled_lane']
-        lane[..., :2] -= pos
-        sdc_theta = data['sdc_theta'][0]
-        x = lane[..., 0]
-        y = lane[..., 1]
-        x_transform = np.cos(sdc_theta) * x - np.sin(sdc_theta) * y
-        y_transform = np.cos(sdc_theta) * y + np.sin(sdc_theta) * x
-        output_coords = np.stack((x_transform, y_transform), axis=-1)
-        lane[..., :2] = output_coords
-
-        case_list[0]['traf'] = data['traf_p_c_f']
-        case_list[0]['center_info'] = data['center_info']
-        case_list[0]['unsampled_lane'] = lane
-        return case_list
 
     def draw_generation_process(self,vis=True, save=False):
         save_path = '/Users/fenglan/Downloads/waymo/onemap'
@@ -416,13 +330,19 @@ class Trainer:
     def eval_init(self):
         self.model.eval()
         eval_results = []
+
+
+        mmd_metrics = {'heading': MMD(kernel_mul=1.0, kernel_num=1),
+                       'size': MMD(kernel_mul=1.0, kernel_num=1),
+                       'speed': MMD(kernel_mul=1.0, kernel_num=1),
+                       'position':MMD(kernel_mul=1.0, kernel_num=1)}
+
         with torch.no_grad():
             eval_data = self.eval_data_loader
             cnt = 0
-
             imgs = {}
             for batch in eval_data:
-                if cnt>30:break
+                target_agent = copy.deepcopy(batch['agent'])
                 seed(cnt)
                 for key in batch.keys():
                     if isinstance(batch[key], torch.DoubleTensor):
@@ -430,12 +350,39 @@ class Trainer:
                     if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
                         batch[key] = batch[key].cuda()
 
-                #output, heat_maps = self.inference(batch)
-                output, heat_maps = self.model(batch,eval=True)
+
+                output= self.model(batch,eval=True)
                 center = batch['center'][0].cpu().numpy()
                 rest = batch['rest'][0].cpu().numpy()
                 bound = batch['bound'][0].cpu().numpy()
                 pred_agent = output['agent']
+
+                agent_num = len(pred_agent)
+                pred_agent = pred_agent[1:]
+                source = {'heading':  Tensor(normalize_angle(np.concatenate([x.heading for x in pred_agent],axis=0))),
+                          'size': Tensor(np.concatenate([x.length_width for x in pred_agent],axis=0)),
+                          'speed': Tensor(np.concatenate([x.velocity for x in pred_agent],axis=0)),
+                          'position': Tensor(np.concatenate([x.position for x in pred_agent],axis=0))}
+
+                target = {'heading': normalize_angle(target_agent[0,1:agent_num,[4]].cpu()),
+                          'size':  target_agent[0,1:agent_num,5:7].cpu(),
+                          'speed':  target_agent[0,1:agent_num,2:4].cpu(),
+                          'position':  target_agent[0,1:agent_num,:2].cpu()}
+
+                for attr, metri in mmd_metrics.items():
+                    # ignore empty scenes
+                    if agent_num <= 1:
+                        continue
+                    metri.update(source[attr], target[attr])
+
+                if cnt < 30:
+                    imgs[f'vis_{cnt}'] = wandb.Image(draw(center, pred_agent, rest, edge=bound))
+                    cnt+=1
+
+            log = {}
+            log['imgs'] = imgs
+            if not self.in_debug:
+                wandb.log(log)
 
                 # pred= []
                 # vec_b = batch['vec_based_rep'][0]
@@ -445,173 +392,6 @@ class Trainer:
                 #     agent_i = agent[i]
                 #     pred.append(get_agent_pos_from_vec(batch['center'][0],vec_i[:2],vec_i[[2]],vec_i[[3]],vec_i[[4]],agent_i[5:7]))
 
-                imgs[f'vis_{cnt}'] = wandb.Image(draw(center, pred_agent, rest, edge=bound))
-                cnt+=1
-
-            log = {}
-            log['imgs'] = imgs
-            if not self.in_debug:
-                wandb.log(log)
-
-    def metrics(self,pred,gt):
-        #gt.pop('other')
-        for k,v in gt.items():
-            gt[k] = gt[k].squeeze(0).cpu()
-
-        gt_agent = gt['agent_feat'][1:]
-        agent_num = gt['agent_mask'].shape[0]
-        line_mask = gt['center_mask'].to(bool)
-        vec_indx = gt['vec_index'].to(int)
-        gt_prob = gt['gt'][:,0][line_mask]
-        pred_prob = torch.Tensor(np.stack(pred['prob']))[:agent_num-1]
-        pred_prob = pred_prob[:,line_mask]
-        pred_agent = pred['agent']
-
-        BCE = torch.nn.BCEWithLogitsLoss()
-        MSE = torch.nn.MSELoss()
-        L1 = torch.nn.L1Loss()
-
-        gt_prob[vec_indx[0]]=0
-
-        bce_list = []
-        coord_list = []
-        vel_list = []
-        dir_list = []
-        for i in range(agent_num-1):
-
-            bce_loss = BCE(pred_prob[i],gt_prob)
-            gt_prob[vec_indx[i+1]]=0
-
-            pred_coord = pred_agent[i]['coord']
-            pred_vel = pred_agent[i]['vel']
-            pred_dir = pred_agent[i]['agent_dir']
-
-            gt_coord = gt_agent[i,:2]
-            gt_vel = gt_agent[i,2:4]
-            gt_dir = gt_agent[i,6:8]
-
-            coord_loss = MSE(gt_coord,pred_coord)
-            vel_loss = MSE(gt_vel,pred_vel)
-            dir_loss = L1(gt_dir,pred_dir)
-
-            bce_list.append(bce_loss)
-            coord_list.append(coord_loss)
-            vel_list.append(vel_loss)
-            dir_list.append(dir_loss)
-
-        metrics = {}
-        metrics['prob'] = bce_list
-        metrics['vel'] = vel_list
-        metrics['coord'] = coord_list
-        metrics['dir'] = dir_list
-        return metrics
-
-    def sample_from_distribution(self, pred,center_lane,repeat_num=10):
-        prob = pred['prob'][0]
-        max_prob=0
-        for i in range(3):
-            indx = choices(list(range(prob.shape[-1])), prob)[0]
-            vec_logprob_ = prob[indx]
-            if vec_logprob_>max_prob:
-                the_indx = indx
-                max_prob = max(vec_logprob_,max_prob)
-
-        #idx_list = []
-        prob_list = []
-        agents_list = []
-        for i in range(repeat_num):
-            pos = torch.clip(pred['pos'].sample(),min=-0.5,max=0.5)
-            pos_logprob = pred['pos'].log_prob(pos)
-
-            heading = torch.clip(pred['heading'].sample(),min=-np.pi/2,max=np.pi/2)
-            heading_logprob = pred['heading'].log_prob(heading)
-
-            vel_heading = torch.clip(pred['vel_heading'].sample(),min=-np.pi/2,max=np.pi/2)
-            vel_heading_logprob = pred['vel_heading'].log_prob(vel_heading)
-
-            bbox = torch.clip(pred['bbox'].sample(),min=1.5)
-            bbox_logprob = pred['bbox'].log_prob(bbox)
-
-            speed = torch.clip(pred['speed'].sample(),min=0)
-            speed_logprob = pred['speed'].log_prob(speed)
-
-            agents = get_agent_pos_from_vec(center_lane, pos[0], speed[0], vel_heading[0], heading[0], bbox[0])
-            agents_list.append(agents)
-            pos_logprob_ = pos_logprob[0,the_indx]
-            heading_logprob_ = heading_logprob[0,the_indx]
-            vel_heading_logprob_ = vel_heading_logprob[0,the_indx]
-            bbox_logprob_ = bbox_logprob[0,the_indx]
-            speed_logprob_ = speed_logprob[0,the_indx]
-            all_prob = pos_logprob_+heading_logprob_+vel_heading_logprob_+heading_logprob_+bbox_logprob_+speed_logprob_
-            prob_list.append(all_prob)
-
-        max_indx = np.argmax(prob_list)
-        max_agents = agents_list[max_indx]
-        return max_agents,prob,the_indx
-
-    def inference(self, data, eval=False):
-
-        agent_num = data['agent_mask'].sum().item()
-
-        idx_list = []
-
-        vec_indx = data['vec_based_rep'][...,0]
-        idx_list.append(vec_indx[0,0].item())
-        shapes = []
-
-        ego_agent = data['agent'][0,[0]].cpu().numpy()
-        ego_agent = WaymoAgent(ego_agent)
-        ego_poly = ego_agent.get_polygon()[0]
-            #get_polygon(ego_agent[:2],ego_agent[4],ego_agent[5] + 0.1, ego_agent[6] + 0.1)
-        shapes.append(ego_poly)
-
-        virtual_list = []
-        minimum_agent = self.cfg['pad_num']
-        center = data['center'][0]
-        center_mask = data['center_mask'][0].cpu().numpy()
-        pred_list = []
-        pred_list.append(ego_agent)
-        heat_maps = []
-        prob_list = []
-
-        for i in range(1,max(agent_num,minimum_agent)):
-            data['agent_mask'][:, :i] = 1
-            data['agent_mask'][:,i:]=0
-
-            pred, _, _ = self.model(data, False)
-
-            pred['prob'][:,idx_list]=0
-            cnt=0
-            while cnt<10:
-                agents, prob, indx = self.sample_from_distribution(pred,center)
-                the_agent = agents.get_agent(indx)
-
-                poly = the_agent.get_polygon()[0]
-
-                intersect = False
-                for shape in shapes:
-                    if poly.intersects(shape):
-                        intersect = True
-                        break
-                if not intersect:
-                    shapes.append(poly)
-                    break
-                else:
-                    cnt+=1
-                    continue
-            pred_list.append(the_agent)
-            data['agent_feat'][:,i] = Tensor(the_agent.get_inp())
-            idx_list.append(indx)
-
-
-            heat_maps.append(get_heatmap(agents.position[:,0][center_mask], agents.position[:, 1][center_mask],prob[center_mask].cpu().numpy(), 20))
-            prob_list.append(prob)
-
-        output = {}
-        output['agent'] = pred_list
-        output['prob'] = prob_list
-
-        return output, heat_maps
     @time_me
     def train_one_epoch(self, train_data):
         self.current_epoch += 1
@@ -828,3 +608,56 @@ class Trainer:
     def make_dir(self):
         os.makedirs(self.exp_data_path, exist_ok=False)
         os.mkdir(os.path.join(self.exp_data_path, "saved_models"))
+
+    # def metrics(self,pred,gt):
+    #     #gt.pop('other')
+    #     for k,v in gt.items():
+    #         gt[k] = gt[k].squeeze(0).cpu()
+    #
+    #     gt_agent = gt['agent_feat'][1:]
+    #     agent_num = gt['agent_mask'].shape[0]
+    #     line_mask = gt['center_mask'].to(bool)
+    #     vec_indx = gt['vec_index'].to(int)
+    #     gt_prob = gt['gt'][:,0][line_mask]
+    #     pred_prob = torch.Tensor(np.stack(pred['prob']))[:agent_num-1]
+    #     pred_prob = pred_prob[:,line_mask]
+    #     pred_agent = pred['agent']
+    #
+    #     BCE = torch.nn.BCEWithLogitsLoss()
+    #     MSE = torch.nn.MSELoss()
+    #     L1 = torch.nn.L1Loss()
+    #
+    #     gt_prob[vec_indx[0]]=0
+    #
+    #     bce_list = []
+    #     coord_list = []
+    #     vel_list = []
+    #     dir_list = []
+    #     for i in range(agent_num-1):
+    #
+    #         bce_loss = BCE(pred_prob[i],gt_prob)
+    #         gt_prob[vec_indx[i+1]]=0
+    #
+    #         pred_coord = pred_agent[i]['coord']
+    #         pred_vel = pred_agent[i]['vel']
+    #         pred_dir = pred_agent[i]['agent_dir']
+    #
+    #         gt_coord = gt_agent[i,:2]
+    #         gt_vel = gt_agent[i,2:4]
+    #         gt_dir = gt_agent[i,6:8]
+    #
+    #         coord_loss = MSE(gt_coord,pred_coord)
+    #         vel_loss = MSE(gt_vel,pred_vel)
+    #         dir_loss = L1(gt_dir,pred_dir)
+    #
+    #         bce_list.append(bce_loss)
+    #         coord_list.append(coord_loss)
+    #         vel_list.append(vel_loss)
+    #         dir_list.append(dir_loss)
+    #
+    #     metrics = {}
+    #     metrics['prob'] = bce_list
+    #     metrics['vel'] = vel_list
+    #     metrics['coord'] = coord_list
+    #     metrics['dir'] = dir_list
+    #     return metrics

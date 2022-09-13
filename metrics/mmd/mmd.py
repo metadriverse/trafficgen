@@ -49,37 +49,37 @@ class MMD(Metric):
     def compute(self):
         return self.mmd_sum / self.count
 
+if __name__ == "__main__":
+    heading_mmd = MMD(kernel_mul=1.0, kernel_num=1)
+    size_mmd = MMD(kernel_mul=1.0, kernel_num=1)
+    speed_mmd = MMD(kernel_mul=1.0, kernel_num=1)
 
-heading_mmd = MMD(kernel_mul=1.0, kernel_num=1)
-size_mmd = MMD(kernel_mul=1.0, kernel_num=1)
-speed_mmd = MMD(kernel_mul=1.0, kernel_num=1)
+    mmd_metrics = {'heading': MMD(kernel_mul=1.0, kernel_num=1),
+                   'size': MMD(kernel_mul=1.0, kernel_num=1),
+                   'speed': MMD(kernel_mul=1.0, kernel_num=1)}
 
-mmd_metrics = {'heading': MMD(kernel_mul=1.0, kernel_num=1),
-               'size': MMD(kernel_mul=1.0, kernel_num=1),
-               'speed': MMD(kernel_mul=1.0, kernel_num=1)}
+    dims = {'heading': 2, 'size': 2, 'speed': 2}
 
-dims = {'heading': 2, 'size': 2, 'speed': 2}
+    # iterate over all the real scenes in the dataset (or sampled dataset)
+    for i in range(100):
 
-# iterate over all the real scenes in the dataset (or sampled dataset)
-for i in range(100):
+        # number of samples for each scene
+        N = np.random.randint(0, 10)
 
-    # number of samples for each scene
-    N = np.random.randint(0, 10)
+        for attr, dim in dims.items():
 
-    for attr, dim in dims.items():
+            # ignore empty scenes
+            if N == 0:
+                continue
 
-        # ignore empty scenes
-        if N == 0:
-            continue
+            # obtain samples from real data
+            source = torch.randn(N, dim)
 
-        # obtain samples from real data
-        source = torch.randn(N, dim)
+            # generate samples from model
+            target = torch.randn(N, dim)
 
-        # generate samples from model
-        target = torch.randn(N, dim)
+            # update metric
+            mmd_metrics[attr].update(source, target)
 
-        # update metric
-        mmd_metrics[attr].update(source, target)
-
-for attr, metric in mmd_metrics.items():
-    print('averaged MMD for {}: {}'.format(attr, metric.compute()))
+    for attr, metric in mmd_metrics.items():
+        print('averaged MMD for {}: {}'.format(attr, metric.compute()))

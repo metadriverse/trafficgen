@@ -58,9 +58,9 @@ def get_agent_pos_from_vec(vec,long_lat,speed,vel_heading,heading,bbox):
     agent_num,_ = vel.shape
 
     type = Tensor([[1]]).repeat(agent_num,1).to(coord.device)
-    agent = torch.cat([coord,vel,agent_dir.unsqueeze(1),bbox,type],dim=-1).cpu().numpy()
+    agent = torch.cat([coord,vel,agent_dir.unsqueeze(1),bbox,type],dim=-1).detach().cpu().numpy()
 
-    vec_based_rep = torch.cat([long_lat,speed.unsqueeze(-1),vel_heading.unsqueeze(-1),heading.unsqueeze(-1),vec],dim=-1).cpu().numpy()
+    vec_based_rep = torch.cat([long_lat,speed.unsqueeze(-1),vel_heading.unsqueeze(-1),heading.unsqueeze(-1),vec],dim=-1).detach().cpu().numpy()
 
     agent = WaymoAgent(agent,vec_based_rep)
 
@@ -171,6 +171,23 @@ def process_map(lane,traf, center_num=384, edge_num=128, lane_range=60, offest=-
 
 def get_time_str():
     return datetime.datetime.now().strftime("%y_%m_%d-%H_%M_%S")
+
+
+def normalize_angle(angle):
+    if isinstance(angle, torch.Tensor):
+        while not torch.all(angle >= 0):
+            angle[angle < 0] += np.pi * 2
+        while not torch.all(angle < np.pi * 2):
+            angle[angle >= np.pi * 2] -= np.pi * 2
+        return angle
+
+    else:
+        while not np.all(angle>=0):
+            angle[angle<0]+=np.pi*2
+        while not np.all(angle<np.pi*2):
+            angle[angle>=np.pi*2]-=np.pi*2
+
+        return angle
 
 def cal_rel_dir(dir1,dir2):
     dist = dir1-dir2
