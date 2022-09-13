@@ -356,15 +356,16 @@ class Trainer:
 
                 agent_num = len(pred_agent)
                 pred_agent = pred_agent[1:]
-                source = {'heading':  Tensor(normalize_angle(np.concatenate([x.heading for x in pred_agent],axis=0))),
-                          'size': Tensor(np.concatenate([x.length_width for x in pred_agent],axis=0)),
-                          'speed': Tensor(np.concatenate([x.velocity for x in pred_agent],axis=0)),
-                          'position': Tensor(np.concatenate([x.position for x in pred_agent],axis=0))}
+                device = batch['center'].device
+                source = {'heading':  torch.tensor(normalize_angle(np.concatenate([x.heading for x in pred_agent],axis=0)),device=device),
+                          'size': Tensor(np.concatenate([x.length_width for x in pred_agent],axis=0),device=device),
+                          'speed': Tensor(np.concatenate([x.velocity for x in pred_agent],axis=0),device=device),
+                          'position': Tensor(np.concatenate([x.position for x in pred_agent],axis=0),device=device)}
 
-                target = {'heading': normalize_angle(target_agent[0,1:agent_num,[4]].cpu()),
-                          'size':  target_agent[0,1:agent_num,5:7].cpu(),
-                          'speed':  target_agent[0,1:agent_num,2:4].cpu(),
-                          'position':  target_agent[0,1:agent_num,:2].cpu()}
+                target = {'heading': normalize_angle(target_agent[0,1:agent_num,[4]]),
+                          'size':  target_agent[0,1:agent_num,5:7],
+                          'speed':  target_agent[0,1:agent_num,2:4],
+                          'position':  target_agent[0,1:agent_num,:2]}
 
                 for attr, metri in mmd_metrics.items():
                     # ignore empty scenes
