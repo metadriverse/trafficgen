@@ -133,7 +133,7 @@ class sceneGen(initializer):
             for i in range(bs):
                 data['gt_distri'][i, step_idx, agent_vec_indx[i]] = 1
         generated_indx = []
-        generated_indx.append(data['agent_vec_indx'][0,0])
+        generated_indx.append(data['agent_vec_indx'][0,0].item())
         for step_idx in range(1, max_agent_num):
             # construct the input data that contain only the agents (0, 1, ..., step_idx-1)
             agent_enc = self.agent_feature_extract(data['agent_feat'])
