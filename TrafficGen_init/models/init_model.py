@@ -17,7 +17,7 @@ class initializer(nn.Module):
         super().__init__()
         self.cfg = cfg
         # input embedding stem
-        self.hidden_dim = 1024
+        self.hidden_dim = cfg['hidden_dim']
         self.CG_agent = CG_stacked(5, self.hidden_dim)
         self.CG_line = CG_stacked(5, self.hidden_dim)
         self.agent_encode = MLP_3([17, 256, 512, self.hidden_dim])
