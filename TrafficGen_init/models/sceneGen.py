@@ -30,18 +30,18 @@ class sceneGen(initializer):
         # 2. process the data as if there is only the next agent in the scene.
 
         raise NotImplementedError
-    def compute_loss(self, data, pred_dists,mask,step_indx):
+    def compute_loss(self, data, pred_dists,mask,agent_vec_idx,step_idx):
         BCE = torch.nn.BCEWithLogitsLoss()
         MSE = torch.nn.MSELoss(reduction='none')
-        prob_loss = BCE(pred_dists['prob'], data['gt_distribution'])
+        prob_loss = BCE(pred_dists['prob'], data['gt_distri'][:,step_idx])
 
         line_mask = data['center_mask']
         prob_loss = torch.sum(prob_loss * line_mask) / max(torch.sum(line_mask), 1)
         # long lat loss
         mask = mask.unsqueeze(-1)
 
-        gather2 = step_indx.unsqueeze(-1).unsqueeze(-1).repeat(1,1,2)
-        gather1 = step_indx.unsqueeze(-1)
+        gather2 = agent_vec_idx.unsqueeze(-1).unsqueeze(-1).repeat(1,1,2)
+        gather1 = agent_vec_idx.unsqueeze(-1)
         gt_pos = torch.gather(data['gt_long_lat'],1,gather2)
         gt_bbox = torch.gather(data['gt_bbox'],1,gather2)
         gt_speed = torch.gather(data['gt_speed'],1,gather1)
@@ -124,6 +124,12 @@ class sceneGen(initializer):
         all_preds = []
         data['agent_mask_gt'] = copy.deepcopy(data['agent_mask'])
         agent_context_list = []
+        bs,lane_num = data['gt_distribution'].shape
+        device =  data['gt_distribution'].device
+        gt_distri = torch.zeros([bs,max_agent_num,lane_num],device=device)
+        data['gt_distri'] = gt_distri
+
+
         for step_idx in range(1, max_agent_num):
             # construct the input data that contain only the agents (0, 1, ..., step_idx-1)
             self._obtain_step_input(step_idx, data)
@@ -149,9 +155,12 @@ class sceneGen(initializer):
             agent_vec_indx = data['agent_vec_indx'][:, step_idx]
             gather_feat = agent_vec_indx.view(bs,1,1).repeat(1,1,feature_dim)
             feature = torch.gather(feature,1,gather_feat)
-            data['gt_distribution'][:]=0
+
             for i in range(bs):
-                data['gt_distribution'][i,agent_vec_indx[i]]=1
+                data['gt_distri'][i,step_idx,agent_vec_indx[i]]=1
+            # data['gt_distribution'][:]=0
+            # for i in range(bs):
+            #     data['gt_distribution'][i,agent_vec_indx[i]]=1
 
             pred_dists = self.feature_to_dists(feature, K)
             pred_dists['prob'] = nn.Sigmoid()(prob_pred)
@@ -159,7 +168,7 @@ class sceneGen(initializer):
 
             if eval==False:
                 mask = data['agent_mask_gt'][:, step_idx]
-                losses, total_loss = self.compute_loss(data, pred_dists,mask,agent_vec_indx)
+                losses, total_loss = self.compute_loss(data, pred_dists,mask,agent_vec_indx,step_idx)
                 all_losses.append(losses)
                 all_preds.append(pred_dists)
                 all_total_loss += total_loss
