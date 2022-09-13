@@ -119,6 +119,7 @@ class sceneGen(initializer):
     def forward(self, data, eval=False):
 
         max_agent_num = torch.max(torch.sum(data['gt_distribution'], dim=1)).to(int).item()
+        max_agent_num = min(max_agent_num,16)
         all_losses = []
         all_total_loss = 0
         all_preds = []
@@ -161,8 +162,7 @@ class sceneGen(initializer):
             feature = torch.gather(feature,1,gather_feat)
 
             pred_dists = self.feature_to_dists(feature, K)
-            pred_dists['prob'] = nn.Sigmoid()(prob_pred)
-
+            pred_dists['prob'] = prob_pred
 
             if eval==False:
                 mask = data['agent_mask_gt'][:, step_idx]
@@ -171,6 +171,7 @@ class sceneGen(initializer):
                 all_preds.append(pred_dists)
                 all_total_loss += total_loss
             else:
+                pred_dists['prob'] = nn.Sigmoid()(pred_dists['prob'])
                 agent = self.sample_from_distribution(pred_dists,data['center'])
                 next_inp = agent.get_inp()
                 next_inp = torch.tensor(next_inp,device=data['agent_feat'].device)
