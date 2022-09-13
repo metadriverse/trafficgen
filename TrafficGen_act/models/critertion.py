@@ -9,11 +9,10 @@ def loss_v1(pred,gt):
     velo_pred = pred['velo']
     pos_pred = pred['pos']
     heading_pred = pred['heading']
-    pos_pred = pos_pred
 
-    pos_gt = gt[:,1:, :2].unsqueeze(1).repeat(1, 6, 1, 1)
-    velo_gt = gt[:,1:, 2:4].unsqueeze(1).repeat(1, 6, 1, 1)
-    heading_gt = gt[:,1:, 4].unsqueeze(1).repeat(1, 6, 1)
+    pos_gt = gt['gt_pos'].unsqueeze(1).repeat(1, 6, 1, 1)
+    velo_gt = gt['gt_vel'].unsqueeze(1).repeat(1, 6, 1, 1)
+    heading_gt = gt['gt_heading'].unsqueeze(1).repeat(1, 6, 1)
 
     pred_end = pos_pred[:, :, -1]
     gt_end = pos_gt[:, :, -1]

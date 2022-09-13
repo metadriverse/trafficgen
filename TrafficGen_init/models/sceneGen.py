@@ -231,14 +231,9 @@ class sceneGen(nn.Module):
 
     def inference(self, data):
         max_agent_num = torch.max(torch.sum(data['gt_distribution'], dim=1)).to(int).item()
-        max_agent_num = min(max_agent_num,16)
 
         all_preds = []
-        data['agent_mask_gt'] = copy.deepcopy(data['agent_mask'])
         bs,lane_num = data['gt_distribution'].shape
-        device =  data['gt_distribution'].device
-        gt_distri = torch.zeros([bs,max_agent_num,lane_num],device=device)
-        data['gt_distri'] = gt_distri
 
         for step_idx in range(1, max_agent_num):
             agent_vec_indx = data['agent_vec_indx'][:, step_idx]

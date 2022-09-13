@@ -86,7 +86,7 @@ class Trainer:
         self.eval_data_loader = None
 
         if self.main_process and self.cfg["need_eval"]:
-            test_set = initDataset(self.cfg, args, eval=True) #if self.model_type=='init' else actDataset(self.cfg, args, eval=True)
+            test_set = actDataset(self.cfg, args, eval=True) if self.model_type=='act' else initDataset(self.cfg, args, eval=True)
             self.eval_data_loader = DataLoader(test_set, shuffle=False, batch_size=cfg['eval_batch_size'],
                                                num_workers=self.cfg['num_workers'])
 
@@ -329,13 +329,13 @@ class Trainer:
 
     def eval_init(self):
         self.model.eval()
-        mmd_metrics = {'heading': MMD(kernel_mul=1.0, kernel_num=1),
-                       'size': MMD(kernel_mul=1.0, kernel_num=1),
-                       'speed': MMD(kernel_mul=1.0, kernel_num=1),
-                       'position':MMD(kernel_mul=1.0, kernel_num=1)}
 
+        eval_data = self.eval_data_loader
         with torch.no_grad():
-            eval_data = self.eval_data_loader
+            mmd_metrics = {'heading': MMD(device='cuda', kernel_mul=1.0, kernel_num=1),
+                           'size': MMD(device='cuda',kernel_mul=1.0, kernel_num=1),
+                           'speed': MMD(device='cuda',kernel_mul=1.0, kernel_num=1),
+                           'position': MMD(device='cuda',kernel_mul=1.0, kernel_num=1)}
             cnt = 0
             imgs = {}
             for batch in eval_data:
@@ -346,7 +346,6 @@ class Trainer:
                         batch[key] = batch[key].float()
                     if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
                         batch[key] = batch[key].cuda()
-
 
                 output= self.model(batch,eval=True)
                 center = batch['center'][0].cpu().numpy()

@@ -57,13 +57,12 @@ class actuator(nn.Module):
         agent = data['agent']
         agent_mask = data['agent_mask']
 
-
         all_vec = torch.cat([data['center'],data['cross'],data['bound']],dim=-2)
         line_mask = torch.cat([data['center_mask'],data['cross_mask'],data['bound_mask']],dim=1)
 
         polyline = all_vec[...,:4]
-        polyline_type = all_vec[...,5].to(int)
-        polyline_traf = all_vec[..., 6].to(int)
+        polyline_type = all_vec[...,4].to(int)
+        polyline_traf = all_vec[..., 5].to(int)
         polyline_type_embed = self.type_embedding(polyline_type)
         polyline_traf_embed = self.traf_embedding(polyline_traf)
 
@@ -98,55 +97,9 @@ class actuator(nn.Module):
         pred['heading'] = heading_pred
 
 
-        # velo_cov = torch.Tensor([[velo_pred[]],[]])
-        # velo_gauss = MultivariateNormal(velo_pred[:,2],)
-
-        #heading = heading_diff_pred.cumsum(-1)
-        # x = torch.cumsum(speed_pred*torch.sin(heading),dim=-1).unsqueeze(-1)
-        # y = torch.cumsum(speed_pred*torch.cos(heading),dim=-1).unsqueeze(-1)
-        # pos = torch.cat([x, y], dim=-1)
-
         if is_training:
-            gt = data['ego_gt']
-            loss, loss_dic = loss_v1(pred, gt)
-            # MSE = torch.nn.MSELoss(reduction='none')
-            # L1 = torch.nn.L1Loss(reduction='none')
-            # CLS = torch.nn.CrossEntropyLoss()
-            #
-            # gt = data['ego_gt'][..., :2].unsqueeze(1).repeat(1,6,1,1)
-            # #speed_gt = data['processed_gt']['speed'].unsqueeze(1).repeat(1,6,1)
-            # #heading_gt = data['processed_gt']['heading'].unsqueeze(1).repeat(1,6,1)
-            #
-            # pred_end = pos[:,:,-1]
-            # gt_end = gt[:,:,-1]
-            # dist = MSE(pred_end,gt_end).mean(-1)
-            # min_index = torch.argmin(dist, dim=-1)
-            #
-            # pos_loss = MSE(pos,gt[:,:,1:]).mean(-1).mean(-1)
-            #
-            # speed_loss = L1(speed_gt,speed_pred).mean(-1)
-            # speed_loss = torch.gather(speed_loss,dim=1,index=min_index.unsqueeze(-1)).mean()
-            #
-            # heading_loss = L1(heading_gt,heading_diff_pred).mean(-1)
-            # heading_loss = torch.gather(heading_loss,dim=1,index=min_index.unsqueeze(-1)).mean()
-            #
-            # pos_loss = torch.gather(pos_loss,dim=1,index=min_index.unsqueeze(-1)).mean()
-            #
-            # cls_loss = CLS(prob,min_index)
-            #
-            # losses = {}
-            # losses['cls_loss'] =cls_loss
-            # losses['speed_loss'] = speed_loss
-            # losses['heading_loss'] = heading_loss
-            # losses['pos_loss'] = pos_loss
-            # #losses['v_dir_loss'] = v_dir_loss
-            #
-            # total_loss = cls_loss+heading_loss+speed_loss+10*pos_loss
-            # ret = {}
-            # ret['pos'] = pos
-            # ret['prob'] = prob
+            loss, loss_dic = loss_v1(pred, data)
             return pred, loss,loss_dic
 
         else:
-            #ret = torch.cat([pos,speed_pred.unsqueeze(-1),heading.unsqueeze(-1)],dim=-1)
             return pred

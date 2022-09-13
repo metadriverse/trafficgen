@@ -4,49 +4,12 @@ import pickle
 
 import numpy as np
 from torch.utils.data import Dataset
-from TrafficGen_act.models.critertion import loss_v1
+from utils.utils import process_map,rotate,cal_rel_dir
+from TrafficGen_init.data_process.agent_process import WaymoAgent
 
 LANE_SAMPLE = 10
 RANGE = 60
 MAX_AGENT = 32
-
-
-def process_map(lane,traf, center_num=128, edge_num=128, lane_range=60, offest=-40):
-
-    lane_with_traf = np.zeros([*lane.shape[:-1], 5])
-    lane_with_traf[..., :4] = lane
-
-    lane_i_id = lane[:, -1]
-    for a_traf in traf:
-        lane_id = a_traf[0]
-        state = a_traf[-2]
-        lane_idx = np.where(lane_i_id == lane_id)
-        lane_with_traf[lane_idx, -1] = state
-
-    lane = lane_with_traf
-
-    lane_type = lane[:, 2]
-    center_1 = lane_type == 1
-    center_2 = lane_type == 2
-    center_3 = lane_type == 3
-    center_ind = center_1 + center_2 + center_3
-
-    boundary_1 = lane_type == 15
-    boundary_2 = lane_type == 16
-    bound_ind = boundary_1 + boundary_2
-
-    cross_walk = lane_type == 18
-    speed_bump = lane_type == 19
-    cross_ind = cross_walk + speed_bump
-
-    rest = ~(center_ind + bound_ind + cross_walk + speed_bump + cross_ind)
-
-    cent, cent_mask = process_lane(lane[center_ind], center_num, lane_range, offest)
-    bound, bound_mask = process_lane(lane[bound_ind], edge_num, lane_range, offest)
-    cross, cross_mask = process_lane(lane[cross_ind], 64, lane_range, offest)
-    rest, rest_mask = process_lane(lane[rest], center_num, lane_range, offest)
-
-    return cent, cent_mask, bound, bound_mask, cross, cross_mask, rest
 
 def process_case_to_input(case, agent_range=60, center_num=128, edge_num=128):
     inp = {}
@@ -147,40 +110,27 @@ class actDataset(Dataset):
         start_index = self.cfg["eval_data_start_index"] if self.eval else self.rank * data_usage_in_this_proc
         end_index = start_index + data_usage_in_this_proc
         cnt = 0
-        file_cnt = 0
+        # if self.eval:
+        #     while file_cnt+start_index < end_index and self.eval:
+        #     #for data_id in [6]:
+        #         case_path = self.data_path
+        #         case_file_path = os.path.join(case_path, f'{file_cnt+start_index}.pkl')
+        #         #case_file_path = os.path.join(case_path, f'{data_id}.pkl')
+        #         with open(case_file_path, 'rb+') as f:
+        #             case = pickle.load(f)
+        #         # self.scene_data[file_cnt] = self.process_scene(case)
+        #         self.data_loaded[file_cnt] = case
+        #         file_cnt+=1
+        #     self.data_len = file_cnt
+        # else:
+        while cnt+start_index < end_index:
+            index = cnt+start_index
+            data_file_path = os.path.join(self.data_path, f'{index}.pkl')
 
-        if self.eval:
-            while file_cnt+start_index < end_index and self.eval:
-            #for data_id in [6]:
-                case_path = self.data_path
-                case_file_path = os.path.join(case_path, f'{file_cnt+start_index}.pkl')
-                #case_file_path = os.path.join(case_path, f'{data_id}.pkl')
-                with open(case_file_path, 'rb+') as f:
-                    case = pickle.load(f)
-                # self.scene_data[file_cnt] = self.process_scene(case)
-                self.data_loaded[file_cnt] = case
-                file_cnt+=1
-            self.data_len = file_cnt
-
-        else:
-            while file_cnt+start_index < end_index:
-                index = file_cnt+start_index
-                data_path = self.data_path
-
-                data_file_path = os.path.join(data_path, f'{index}.pkl')
-
-                with open(data_file_path, 'rb+') as f:
-                    datas = pickle.load(f)
-                data = self.process(copy.deepcopy(datas))
-
-                self.data_loaded[cnt]=data[0]
-                file_cnt+=1
-                # case_cnt=0
-                # for i in range(len(data)):
-                #     self.data_loaded[cnt+case_cnt] = data[i]
-                #     case_cnt+=1
-                # cnt+=case_cnt
-                cnt+=1
+            with open(data_file_path, 'rb+') as f:
+                datas = pickle.load(f)
+            self.data_loaded[cnt] = self.process(copy.deepcopy(datas))
+            cnt+=1
             self.data_len = cnt
         print('Dataset len: {} (rank: {}), start_index: {}, end_index: {}'.format(self.data_len, self.rank,
                                                                                        start_index, end_index))
@@ -220,192 +170,95 @@ class actDataset(Dataset):
         case['traf'] = data['traf_p_c_f']
         return case
 
-
     def rotate(self,x,y,angle):
         other_x_trans = np.cos(angle) * x - np.sin(angle) * y
         other_y_trans = np.cos(angle) * y + np.sin(angle) * x
         output_coords = np.stack((other_x_trans, other_y_trans), axis=-1)
         return output_coords
 
+
+    def process_agent(self,data):
+
+        agent = data['all_agent']
+        ego = agent[:,0]
+
+        ego_pos = copy.deepcopy(ego[[0],:2])[:,np.newaxis]
+        ego_heading = ego[[0],[4]]
+
+        agent[...,:2] -= ego_pos
+        agent[..., :2] = rotate(agent[...,0],agent[...,1],-ego_heading)
+        agent[...,2:4] = rotate(agent[...,2],agent[...,3],-ego_heading)
+        agent[...,4]-=ego_heading
+
+        agent_mask = agent[...,-1]
+        agent_type_mask = agent[...,-2]
+        agent_range_mask = (abs(agent[...,0])<RANGE)*(abs(agent[...,1])<RANGE)
+        mask = agent_mask*agent_type_mask*agent_range_mask
+
+        return agent, mask.astype(bool)
+
+
+    def get_inp_gt(self,case_info,agent,agent_mask):
+        agent_context = agent[0]
+        agent_mask = agent_mask[0]
+        agent_context = agent_context[agent_mask]
+        agent_context = agent_context[:MAX_AGENT]
+        agent_mask = agent_mask[:MAX_AGENT]
+        agent_context = WaymoAgent(agent_context)
+        agent_context = agent_context.get_inp(act=True)
+        agent_context = np.pad(agent_context,([0,MAX_AGENT-agent_context.shape[0]],[0,0]))
+        agent_mask = np.pad(agent_mask,([0,MAX_AGENT-agent_mask.shape[0]]))
+
+        case_info['agent'] = agent_context
+        case_info['agent_mask'] = agent_mask
+
+        ego_future = agent[:self.pred_len,0]
+
+        case_info['gt_pos'] = ego_future[1:,:2]-ego_future[:-1,:2]
+        case_info['gt_vel'] = ego_future[1:,2:4]
+        case_info['gt_heading'] = cal_rel_dir(ego_future[1:,4],0)
+
+        return agent_context, agent_mask,agent[:self.pred_len,0]
+
     def transform_coordinate_map(self,data):
         """
         Every frame is different
         """
+        timestep = data['all_agent'].shape[0]
 
-        case_list = []
-        timestep = data['ego_p_c_f'].shape[0]
-        pred_list = data['pred_list']
-        #for i in range(0,timestep,self.pred_len):
-        for i in range(1):
-            if i+self.pred_len>=timestep:
-                break
-            sdc_theta = data['sdc_theta'][i:i + self.pred_len]
-            pos = data['sdc_pos'][i:i + self.pred_len]
-            all_agent = np.concatenate([data['ego_p_c_f'][np.newaxis,i:i+self.pred_len],data['nbrs_p_c_f'][:,i:i+self.pred_len]],axis=0)
-            coord = self.rotate(all_agent[..., 0], all_agent[..., 1], -sdc_theta) + pos
-            vel = self.rotate(all_agent[..., 2], all_agent[..., 3], -sdc_theta)
+        #sdc_theta = data['sdc_theta'][:,np.newaxis]
+        ego = data['all_agent'][:,0]
+        pos = ego[:,[0,1]][:,np.newaxis]
 
-            yaw = -sdc_theta+np.pi/2
+        lane = data['lane'][np.newaxis]
+        lane = np.repeat(lane,timestep,axis=0)
+        lane[...,:2] -= pos
 
-            all_agent[..., 4] = all_agent[..., 4] + yaw
-            all_agent[..., :2] = coord
-            all_agent[..., 2:4] = vel
+        x = lane[..., 0]
+        y = lane[..., 1]
+        ego_heading = ego[:,[4]]
+        lane[...,:2] = rotate(x,y,-ego_heading)
 
-            for j in range(all_agent.shape[0]):
-                agents = copy.deepcopy(all_agent)
-                one_case = {}
-                if np.any(agents[j,:,-1]==0):
-                    continue
-                if not agents[j,0,-2] == 1:
-                    continue
-                if j>0 and pred_list[j-1]==0:
-                    continue
-
-                pos0 = copy.deepcopy(agents[j][0,:2])
-                theta0 = -(copy.deepcopy(agents[j][0, 4])-np.pi/2)
-
-                coord = agents[...,:2]
-                vel = agents[...,2:4]
-                coord-=pos0
-
-                coord = self.rotate(coord[...,0],coord[...,1],theta0)
-                vel = self.rotate(vel[...,0],vel[...,1],theta0)
-
-                agents[...,:2]=coord
-                agents[...,2:4]=vel
-                agents[...,4]=agents[...,4]-copy.deepcopy(agents[j][0, 4])
-
-                # then recover lane's position
-                lane = copy.deepcopy(data['lane'])
-                lane[..., :2] -= pos0
-
-                output_coords = self.rotate(lane[..., 0],lane[..., 1],theta0)
-
-                lane[..., :2] = output_coords
-
-                other_agent = np.delete(agents,j,axis=0)
-
-                one_case['lane'] = lane
-                one_case['ego'] = agents[j]
-                one_case['other'] = other_agent
-
-                #one_case['traf'] = data['traf_p_c_f'][i]
-                one_case['traf'] = data['traf_p_c_f']
-                case_list.append(one_case)
-
-        return case_list
-
-    def process_agent(self,case):
-        ego = case['ego'][np.newaxis]
-        others = case['other']
-        a_scene = np.concatenate([ego,others],axis=0)
-
-        current_scene = a_scene[:,0]
-        valid_mask = current_scene[..., -1] == 1.
-        range_mask = (abs(current_scene[:, 0]) < RANGE) * (abs(current_scene[:, 1]-40) < RANGE)
-        type_mask = current_scene[:, -2] == 1.
-
-        mask = valid_mask*range_mask * type_mask
-
-        a_scene = a_scene[mask][..., :-1]
-        current_scene = a_scene[:,0]
-        ego_future_traj = a_scene[0,]
-        #
-        angle = ego_future_traj[:,4]
-        ego_future_traj[angle>np.pi,4]-=2*np.pi
-        ego_future_traj[angle < -np.pi,4] += 2 * np.pi
-        #
-        other_future_traj = a_scene[1:]
-
-        # use cos,sin to represent heading
-        headings = -current_scene[:, 4][..., np.newaxis]
-        sin_h = np.sin(headings)
-        cos_h = np.cos(headings)
-        current_scene = np.concatenate([current_scene, sin_h, cos_h], -1)
-        current_scene = np.delete(current_scene, [4, 7], axis=-1)
-
-        current_scene = current_scene[:MAX_AGENT]
-        other_future_traj = other_future_traj[:MAX_AGENT-1]
-        valid_num = current_scene.shape[0]
-        current_scene = np.pad(current_scene, ([0,MAX_AGENT - current_scene.shape[0]], [0, 0]))
-        other_future_traj = np.pad(other_future_traj, ([0,MAX_AGENT - other_future_traj.shape[0]-1], [0, 0],[0, 0]))
-        agent_mask = np.zeros(MAX_AGENT)
-        agent_mask[:valid_num] = 1
-
-
-        return ego_future_traj,other_future_traj, current_scene,agent_mask
-
-    def process_gt(self, gt):
-
-        ret = {}
-        velo = (gt[1:,2:4]+gt[:-1,2:4])/2
-        #heading = -(gt[1:,4]+gt[:-1,4])/2
-        angular_velo = gt[1:,4]-gt[:-1,4]
-        speed = (velo[:,0]**2 + velo[:,1]**2)**0.5*0.1
-        angular_velo = -np.clip(angular_velo,a_min=-1,a_max=1)
-        #speed = speed/30
-        #angular_velo = angular_velo/(np.pi/)
-        #ret = np.concatenate([speed,angular_velo],axis=-1)
-
-        # heading = np.cumsum(angular_velo[:,0],axis=-1)
-        # x = np.cumsum(speed[:,0]*np.sin(heading),axis=-1)
-        # y = np.cumsum(speed[:,0]*np.cos(heading),axis=-1)
-
-        ret['speed'] = speed.astype('float32')
-        ret['heading'] = angular_velo.astype('float32')
-        return ret
-
+        data['lane'] = lane
     def process(self, data):
-
-        # if self.eval:
-        #     case_list = self.transform_coordinate_map(data)
-        #     # case_info
-        #
-        #     data_list = []
-        #     # for case in case_list:
-        #     case = case_list[0]
-        #     case_info = {}
-        #     ego_gt, other_gt, agent, agent_mask = self.process_agent(case)
-        #
-        #     case_info['all_agent'] = agent[agent_mask.astype(bool)]
-        #     other = {}
-        #     case_info['lane'] = case['lane']
-        #     other['traf'] = case['traf']
-        #
-        #     case_info['other'] = other
-        #     case_info['ego_gt'] = ego_gt
-        #     #other['fut_traj'] = ego_gt
-        #
-        #     case_info['processed_gt'] = self.process_gt(ego_gt)
-        #     case_info['other_gt'] = other_gt
-        #     case_info['agent_mask'] = agent_mask
-        #
-        #     case_info['center'], case_info['center_mask'], case_info['bound'], case_info['bound_mask'], \
-        #     case_info['cross'], case_info['cross_mask'], case_info['rest'] = process_map(case['lane'],case['traf'][0])
-        #
-        #     data_list.append(case_info)
-        # else:
-
-        case_list = self.transform_coordinate_map(data)
-        #case_info
-        data_list = []
-        #for case in case_list:
-        case = case_list[0]
         case_info = {}
-        ego_gt, other_gt, agent, agent_mask = self.process_agent(case)
 
-        case_info['agent'] = agent
-        case_info['ego_gt'] = ego_gt
-
-        case_info['processed_gt'] = self.process_gt(ego_gt)
-        case_info['other_gt'] = other_gt
-        case_info['agent_mask'] = agent_mask
-
+        self.transform_coordinate_map(data)
         case_info['center'], case_info['center_mask'], case_info['bound'], case_info['bound_mask'], \
-        case_info['cross'], case_info['cross_mask'], case_info['rest'] = process_map(case['lane'],case['traf'][0])
+        case_info['cross'], case_info['cross_mask'], case_info['rest'],case_info['rest_mask'] = process_map(data['lane'][[0]],[data['traffic_light'][0]],center_num=256,edge_num=128,offest=-40,lane_range=60)
 
-        data_list.append(case_info)
+        case_info['center'] = case_info['center'][0]
+        case_info['center_mask'] = case_info['center_mask'][0]
+        case_info['bound'] = case_info['bound'][0]
+        case_info['bound_mask'] = case_info['bound_mask'][0]
+        case_info['cross'] = case_info['cross'][0]
+        case_info['cross_mask'] = case_info['cross_mask'][0]
+        case_info['rest'] = case_info['rest'][0]
+        case_info['rest_mask'] = case_info['rest_mask'][0]
 
-        return data_list
+        agent, agent_mask = self.process_agent(data)
+        self.get_inp_gt(case_info, agent,agent_mask)
+
+        return case_info
 
 

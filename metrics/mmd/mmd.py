@@ -7,11 +7,11 @@ from torchmetrics import Metric
 class MMD(Metric):
     full_state_update: bool = False
 
-    def __init__(self, kernel_mul=2.0, kernel_num=5):
+    def __init__(self, device,kernel_mul=2.0, kernel_num=5,):
         super().__init__(full_state_update=False)
 
-        self.add_state("mmd_sum", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("count", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("mmd_sum", default=torch.tensor(0.0,device=device), dist_reduce_fx="sum")
+        self.add_state("count", default=torch.tensor(0,device=device), dist_reduce_fx="sum")
 
         self.kernel_num = kernel_num
         self.kernel_mul = kernel_mul

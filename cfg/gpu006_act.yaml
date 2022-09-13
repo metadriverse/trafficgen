@@ -2,6 +2,7 @@ format_version: 4
 
 debug: False
 data_path: '/data0/pengzh/dynamic_data'
+
 max_epoch: 200
 num_workers: 8
 batch_size: 64
@@ -12,7 +13,7 @@ phase: 'training'
 data_usage: 400000
 model: "act"
 recache: "True"
-pred_len: 45
+pred_len: 90
 
 # eval config
 need_eval: False

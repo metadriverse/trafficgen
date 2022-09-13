@@ -36,18 +36,19 @@ class WaymoAgent:
         return WaymoAgent(self.feature[[indx]],self.vec_based_info[[indx]])
 
 
-    def get_inp(self):
+    def get_inp(self,act=False):
         pos = self.position / self.RANGE
         velo = self.velocity / self.MAX_SPEED
 
         cos_head = np.cos(self.heading)
         sin_head = np.sin(self.heading)
+        if act:
+            return np.concatenate(
+            [pos,velo, cos_head, sin_head, self.length_width],axis=-1)
 
         vec_based_rep = copy.deepcopy(self.vec_based_info)
-
         vec_based_rep[..., 5:9] /= self.RANGE
         vec_based_rep[..., 2] /= self.MAX_SPEED
-
         agent_feat = np.concatenate(
             [pos,velo, cos_head, sin_head, self.length_width,
              vec_based_rep],

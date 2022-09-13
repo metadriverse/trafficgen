@@ -4,10 +4,11 @@ format_version: 4
 
 debug: True
 #data_path: "./TrafficGen_act/data_sample/eval"
-data_path: "/Users/fenglan/Downloads/waymo/dynamic_data"
+#data_path: "/Users/fenglan/Downloads/waymo/dynamic_data"
 #data_path: "/Users/fenglan/Downloads/waymo/dynamic_case"
 #data_path: "/Users/fenglan/Downloads/waymo/v2_generated"
 #data_path: "/Users/fenglan/Downloads/waymo/onemap"
+data_path: "/Users/fenglan/Downloads/waymo/v2_data"
 max_epoch: 50
 num_workers: 0
 batch_size: 16
@@ -15,15 +16,15 @@ lr: 0.0003
 weight_decay: 0.0004
 device: 'cpu'
 phase: 'training'
-data_usage: 0
+data_usage: 4
 model: "act"
 recache: True
-pred_len: 45
+pred_len: 90
 
 # eval config
 need_eval: True
 eval_data_start_index: 0
-eval_data_usage: 20
+eval_data_usage: 4
 eval_batch_size: 16
 eval_frequency: 1
 
