@@ -149,9 +149,13 @@ class sceneGen(initializer):
             agent_vec_indx = data['agent_vec_indx'][:, step_idx]
             gather_feat = agent_vec_indx.view(bs,1,1).repeat(1,1,feature_dim)
             feature = torch.gather(feature,1,gather_feat)
+            data['gt_distribution'][:]=0
+            for i in range(bs):
+                data['gt_distribution'][i,agent_vec_indx[i]]=1
 
             pred_dists = self.feature_to_dists(feature, K)
             pred_dists['prob'] = nn.Sigmoid()(prob_pred)
+
 
             if eval==False:
                 mask = data['agent_mask_gt'][:, step_idx]
