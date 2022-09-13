@@ -129,6 +129,10 @@ class sceneGen(initializer):
         gt_distri = torch.zeros([bs,max_agent_num,lane_num],device=device)
         data['gt_distri'] = gt_distri
 
+        for step_idx in range(1, max_agent_num):
+            agent_vec_indx = data['agent_vec_indx'][:, step_idx]
+            for i in range(bs):
+                data['gt_distri'][i, step_idx, agent_vec_indx[i]] = 1
 
         for step_idx in range(1, max_agent_num):
             # construct the input data that contain only the agents (0, 1, ..., step_idx-1)
@@ -155,12 +159,6 @@ class sceneGen(initializer):
             agent_vec_indx = data['agent_vec_indx'][:, step_idx]
             gather_feat = agent_vec_indx.view(bs,1,1).repeat(1,1,feature_dim)
             feature = torch.gather(feature,1,gather_feat)
-
-            for i in range(bs):
-                data['gt_distri'][i,step_idx,agent_vec_indx[i]]=1
-            # data['gt_distribution'][:]=0
-            # for i in range(bs):
-            #     data['gt_distribution'][i,agent_vec_indx[i]]=1
 
             pred_dists = self.feature_to_dists(feature, K)
             pred_dists['prob'] = nn.Sigmoid()(prob_pred)
