@@ -354,24 +354,24 @@ class Trainer:
                 bound = batch['bound'][0].cpu().numpy()
                 pred_agent = output['agent']
 
-                agent_num = len(pred_agent)
-                pred_agent = pred_agent[1:]
-                device = batch['center'].device
-                source = {'heading':  torch.tensor(normalize_angle(np.concatenate([x.heading for x in pred_agent],axis=0)),device=device),
-                          'size': torch.tensor(np.concatenate([x.length_width for x in pred_agent],axis=0),device=device),
-                          'speed': torch.tensor(np.concatenate([x.velocity for x in pred_agent],axis=0),device=device),
-                          'position': torch.tensor(np.concatenate([x.position for x in pred_agent],axis=0),device=device)}
-
-                target = {'heading': normalize_angle(target_agent[0,1:agent_num,[4]]),
-                          'size':  target_agent[0,1:agent_num,5:7],
-                          'speed':  target_agent[0,1:agent_num,2:4],
-                          'position':  target_agent[0,1:agent_num,:2]}
-
-                for attr, metri in mmd_metrics.items():
-                    # ignore empty scenes
-                    if agent_num <= 1:
-                        continue
-                    metri.update(source[attr], target[attr])
+                # agent_num = len(pred_agent)
+                # pred_agent = pred_agent[1:]
+                # device = batch['center'].device
+                # source = {'heading':  torch.tensor(normalize_angle(np.concatenate([x.heading for x in pred_agent],axis=0)),device=device),
+                #           'size': torch.tensor(np.concatenate([x.length_width for x in pred_agent],axis=0),device=device),
+                #           'speed': torch.tensor(np.concatenate([x.velocity for x in pred_agent],axis=0),device=device),
+                #           'position': torch.tensor(np.concatenate([x.position for x in pred_agent],axis=0),device=device)}
+                #
+                # target = {'heading': normalize_angle(target_agent[0,1:agent_num,[4]]),
+                #           'size':  target_agent[0,1:agent_num,5:7],
+                #           'speed':  target_agent[0,1:agent_num,2:4],
+                #           'position':  target_agent[0,1:agent_num,:2]}
+                #
+                # for attr, metri in mmd_metrics.items():
+                #     # ignore empty scenes
+                #     if agent_num <= 1:
+                #         continue
+                #     metri.update(source[attr], target[attr])
 
                 if cnt < 30:
                     imgs[f'vis_{cnt}'] = wandb.Image(draw(center, pred_agent, rest, edge=bound))
@@ -380,8 +380,8 @@ class Trainer:
             log = {}
             log['imgs'] = imgs
 
-            for attr, metric in mmd_metrics.items():
-                log[attr] = metric.compute()
+            # for attr, metric in mmd_metrics.items():
+            #     log[attr] = metric.compute()
             if not self.in_debug:
                 wandb.log(log)
 
