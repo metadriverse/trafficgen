@@ -9,13 +9,132 @@ from random import choices
 copy_func = copy.deepcopy
 from utils.utils import get_agent_pos_from_vec
 import numpy as np
-class sceneGen(initializer):
+class sceneGen(nn.Module):
 
     def __init__(self, cfg):
-        super().__init__(cfg)
+        super().__init__()
+        self.cfg = cfg
+        # input embedding stem
+        self.hidden_dim = cfg['hidden_dim']
         self.feat_lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, 2, batch_first=True)
+        self.CG_line = CG_stacked(5, self.hidden_dim)
+        self.agent_encode = MLP_3([17, 256, 512, self.hidden_dim])
+        self.line_encode = MLP_3([4, 256, 512, self.hidden_dim])
+        self.type_embedding = nn.Embedding(20, self.hidden_dim)
+        self.traf_embedding = nn.Embedding(4, self.hidden_dim)
 
+        self.apply(self._init_weights)
+        middle_layer_shape = [self.hidden_dim * 2, self.hidden_dim, 256]
 
+        self.prob_head = MLP_3([*middle_layer_shape, 1])
+        # self.pos_head = MLP_3([*middle_layer_shape, 10 * (1 + 5)])
+        self.pos_head = MLP_3([*middle_layer_shape, 2])
+        self.speed_head = MLP_3([*middle_layer_shape, 1])
+
+        self.bbox_head = MLP_3([*middle_layer_shape, 10 * (1 + 5)])
+        self.heading_head = MLP_3([*middle_layer_shape, 10 * (1 + 2)])
+        self.vel_heading_head = MLP_3([*middle_layer_shape, 10 * (1 + 2)])
+
+    def _init_weights(self, module):
+        if isinstance(module, (nn.Linear, nn.Embedding)):
+            module.weight.data.normal_(mean=0.0, std=0.02)
+            if isinstance(module, nn.Linear) and module.bias is not None:
+                module.bias.data.zero_()
+        elif isinstance(module, nn.LayerNorm):
+            module.bias.data.zero_()
+            module.weight.data.fill_(1.0)
+
+    def map_feature_extract(self,lane_inp,line_mask,context_agent):
+        device = lane_inp.device
+
+        polyline = lane_inp[..., :4]
+        polyline_type = lane_inp[..., 4].to(int)
+        polyline_traf = lane_inp[..., 5].to(int)
+        # polyline_traf = torch.zeros_like(polyline_traf).to(agent.device)
+
+        polyline_type_embed = self.type_embedding(polyline_type)
+        polyline_traf_embed = self.traf_embedding(polyline_traf)
+        polyline_traf_embed = torch.zeros_like(polyline_traf_embed,device=device)
+
+        # agent features
+        line_enc = self.line_encode(polyline) + polyline_traf_embed + polyline_type_embed
+        # map information fusion with CG block
+        line_enc, context_line = self.CG_line(line_enc, context_agent, line_mask)
+        # map context feature
+        context_line = context_line.unsqueeze(1).repeat(1, line_enc.shape[1], 1)
+        feature = torch.cat([line_enc, context_line], dim=-1)
+
+        return feature
+
+    def output_to_dist(self, para, n):
+        # if n = 2, dim = 5 = 2 + 3, if n = 1, dim = 2 = 1 + 1
+
+        if n == 2:
+            loc, tril, diag = para[..., :2], para[..., 2], para[..., 3:]
+
+            sigma_1 = torch.exp(diag[..., 0])
+            sigma_2 = torch.exp(diag[..., 1])
+            rho = torch.tanh(tril)
+
+            cov = torch.stack([
+                sigma_1 ** 2, rho * sigma_1 * sigma_2,
+                rho * sigma_1 * sigma_2, sigma_2 ** 2
+            ], dim=-1).view(*loc.shape[:-1], 2, 2)
+
+            distri = torch.distributions.multivariate_normal.MultivariateNormal(loc=loc, covariance_matrix=cov)
+
+            return distri
+
+        if n == 1:
+            loc, scale = para[..., 0], para[..., 1]
+            scale = torch.exp(scale)
+            distri = torch.distributions.Normal(loc, scale)
+
+            return distri
+
+    def feature_to_dists(self, feature, K):
+
+        # feature dim (batch,128,2048)
+        # vector distribution
+        prob_pred = self.prob_head(feature).squeeze(-1)
+
+        # position distribution： 2 dimension x y, range(-1/2,1/2)
+        # pos_out dim (batch,128,10,6),
+        # 10 mixtures
+        # 0: mixture weight
+        # 1-2: mean
+        # 3-5: variance and covariance
+        pos_out = self.pos_head(feature)
+        speed_out = nn.ReLU()(self.speed_head(feature))
+
+        # bbox distribution： 2 dimension length width
+        bbox_out = self.bbox_head(feature).view([*feature.shape[:-1], K, -1])
+        bbox_weight = bbox_out[..., 0]
+        bbox_param = bbox_out[..., 1:]
+        bbox_distri = self.output_to_dist(bbox_param, 2)
+        bbox_weight = torch.distributions.Categorical(logits=bbox_weight)
+        bbox_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(bbox_weight, bbox_distri)
+
+        # heading distribution: 1 dimension,range(-pi/2,pi/2)
+        heading_out = self.heading_head(feature).view([*feature.shape[:-1], K, -1])
+        heading_weight = heading_out[..., 0]
+        heading_param = heading_out[..., 1:]
+        heading_distri = self.output_to_dist(heading_param, 1)
+        heading_weight = torch.distributions.Categorical(logits=heading_weight)
+        heading_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(heading_weight, heading_distri)
+
+        # speed distribution: 1 dimension
+        # vel heading distribution: 1 dimension,range(-pi/2,pi/2)
+        vel_heading_out = self.vel_heading_head(feature).view([*feature.shape[:-1], K, -1])
+        vel_heading_weight = vel_heading_out[..., 0]
+        vel_heading_param = vel_heading_out[..., 1:]
+        vel_heading_distri = self.output_to_dist(vel_heading_param, 1)
+        vel_heading_weight = torch.distributions.Categorical(logits=vel_heading_weight)
+        vel_heading_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(vel_heading_weight,
+                                                                                    vel_heading_distri)
+        return {'prob': prob_pred, 'pos': pos_out, 'bbox': bbox_gmm, 'heading': heading_gmm,
+                'speed': speed_out.squeeze(-1),
+                'vel_heading': vel_heading_gmm}
     def _obtain_step_input(self, step_idx, data):
         # TODO Obtain the input data for the current step for feature extraction:
         # 1. process the data as if there are only agent (0, 1, ..., step_idx-1) in the scene.
@@ -23,13 +142,6 @@ class sceneGen(initializer):
         data['agent_mask'][:,:step_idx] = True
         data['agent_mask'][:, step_idx:] = False
         return
-
-    def _obtain_step_output(self, step_idx, data):
-        # TODO Obtain the output data for the current step for loss computation
-        # 1. select the next agent according to the (left-right top-bottom) order
-        # 2. process the data as if there is only the next agent in the scene.
-
-        raise NotImplementedError
     def compute_loss(self, data, pred_dists,mask,agent_vec_idx,step_idx):
         BCE = torch.nn.BCEWithLogitsLoss()
         MSE = torch.nn.MSELoss(reduction='none')
