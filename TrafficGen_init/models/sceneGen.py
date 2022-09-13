@@ -106,11 +106,11 @@ class sceneGen(initializer):
             agents = get_agent_pos_from_vec(center_lane[0,[the_indx]], pos[0], speed[0], vel_heading[0], heading[0], bbox[0])
             agents_list.append(agents)
             #pos_logprob_ = pos_logprob[0,the_indx]
-            heading_logprob_ = heading_logprob[0,the_indx]
-            vel_heading_logprob_ = vel_heading_logprob[0,the_indx]
-            bbox_logprob_ = bbox_logprob[0,the_indx]
+            heading_logprob_ = heading_logprob[0,0]
+            vel_heading_logprob_ = vel_heading_logprob[0,0]
+            bbox_logprob_ = bbox_logprob[0,0]
             #speed_logprob_ = speed_logprob[0,the_indx]
-            all_prob = heading_logprob_+vel_heading_logprob_+heading_logprob_+bbox_logprob_
+            all_prob = heading_logprob_+vel_heading_logprob_+bbox_logprob_
             prob_list.append(all_prob)
 
         max_indx = np.argmax(prob_list)
@@ -151,7 +151,7 @@ class sceneGen(initializer):
             feature = torch.gather(feature,1,gather_feat)
 
             pred_dists = self.feature_to_dists(feature, K)
-            pred_dists['prob'] = prob_pred
+            pred_dists['prob'] = nn.Sigmoid()(prob_pred)
 
             if eval==False:
                 mask = data['agent_mask_gt'][:, step_idx]

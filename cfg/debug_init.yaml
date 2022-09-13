@@ -13,7 +13,8 @@ device: 'cpu'
 phase: 'training'
 data_usage: 1
 model: "init"
-#model: "sceneGen"
+model: "sceneGen"
+hidden_dim: 256
 
 pad_num: 0
 min_agent: 8
