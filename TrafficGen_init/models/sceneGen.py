@@ -13,8 +13,6 @@ class sceneGen(initializer):
 
     def __init__(self, cfg):
         super().__init__(cfg)
-
-        self.hidden_dim = 1024
         self.feat_lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, 2, batch_first=True)
 
 

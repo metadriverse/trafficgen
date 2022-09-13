@@ -17,16 +17,16 @@ class initializer(nn.Module):
         super().__init__()
         self.cfg = cfg
         # input embedding stem
-        hidden_dim = 1024
-        self.CG_agent = CG_stacked(5, hidden_dim)
-        self.CG_line = CG_stacked(5, hidden_dim)
-        self.agent_encode = MLP_3([17, 256, 512, hidden_dim])
-        self.line_encode = MLP_3([4, 256, 512, hidden_dim])
-        self.type_embedding = nn.Embedding(20, hidden_dim)
-        self.traf_embedding = nn.Embedding(4, hidden_dim)
+        self.hidden_dim = 1024
+        self.CG_agent = CG_stacked(5, self.hidden_dim)
+        self.CG_line = CG_stacked(5, self.hidden_dim)
+        self.agent_encode = MLP_3([17, 256, 512, self.hidden_dim])
+        self.line_encode = MLP_3([4, 256, 512, self.hidden_dim])
+        self.type_embedding = nn.Embedding(20, self.hidden_dim)
+        self.traf_embedding = nn.Embedding(4, self.hidden_dim)
 
         self.apply(self._init_weights)
-        middle_layer_shape = [hidden_dim * 2, hidden_dim, 256]
+        middle_layer_shape = [self.hidden_dim * 2, self.hidden_dim, 256]
 
         self.prob_head = MLP_3([*middle_layer_shape, 1])
         #self.pos_head = MLP_3([*middle_layer_shape, 10 * (1 + 5)])

@@ -329,9 +329,6 @@ class Trainer:
 
     def eval_init(self):
         self.model.eval()
-        eval_results = []
-
-
         mmd_metrics = {'heading': MMD(kernel_mul=1.0, kernel_num=1),
                        'size': MMD(kernel_mul=1.0, kernel_num=1),
                        'speed': MMD(kernel_mul=1.0, kernel_num=1),
@@ -381,8 +378,12 @@ class Trainer:
 
             log = {}
             log['imgs'] = imgs
+
+            for attr, metric in mmd_metrics.items():
+                log[attr] = metric.compute()
             if not self.in_debug:
                 wandb.log(log)
+
 
                 # pred= []
                 # vec_b = batch['vec_based_rep'][0]
