@@ -217,7 +217,8 @@ class Trainer:
                     'size': torch.tensor(np.concatenate([x.length_width for x in pred_agent], axis=0), device=device),
                     'speed': torch.tensor(np.concatenate([x.velocity for x in pred_agent], axis=0), device=device),
                     'position': torch.tensor(np.concatenate([x.position for x in pred_agent], axis=0), device=device)}
-
+                if torch.any(torch.isnan(source['speed'])):
+                    continue
                 target = {'heading': normalize_angle(target_agent[0, 1:agent_num, [4]]),
                           'size': target_agent[0, 1:agent_num, 5:7],
                           'speed': target_agent[0, 1:agent_num, 2:4],

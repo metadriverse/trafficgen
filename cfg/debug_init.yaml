@@ -13,7 +13,7 @@ device: 'cpu'
 phase: 'training'
 data_usage: 1
 model: "init"
-#model: "sceneGen"
+model: "sceneGen"
 hidden_dim: 1024
 
 pad_num: 0
