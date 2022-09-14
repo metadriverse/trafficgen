@@ -197,13 +197,14 @@ class Trainer:
                            'position': MMD(device=device,kernel_mul=1.0, kernel_num=1)}
             cnt = 0
             for batch in eval_data:
-                target_agent = copy.deepcopy(batch['agent'])
+
                 seed(cnt)
                 for key in batch.keys():
                     if isinstance(batch[key], torch.DoubleTensor):
                         batch[key] = batch[key].float()
                     if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
                         batch[key] = batch[key].cuda()
+                target_agent = copy.deepcopy(batch['agent'])
 
                 output= self.model(batch,eval=True)
                 pred_agent = output['agent']
