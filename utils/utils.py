@@ -74,7 +74,7 @@ def process_lane(lane,  max_vec,lane_range,offset = -40):
 
     vec_dim = 6
 
-    lane_point_mask = (abs(lane[..., 0]) < lane_range) * (abs(lane[..., 1] + offset) < lane_range)
+    lane_point_mask = (abs(lane[..., 0]+ offset) < lane_range) * (abs(lane[..., 1]) < lane_range)
 
     lane_id = np.unique(lane[...,-2]).astype(int)
 
@@ -228,19 +228,18 @@ def transform_to_agent(agent_i,agent,lane):
 
     center = copy.deepcopy(agent_i[:2])
     center_yaw = copy.deepcopy(agent_i[4])
-    rotate_theta = -(center_yaw - np.pi / 2)
 
     all_[..., :2] -= center
+    coord = rotate(all_[..., 0], all_[..., 1], -center_yaw)
+    vel = rotate(all_[..., 2], all_[..., 3], -center_yaw)
 
-    coord = rotate(all_[..., 0], all_[..., 1], rotate_theta)
-    vel = rotate(all_[..., 2], all_[..., 3], rotate_theta)
     all_[..., :2] = coord
     all_[..., 2:4] = vel
     all_[..., 4] = all_[..., 4] - center_yaw
     # then recover lane's position
     lane = copy.deepcopy(lane)
     lane[..., :2] -= center
-    output_coords = rotate(lane[..., 0], lane[..., 1], rotate_theta)
+    output_coords = rotate(lane[..., 0], lane[..., 1], -center_yaw)
     if isinstance(lane,Tensor):
         output_coords = Tensor(output_coords)
     lane[..., :2] = output_coords

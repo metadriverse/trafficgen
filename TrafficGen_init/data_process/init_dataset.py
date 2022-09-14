@@ -42,18 +42,6 @@ class initDataset(Dataset):
         cnt = 0
         file_cnt = 0
 
-        # if self.eval:
-        #     while file_cnt + start_index < end_index:
-        #         index = file_cnt + start_index
-        #         data_path = self.data_path
-        #         data_file_path = os.path.join(data_path, f'{index}.pkl')
-        #         with open(data_file_path, 'rb+') as f:
-        #             datas = pickle.load(f)
-        #         data = self.process(datas)
-        #         self.data_loaded[file_cnt] = data
-        #         file_cnt += 1
-        #     self.data_len = file_cnt
-        # else:
         while file_cnt+start_index < end_index:
             index = file_cnt+start_index
             data_path = self.data_path
@@ -148,7 +136,6 @@ class initDataset(Dataset):
         cent_to_agent_x = agent_x - vec_x
         cent_to_agent_y = agent_y - vec_y
 
-        #rel_angle = cal_rel_dir()
         coord = rotate(cent_to_agent_x,cent_to_agent_y,-dir)
 
         vec_len = np.clip(np.sqrt(np.square(y2-y1) + np.square(x1-x2)), a_min=4.5, a_max=5.5)
@@ -228,9 +215,8 @@ class initDataset(Dataset):
         lane[...,:2] = rotate(x,y,-ego_heading)
         return lane
 
-    def process_agent(self,data,sort_agent):
+    def process_agent(self,agent,sort_agent):
 
-        agent = data['all_agent']
         ego = agent[:,0]
 
         ego_pos = copy.deepcopy(ego[:,:2])[:,np.newaxis]
@@ -245,7 +231,6 @@ class initDataset(Dataset):
         agent_type_mask = agent[...,-2]
         agent_range_mask = (abs(agent[...,0])<RANGE)*(abs(agent[...,1])<RANGE)
         mask = agent_mask*agent_type_mask*agent_range_mask
-
 
         bs, agent_num,_ = agent.shape
         sorted_agent = np.zeros_like(agent)
@@ -326,28 +311,82 @@ class initDataset(Dataset):
         case_info['lane_inp'] = np.concatenate([center,edge,cross,rest],axis=1)
         case_info['lane_mask'] = np.concatenate([case_info['center_mask'],case_info['bound_mask'],case_info['cross_mask'],case_info['rest_mask']],axis=1)
         return
+
     def process(self, data):
+        # if self.eval:
+        #     other = {}
+        #     agent = copy.deepcopy(data['all_agent'])
+        #     data['all_agent'] = data['all_agent'][[0]]
+        #     lane = self.transform_coordinate_map(data)
+        #
+        #     ego = agent[:, 0]
+        #     ego_pos = copy.deepcopy(ego[[0], :2])[:, np.newaxis]
+        #     ego_heading = ego[[0], [4]]
+        #     agent[..., :2] -= ego_pos
+        #     agent[..., :2] = rotate(agent[..., 0], agent[..., 1], -ego_heading)
+        #     agent[..., 2:4] = rotate(agent[..., 2], agent[..., 3], -ego_heading)
+        #     agent[..., 4] -= ego_heading
+        #
+        #     agent_mask = agent[..., -1]
+        #     agent_type_mask = agent[..., -2]
+        #     agent_range_mask = (abs(agent[..., 0]) < RANGE) * (abs(agent[..., 1]) < RANGE)
+        #     mask = agent_mask * agent_type_mask * agent_range_mask
+        #
+        #     agent = WaymoAgent(agent)
+        #
+        #     other['gt_agent'] = agent.get_inp(act=True)
+        #     other['gt_agent_mask'] = mask
+        #     other['lane'] = lane[0]
+        #     other['traf'] = data['traffic_light']
+        #     other['unsampled_lane'] = data['unsampled_lane']
+        #     return other
 
         case_info = {}
         gap = 20
-        data['all_agent'] = data['all_agent'][0:-1:gap]
-        data['traffic_light'] = data['traffic_light'][0:-1:gap]
 
+        other = {}
+
+        if self.eval:
+            other['traf'] = data['traffic_light']
+            other['unsampled_lane'] = data['unsampled_lane']
+
+
+        agent = copy.deepcopy(data['all_agent'])
+        data['all_agent'] = data['all_agent'][0:-1:gap]
         data['lane'] = self.transform_coordinate_map(data)
+        data['traffic_light'] = data['traffic_light'][0:-1:gap]
+        if self.eval:
+            other['lane'] = data['lane'][0]
+            ego = agent[:, 0]
+            ego_pos = copy.deepcopy(ego[[0], :2])[:, np.newaxis]
+            ego_heading = ego[[0], [4]]
+            agent[..., :2] -= ego_pos
+            agent[..., :2] = rotate(agent[..., 0], agent[..., 1], -ego_heading)
+            agent[..., 2:4] = rotate(agent[..., 2], agent[..., 3], -ego_heading)
+            agent[..., 4] -= ego_heading
+            agent_mask = agent[..., -1]
+            agent_type_mask = agent[..., -2]
+            agent_range_mask = (abs(agent[..., 0]) < RANGE) * (abs(agent[..., 1]) < RANGE)
+            mask = agent_mask * agent_type_mask * agent_range_mask
+
+            agent = WaymoAgent(agent)
+
+            other['gt_agent'] = agent.get_inp(act=True)
+            other['gt_agent_mask'] = mask
+
 
         if self.cfg['model']=='sceneGen':
             sort_agent = True
         else:
             sort_agent = False
-        case_info["agent"],case_info["agent_mask"] = self.process_agent(data,sort_agent)
-
+        case_info["agent"],case_info["agent_mask"] = self.process_agent(data['all_agent'],sort_agent)
         case_info['center'],case_info['center_mask'],case_info['bound'], case_info['bound_mask'],\
-        case_info['cross'],case_info['cross_mask'],case_info['rest'],case_info['rest_mask'] = process_map(data['lane'],data['traffic_light'], lane_range=RANGE, offest=0)
+        case_info['cross'],case_info['cross_mask'],case_info['rest'],case_info['rest_mask'] = process_map(data['lane'],data['traffic_light'], center_num=256,edge_num=128,offest=-40,lane_range=60)
 
         self.filter_agent(case_info)
 
         agent = WaymoAgent(case_info['agent'],case_info['vec_based_rep'])
-
+        #
         case_info['agent_feat'] = agent.get_inp()
 
         self._process_map_inp(case_info)
@@ -361,6 +400,11 @@ class initDataset(Dataset):
             for k,v in case_info.items():
                 dic[k] = v[i]
             case_list.append(dic)
+
+        if self.eval:
+            case_list[0]['other'] = other
+
+
         return case_list
 
 

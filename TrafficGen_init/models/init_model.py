@@ -258,31 +258,31 @@ class initializer(nn.Module):
 
         return losses, total_loss
 
-    def inference(self, data):
+    def inference(self, data, context_num=1):
 
         agent_num = data['agent_mask'].sum().item()
 
         idx_list = []
-
-        vec_indx = data['vec_based_rep'][...,0]
-        idx_list.append(vec_indx[0,0].item())
+        pred_list = []
+        heat_maps = []
+        prob_list = []
         shapes = []
 
-        ego_agent = data['agent'][0,[0]].cpu().numpy()
-        ego_agent = WaymoAgent(ego_agent)
-        ego_poly = ego_agent.get_polygon()[0]
+        for i in range(context_num):
+            context_agent = data['agent'][0,[i]].cpu().numpy()
+            context_agent = WaymoAgent(context_agent)
+            context_poly = context_agent.get_polygon()[0]
+            shapes.append(context_poly)
+            pred_list.append(context_agent)
+            vec_indx = data['vec_based_rep'][..., 0]
+            idx_list.append(vec_indx[0, i].item())
 
-        shapes.append(ego_poly)
 
         minimum_agent = self.cfg['pad_num']
         center = data['center'][0]
         center_mask = data['center_mask'][0].cpu().numpy()
-        pred_list = []
-        pred_list.append(ego_agent)
-        heat_maps = []
-        prob_list = []
 
-        for i in range(1,max(agent_num,minimum_agent)):
+        for i in range(context_num,max(agent_num,minimum_agent)):
             data['agent_mask'][:, :i] = 1
             data['agent_mask'][:,i:]=0
 
@@ -293,9 +293,7 @@ class initializer(nn.Module):
             while cnt<10:
                 agents, prob, indx = self.sample_from_distribution(pred,center)
                 the_agent = agents.get_agent(indx)
-
                 poly = the_agent.get_polygon()[0]
-
                 intersect = False
                 for shape in shapes:
                     if poly.intersects(shape):
@@ -307,6 +305,7 @@ class initializer(nn.Module):
                 else:
                     cnt+=1
                     continue
+
             pred_list.append(the_agent)
             data['agent_feat'][:,i] = Tensor(the_agent.get_inp())
             idx_list.append(indx)
@@ -320,12 +319,11 @@ class initializer(nn.Module):
         output['heat_maps'] = heat_maps
 
         return output
-    def forward(self, data, random_mask=True, eval=False):
+    def forward(self, data, random_mask=True, eval=False,context_num=1):
         if eval==True:
-            return self.inference(data)
+            return self.inference(data,context_num=context_num)
 
         context_agent = self.agent_feature_extract(data['agent_feat'],data['agent_mask'],random_mask)
-
         feature = self.map_feature_extract(data['lane_inp'],data['lane_mask'],context_agent)
         center_num = data['center'].shape[1]
         feature = feature[:,:center_num]

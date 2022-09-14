@@ -11,16 +11,11 @@ LANE_SAMPLE = 10
 RANGE = 60
 MAX_AGENT = 32
 
-def process_case_to_input(case, agent_range=60, center_num=128, edge_num=128):
+def process_case_to_input(case, agent_range=60):
     inp = {}
-    agent = case['agent'][..., :-1]
-    headings = -agent[..., 4][..., np.newaxis]
-    sin_h = np.sin(headings)
-    cos_h = np.cos(headings)
-    agent = np.concatenate([agent, sin_h, cos_h], -1)
-    agent = np.delete(agent, [4, 7], axis=-1)
-
-    range_mask = (abs(agent[:, 0]) < agent_range) * (abs(agent[:, 1] - 40) < agent_range)
+    agent = WaymoAgent(case['agent'])
+    agent = agent.get_inp(act_inp=True)
+    range_mask = (abs(agent[:, 0]- 40/50) < agent_range/50) * (abs(agent[:, 1] ) < agent_range/50)
     agent = agent[range_mask]
 
     agent = agent[:32]
@@ -29,10 +24,20 @@ def process_case_to_input(case, agent_range=60, center_num=128, edge_num=128):
     agent = np.pad(agent, ([0, 32 - agent.shape[0]], [0, 0]))
     mask = np.pad(mask, ([0, 32 - mask.shape[0]]))
     inp['agent'] = agent
-    inp['agent_mask'] = mask
+    inp['agent_mask'] = mask.astype(bool)
 
     inp['center'], inp['center_mask'], inp['bound'], inp['bound_mask'], \
-    inp['cross'], inp['cross_mask'], inp['rest'] = process_map(case['lane'],case['traf'], center_num, edge_num, agent_range)
+    inp['cross'], inp['cross_mask'], inp['rest'], inp['rest_mask'] = process_map(
+        case['lane'][np.newaxis], [case['traf']], center_num=256, edge_num=128, offest=-40, lane_range=60)
+
+    inp['center'] = inp['center'][0]
+    inp['center_mask'] = inp['center_mask'][0]
+    inp['bound'] = inp['bound'][0]
+    inp['bound_mask'] = inp['bound_mask'][0]
+    inp['cross'] = inp['cross'][0]
+    inp['cross_mask'] = inp['cross_mask'][0]
+    inp['rest'] = inp['rest'][0]
+    inp['rest_mask'] = inp['rest_mask'][0]
     return inp
 
 def process_lane(lane,  max_vec,lane_range,offset = -40):

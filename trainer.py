@@ -20,7 +20,7 @@ from TrafficGen_init.models.init_model import initializer
 from TrafficGen_init.models.sceneGen import sceneGen
 from TrafficGen_init.data_process.init_dataset import initDataset,WaymoAgent
 
-from utils.visual_init import draw,draw_heatmap,get_heatmap,draw_metrics
+from utils.visual_init import draw
 from utils.visual_act import draw_seq
 
 from TrafficGen_act.models.act_model import actuator
@@ -141,56 +141,6 @@ class Trainer:
                         self.eval_init()
 
 
-    def draw_generation_process(self,vis=True, save=False):
-        save_path = '/Users/fenglan/Downloads/waymo/onemap'
-        self.model.eval()
-        with torch.no_grad():
-            eval_data = self.eval_data_loader
-            cnt = 0
-
-            for batch in eval_data:
-                seed(cnt)
-                for key in batch.keys():
-                    if isinstance(batch[key], torch.DoubleTensor):
-                        batch[key] = batch[key].float()
-                    if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
-                        batch[key] = batch[key].cuda()
-
-                output, heat_maps = self.inference(batch)
-
-                if vis:
-                    if not os.path.exists('./vis/heatmap'):
-                        os.mkdir('./vis/heatmap')
-                    path = f'./vis/heatmap/{cnt}'
-                    if not os.path.exists(path):
-                        os.mkdir(path)
-
-                    center = batch['center'][0].cpu().numpy()
-                    rest = batch['rest'][0].cpu().numpy()
-                    bound = batch['bound'][0].cpu().numpy()
-                    pred_agent = output['agent']
-                    for j in range(len(pred_agent)-1):
-                        output_path = os.path.join(path,f'{j}')
-                        draw(center, heat_maps[j],pred_agent,rest, edge=bound,save=True,path=output_path)
-
-                # generate case
-                if save:
-                    for key in batch.keys():
-                        if isinstance(batch[key], torch.Tensor):
-                            batch[key] = batch[key].cpu().numpy()
-                    output = {}
-                    output['all_agent'] = case_agent
-                    output['other'] = batch['other']
-                    output['lane'] = batch['other']['lane']
-                    output['other'].pop('lane')
-                    output['gt_agent'] = batch['agent'][0].numpy()
-
-                    p = os.path.join(save_path, f'{i}.pkl')
-                    with open(p, 'wb') as f:
-                        pickle.dump(output, f)
-
-                cnt+=1
-
     def eval_act(self):
         self.model.eval()
         with torch.no_grad():
@@ -236,17 +186,16 @@ class Trainer:
                 eval_results.append(loss)
         return
 
-    def eval_init(self):
+    def get_metrics(self):
         self.model.eval()
-
+        device = self.cfg['device']
         eval_data = self.eval_data_loader
         with torch.no_grad():
-            mmd_metrics = {'heading': MMD(device='cuda', kernel_mul=1.0, kernel_num=1),
-                           'size': MMD(device='cuda',kernel_mul=1.0, kernel_num=1),
-                           'speed': MMD(device='cuda',kernel_mul=1.0, kernel_num=1),
-                           'position': MMD(device='cuda',kernel_mul=1.0, kernel_num=1)}
+            mmd_metrics = {'heading': MMD(device=device, kernel_mul=1.0, kernel_num=1),
+                           'size': MMD(device=device,kernel_mul=1.0, kernel_num=1),
+                           'speed': MMD(device=device,kernel_mul=1.0, kernel_num=1),
+                           'position': MMD(device=device,kernel_mul=1.0, kernel_num=1)}
             cnt = 0
-            imgs = {}
             for batch in eval_data:
                 target_agent = copy.deepcopy(batch['agent'])
                 seed(cnt)
@@ -257,39 +206,140 @@ class Trainer:
                         batch[key] = batch[key].cuda()
 
                 output= self.model(batch,eval=True)
+                pred_agent = output['pred_agent']
+                agent_num = len(pred_agent)
+                pred_agent = pred_agent[1:]
+                device = batch['center'].device
+                source = {
+                    'heading': torch.tensor(normalize_angle(np.concatenate([x.heading for x in pred_agent], axis=0)),
+                                            device=device),
+                    'size': torch.tensor(np.concatenate([x.length_width for x in pred_agent], axis=0), device=device),
+                    'speed': torch.tensor(np.concatenate([x.velocity for x in pred_agent], axis=0), device=device),
+                    'position': torch.tensor(np.concatenate([x.position for x in pred_agent], axis=0), device=device)}
+
+                target = {'heading': normalize_angle(target_agent[0, 1:agent_num, [4]]),
+                          'size': target_agent[0, 1:agent_num, 5:7],
+                          'speed': target_agent[0, 1:agent_num, 2:4],
+                          'position': target_agent[0, 1:agent_num, :2]}
+
+                for attr, metri in mmd_metrics.items():
+                    # ignore empty scenes
+                    if agent_num <= 1:
+                        continue
+                    metri.update(source[attr], target[attr])
+
+            log = {}
+            for attr, metric in mmd_metrics.items():
+                log[attr] = metric.compute()
+            print(log)
+            if not self.in_debug:
+                wandb.log(log)
+
+    def get_cases(self):
+        context_num = 1
+
+        if not os.path.exists('./cases/initialized'):
+            os.mkdir('./cases/initialized')
+        save_path = './cases/initialized'
+        self.model.eval()
+        eval_data = self.eval_data_loader
+        with torch.no_grad():
+            cnt = 0
+            for batch in tqdm(eval_data):
+                seed(cnt)
+                for key in batch.keys():
+                    if isinstance(batch[key], torch.DoubleTensor):
+                        batch[key] = batch[key].float()
+                    if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
+                        batch[key] = batch[key].cuda()
+
+                output= self.model(batch,eval=True,context_num=context_num)
+
+                pred_agent = output['agent']
+                agent = np.concatenate([x.get_inp(act=True) for x in pred_agent], axis=0)
+                agent = agent[:32]
+                agent_num = agent.shape[0]
+                agent = np.pad(agent,([0,32-agent_num],[0,0]))
+                agent_mask = np.zeros([agent_num])
+                agent_mask = np.pad(agent_mask, ([0, 32 - agent_num]))
+                agent_mask[:agent_num]=1
+                agent_mask = agent_mask.astype(bool)
+
+                for key in batch.keys():
+                    if isinstance(batch[key], torch.Tensor):
+                        batch[key] = batch[key].cpu().numpy()
+                output = {}
+                output['context_num'] = context_num
+                output['all_agent'] = agent
+                output['agent_mask'] = agent_mask
+                output['lane'] = batch['other']['lane'][0].cpu().numpy()
+                output['unsampled_lane'] = batch['other']['unsampled_lane'][0].cpu().numpy()
+                output['traf'] = self.eval_data_loader.dataset[0]['other']['traf']
+                output['gt_agent'] = batch['other']['gt_agent'][0].cpu().numpy()
+                output['gt_agent_mask'] = batch['other']['gt_agent_mask'][0].cpu().numpy()
+
+                p = os.path.join(save_path, f'{cnt}.pkl')
+                with open(p, 'wb') as f:
+                    pickle.dump(output, f)
+                cnt+=1
+        return
+
+    def get_heatmaps(self):
+        if not os.path.exists('./vis/heatmap'):
+            os.mkdir('./vis/heatmap')
+        self.model.eval()
+        eval_data = self.eval_data_loader
+        with torch.no_grad():
+            cnt = 0
+            for batch in tqdm(eval_data):
+                seed(cnt)
+                for key in batch.keys():
+                    if isinstance(batch[key], torch.DoubleTensor):
+                        batch[key] = batch[key].float()
+                    if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
+                        batch[key] = batch[key].cuda()
+                output= self.model(batch,eval=True)
+                heat_maps = output['heat_maps']
+                pred_agent = output['agent']
+                path = f'./vis/heatmap/{cnt}'
+                if not os.path.exists(path):
+                    os.mkdir(path)
+
+                center = batch['center'][0].cpu().numpy()
+                rest = batch['rest'][0].cpu().numpy()
+                bound = batch['bound'][0].cpu().numpy()
+
+                for j in range(len(pred_agent) - 1):
+                    output_path = os.path.join(path, f'{j}')
+                    draw(center,  pred_agent[:j+1], other=rest, heat_map=heat_maps[j],edge=bound, save=True, path=output_path)
+                cnt+=1
+        return
+
+    def eval_init(self):
+        self.model.eval()
+        eval_data = self.eval_data_loader
+        with torch.no_grad():
+            cnt = 0
+            imgs = {}
+            for batch in eval_data:
+                seed(cnt)
+                for key in batch.keys():
+                    if isinstance(batch[key], torch.DoubleTensor):
+                        batch[key] = batch[key].float()
+                    if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
+                        batch[key] = batch[key].cuda()
+                output= self.model(batch,eval=True)
+
                 center = batch['center'][0].cpu().numpy()
                 rest = batch['rest'][0].cpu().numpy()
                 bound = batch['bound'][0].cpu().numpy()
                 pred_agent = output['agent']
-
-                # agent_num = len(pred_agent)
-                # pred_agent = pred_agent[1:]
-                # device = batch['center'].device
-                # source = {'heading':  torch.tensor(normalize_angle(np.concatenate([x.heading for x in pred_agent],axis=0)),device=device),
-                #           'size': torch.tensor(np.concatenate([x.length_width for x in pred_agent],axis=0),device=device),
-                #           'speed': torch.tensor(np.concatenate([x.velocity for x in pred_agent],axis=0),device=device),
-                #           'position': torch.tensor(np.concatenate([x.position for x in pred_agent],axis=0),device=device)}
-                #
-                # target = {'heading': normalize_angle(target_agent[0,1:agent_num,[4]]),
-                #           'size':  target_agent[0,1:agent_num,5:7],
-                #           'speed':  target_agent[0,1:agent_num,2:4],
-                #           'position':  target_agent[0,1:agent_num,:2]}
-                #
-                # for attr, metri in mmd_metrics.items():
-                #     # ignore empty scenes
-                #     if agent_num <= 1:
-                #         continue
-                #     metri.update(source[attr], target[attr])
-
                 if cnt < 30:
                     imgs[f'vis_{cnt}'] = wandb.Image(draw(center, pred_agent, rest, edge=bound))
-                    cnt+=1
 
+                cnt += 1
             log = {}
             log['imgs'] = imgs
-
-            # for attr, metric in mmd_metrics.items():
-            #     log[attr] = metric.compute()
             if not self.in_debug:
                 wandb.log(log)
 
@@ -330,67 +380,57 @@ class Trainer:
             sgd_count += 1
             self.total_sgd_count += 1
 
-    def draw_gifs(self,vis=True,save_path=None):
+    def get_gifs(self,vis=True):
         self.model.eval()
+
         with torch.no_grad():
-            eval_data = self.eval_data_loader
-
-            scene_data = eval_data.dataset.scene_data
             pred_list = []
+            for i in tqdm(range(16)):
+                with open(f'./cases/initialized/{i}.pkl', 'rb+') as f:
+                    data = pickle.load(f)
 
-            for i in tqdm(range(len(scene_data))):
-                data_inp = scene_data[i]
-                #heat_map = data_inp['heat_map']
-                pred_i = self.inference_control(data_inp)
+                pred_i = self.inference_control(data)
+
                 #pred_i['pred']=np.delete(pred_i['pred'],4,axis=1)
                 pred_list.append(pred_i)
-
                 if vis:
-                    other = scene_data[i]['other']
-                    lane = pred_i['lane']
-                    traf = other['traf']
-                    agent = pred_i['pred']
                     dir_path = f'./vis/gif/{i}'
                     if not os.path.exists(dir_path):
                         os.mkdir(dir_path)
                     ind = list(range(0,190,5))
-                    #agent = np.delete(agent,4,axis=1)
-                    #del heat_map[5]
-                    agent = agent[ind]
+                    agent = pred_i[ind]
                     for t in range(agent.shape[0]):
-                    #for t in [0, 20, 40, 60, 80, 100, 120, 140, 160, 180]:
                         agent_t = agent[t]
-                        #path = os.path.join(dir_path,f'{t+agent_t.shape[0]-1}')
+                        agent_list = []
+                        for a in range(agent_t.shape[0]):
+                            agent_list.append(WaymoAgent(agent_t[[a]]))
+
                         path = os.path.join(dir_path, f'{t}')
-                        traf_t = traf[t]
-                        inp = {}
-                        inp['traf'] = traf_t
-                        inp['lane'] = lane
-                        cent,cent_mask,bound,bound_mask,_,_,rest = process_map(inp, 2000, 1000, 70, 0)
-                        #cent,cent_mask,bound,bound_mask,_,_,rest = WaymoDataset.process_map(inp,2000,1000,100)
+                        cent,cent_mask,bound,bound_mask,_,_,rest,_ = process_map(data['lane'][np.newaxis],[data['traf'][int(t*5)]], center_num=256, edge_num=128,offest=0, lane_range=60)
+                        draw(cent[0],agent_list,edge=bound[0],other=rest[0],path=path,save=True)
                         # if t==0:
                         #     center, _, bounder, _, _, _, rester = WaymoDataset.process_map(inp, 2000, 1000, 50,0)
                         #     for k in range(1,agent_t.shape[0]):
                         #         heat_path = os.path.join(dir_path, f'{k-1}')
                         #         draw(cent, heat_map[k-1], agent_t[:k], rest, edge=bound, save=True, path=heat_path)
-                        draw_seq(cent,bound,rest,agent_t,path=path,save=True)
-
-            if save_path:
-                self.save_as_metadrive_data(pred_list,scene_data,save_path)
+            # if save_path:
+            #     self.save_as_metadrive_data(pred_list,scene_data,save_path)
 
     def inference_control(self, data, ego_gt=True,length = 190, per_time = 10):
         # for every x time step, pred then update
+        agent_num = data['agent_mask'].sum()
+        data['agent_mask'] = data['agent_mask'][:agent_num]
+        data['all_agent'] = data['all_agent'][:agent_num]
 
-        pred_agent = np.zeros([length,*data['all_agent'].shape])
+        pred_agent = np.zeros([length,agent_num,8])
+        pred_agent[0,:,:7] = copy.deepcopy(data['all_agent'])
+        pred_agent[1:,:,5:7] = pred_agent[0,:,5:7]
 
-        pred_agent[0] = copy.deepcopy(data['all_agent'])
-        pred_agent[1:,:,5:] = pred_agent[0,:,5:]
-        agent_num = data['all_agent'].shape[0]
         start_idx = 0
 
         if ego_gt==True:
-            future_traj = data['other']['agent_traj']
-            pred_agent[:,0] = future_traj[0]
+            future_traj = data['gt_agent']
+            pred_agent[:,0,:7] = future_traj[:,0]
             start_idx = 1
 
         for i in range(0,length-1,per_time):
@@ -400,16 +440,19 @@ class Trainer:
             for j in range(agent_num):
                 a_case = {}
                 a_case['agent'],a_case['lane'] = transform_to_agent(current_agent[j],current_agent,data['lane'])
-                a_case['traf'] = data['other']['traf'][i]
+                a_case['traf'] = data['traf'][i]
                 case_list.append(a_case)
 
             inp_list = []
             for case in case_list:
                 inp_list.append(process_case_to_input(case))
-
             batch = from_list_to_batch(inp_list)
             # for inp in inp_list:
-            #     draw_seq(center=inp['center'],context=inp['agent'][inp['agent_mask'].astype(bool)],edge=inp['bound'],rest=inp['rest'],gt=True)
+            #     all_ = inp['agent'][inp['agent_mask'].astype(bool)]
+            #     agent_list = []
+            #     for i in range(all_.shape[0]):
+            #         agent_list.append(WaymoAgent(all_[[i]],from_inp=True))
+            #     draw(inp['center'],  agent_list, other=inp['rest'],edge=inp['bound'], save=False)
             for key in batch.keys():
                 if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
                     batch[key] = batch[key].cuda()
@@ -433,11 +476,10 @@ class Trainer:
                 agent_j = copy.deepcopy(current_agent[j])
                 center = copy.deepcopy(agent_j[:2])
                 center_yaw = copy.deepcopy(agent_j[4])
-                rotate_theta = -(center_yaw-np.pi/2)
 
-                pos = rotate(pred_j[:, 0], pred_j[:, 1], -rotate_theta)
+                pos = rotate(pred_j[:, 0], pred_j[:, 1], center_yaw)
                 heading = pred_j[...,-1]+center_yaw
-                vel = rotate(pred_j[:, 2], pred_j[:, 3], -rotate_theta)
+                vel = rotate(pred_j[:, 2], pred_j[:, 3], center_yaw)
 
                 pos = pos + center
                 pad_len = pred_agent[i+1:i+per_time+1].shape[0]
@@ -445,15 +487,16 @@ class Trainer:
                 pred_agent[i+1:i + per_time+1, j, 2:4] = copy.deepcopy(vel[:pad_len])
                 pred_agent[i+1:i + per_time+1, j, 4] = copy.deepcopy(heading[:pad_len])
 
-        transformed = {}
-        transformed['agent'],transformed['lane'] = transform_to_agent(pred_agent[0,0],pred_agent,data['lane'])
-        transformed['traf'] = data['other']['traf'][0]
-        transformed['pred'] = transformed['agent']
-        transformed['agent'] = transformed['agent'][0]
-        output = process_case_to_input(transformed,agent_range=300,edge_num=1000,center_num=6000)
-        output['pred'] = transformed['pred']
-        output['lane'] = data['lane']
-        return output
+        # transformed = {}
+        # #transformed['agent'],transformed['lane'] = transform_to_agent(pred_agent[0,0],pred_agent,data['lane'])
+        # transformed['agent'], transformed['lane'] = pred_agent, data['lane']
+        # #transformed['traf'] = data['traf'][0]
+        # transformed['pred'] = transformed['agent']
+        # transformed['agent'] = transformed['agent'][0]
+        # output = process_case_to_input(transformed,agent_range=300,edge_num=1000,center_num=6000)
+        # output['pred'] = transformed['pred']
+        # output['lane'] = data['lane']
+        return pred_agent
 
     def save_model(self):
         if self.current_epoch % self.save_freq == 0 and self.main_process:

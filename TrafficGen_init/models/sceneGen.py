@@ -233,12 +233,6 @@ class sceneGen(nn.Module):
         max_agent_num = torch.max(torch.sum(data['gt_distribution'], dim=1)).to(int).item()
 
         all_preds = []
-        bs,lane_num = data['gt_distribution'].shape
-
-        for step_idx in range(1, max_agent_num):
-            agent_vec_indx = data['agent_vec_indx'][:, step_idx]
-            for i in range(bs):
-                data['gt_distri'][i, step_idx, agent_vec_indx[i]] = 1
         generated_indx = []
         generated_indx.append(data['agent_vec_indx'][0,0].item())
         for step_idx in range(1, max_agent_num):

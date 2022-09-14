@@ -16,35 +16,45 @@ def rotate(x, y, angle):
     return output_coords
 
 class WaymoAgent:
-    def __init__(self, feature, vec_based_info=None,range=50,max_speed=30):
+    def __init__(self, feature, vec_based_info=None,range=50,max_speed=30,from_inp=False):
         # index of xy,v,lw,yaw,type,valid
 
         self.RANGE = range
         self.MAX_SPEED = max_speed
 
-        #self.bs,self.agent_num,_ = feature.shape
-        self.feature = feature
+        if from_inp:
+            self.position = feature[..., :2]*self.RANGE
+            self.velocity = feature[..., 2:4]*self.MAX_SPEED
+            self.heading = np.arctan2(feature[..., 5],feature[..., 4])
+            self.length_width = feature[..., 6:8]
 
-        self.position = feature[...,:2]
-        self.velocity = feature[...,2:4]
-        self.heading = feature[...,[4]]
-        self.length_width = feature[...,5:7]
-        self.type = feature[...,[7]]
-        self.vec_based_info = vec_based_info
+        else:
+            self.feature = feature
+            self.position = feature[...,:2]
+            self.velocity = feature[...,2:4]
+            self.heading = feature[...,[4]]
+            self.length_width = feature[...,5:7]
+            self.type = feature[...,[7]]
+            self.vec_based_info = vec_based_info
 
     def get_agent(self,indx):
         return WaymoAgent(self.feature[[indx]],self.vec_based_info[[indx]])
 
 
-    def get_inp(self,act=False):
-        pos = self.position / self.RANGE
-        velo = self.velocity / self.MAX_SPEED
+    def get_inp(self,act=False,act_inp=False):
 
-        cos_head = np.cos(self.heading)
-        sin_head = np.sin(self.heading)
         if act:
             return np.concatenate(
-            [pos,velo, cos_head, sin_head, self.length_width],axis=-1)
+            [self.position,self.velocity, self.heading, self.length_width],axis=-1)
+
+        pos = self.position / self.RANGE
+        velo = self.velocity / self.MAX_SPEED
+        cos_head = np.cos(self.heading)
+        sin_head = np.sin(self.heading)
+
+        if act_inp:
+            return np.concatenate(
+            [pos,velo, cos_head, sin_head,self.length_width],axis=-1)
 
         vec_based_rep = copy.deepcopy(self.vec_based_info)
         vec_based_rep[..., 5:9] /= self.RANGE
