@@ -229,6 +229,8 @@ class Trainer:
                     # ignore empty scenes
                     if agent_num <= 1:
                         continue
+                    if torch.all(source[attr]==0) and torch.all(target[attr]==0):
+                        continue
                     metri.update(source[attr], target[attr])
 
             log = {}
