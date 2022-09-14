@@ -381,7 +381,7 @@ class initDataset(Dataset):
             sort_agent = False
         case_info["agent"],case_info["agent_mask"] = self.process_agent(data['all_agent'],sort_agent)
         case_info['center'],case_info['center_mask'],case_info['bound'], case_info['bound_mask'],\
-        case_info['cross'],case_info['cross_mask'],case_info['rest'],case_info['rest_mask'] = process_map(data['lane'],data['traffic_light'], center_num=256,edge_num=128,offest=-40,lane_range=60)
+        case_info['cross'],case_info['cross_mask'],case_info['rest'],case_info['rest_mask'] = process_map(data['lane'],data['traffic_light'],  lane_range=RANGE, offest=0)
 
         self.filter_agent(case_info)
 

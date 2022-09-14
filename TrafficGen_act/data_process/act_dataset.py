@@ -197,7 +197,7 @@ class actDataset(Dataset):
 
         agent_mask = agent[...,-1]
         agent_type_mask = agent[...,-2]
-        agent_range_mask = (abs(agent[...,0])<RANGE)*(abs(agent[...,1])<RANGE)
+        agent_range_mask = (abs(agent[...,0]-40)<RANGE)*(abs(agent[...,1])<RANGE)
         mask = agent_mask*agent_type_mask*agent_range_mask
 
         return agent, mask.astype(bool)
@@ -210,7 +210,7 @@ class actDataset(Dataset):
         agent_context = agent_context[:MAX_AGENT]
         agent_mask = agent_mask[:MAX_AGENT]
         agent_context = WaymoAgent(agent_context)
-        agent_context = agent_context.get_inp(act=True)
+        agent_context = agent_context.get_inp(act_inp=True)
         agent_context = np.pad(agent_context,([0,MAX_AGENT-agent_context.shape[0]],[0,0]))
         agent_mask = np.pad(agent_mask,([0,MAX_AGENT-agent_mask.shape[0]]))
 

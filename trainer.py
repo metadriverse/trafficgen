@@ -469,7 +469,6 @@ class Trainer:
             best_pred_idx = torch.argmax(prob,dim=-1)
             best_pred_idx = best_pred_idx.view(agent_num,1,1,1).repeat(1,1,*all_pred.shape[2:])
             best_pred = torch.gather(all_pred,dim=1,index=best_pred_idx).squeeze(1).cpu().numpy()
-
             ## update all the agent
             for j in range(start_idx,agent_num):
                 pred_j = best_pred[j]
