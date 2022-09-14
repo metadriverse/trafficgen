@@ -141,33 +141,6 @@ class Trainer:
                         self.eval_init()
 
 
-    def process_case_for_eval(self,data_path,data_num):
-        self.data_for_gen = {}
-        cnt = 0
-        while cnt < data_num:
-            data_file_path = os.path.join(data_path, f'{cnt}.pkl')
-
-            with open(data_file_path, 'rb+') as f:
-                datas = pickle.load(f)
-
-            self.data_for_gen[cnt] = self.process(datas)
-            cnt+=1
-
-    def transform_coordinate_map(self,data,lane):
-        """
-        Every frame is different
-        """
-        pos = data['sdc_pos'][0]
-        lane[..., :2] -= pos
-        sdc_theta = data['sdc_theta'][0]
-        x = lane[..., 0]
-        y = lane[..., 1]
-        x_transform = np.cos(sdc_theta) * x - np.sin(sdc_theta) * y
-        y_transform = np.cos(sdc_theta) * y + np.sin(sdc_theta) * x
-        output_coords = np.stack((x_transform, y_transform), axis=-1)
-        lane[..., :2] = output_coords
-        return lane
-
     def draw_generation_process(self,vis=True, save=False):
         save_path = '/Users/fenglan/Downloads/waymo/onemap'
         self.model.eval()
@@ -206,81 +179,17 @@ class Trainer:
                         if isinstance(batch[key], torch.Tensor):
                             batch[key] = batch[key].cpu().numpy()
                     output = {}
-                    case_agent = np.zeros([pred_agent.shape[0],9])
-                    case_agent[:,-2:]=1
-                    case_agent[:,:4] = pred_agent[:,:4]
-                    case_agent[:,5:7] = pred_agent[:,4:6]
-                    case_agent[:,4] = -np.arctan2(pred_agent[:,6],pred_agent[:,7])+np.pi/2
-                    #output['lane'] = batch['lane'][0]
                     output['all_agent'] = case_agent
                     output['other'] = batch['other']
                     output['lane'] = batch['other']['lane']
                     output['other'].pop('lane')
-                    output['gt_agent'] = inp['agent'][0].numpy()
+                    output['gt_agent'] = batch['agent'][0].numpy()
 
                     p = os.path.join(save_path, f'{i}.pkl')
                     with open(p, 'wb') as f:
                         pickle.dump(output, f)
 
                 cnt+=1
-
-    def process_train_to_eval(self,data):
-
-
-        sdc_theta = data['sdc_theta']
-        pos = data['sdc_pos']
-
-        agent_type = data['nbrs_p_c_f'][:,0,-2]==1
-        pred_mask = data['pred_list'].astype(bool)
-        agent_mask = agent_type*pred_mask
-        other = data['nbrs_p_c_f'][agent_mask]
-
-        all_agent = np.concatenate(
-            [data['ego_p_c_f'][np.newaxis], other], axis=0)
-        coord = rotate(all_agent[..., 0], all_agent[..., 1], -sdc_theta) + pos
-        vel = rotate(all_agent[..., 2], all_agent[..., 3], -sdc_theta)
-
-        yaw = -sdc_theta+np.pi/2
-
-        all_agent[..., 4] = all_agent[..., 4] + yaw
-        all_agent[..., :2] = coord
-        all_agent[..., 2:4] = vel
-
-        #for j in range(all_agent.shape[0]):
-        agents = copy.deepcopy(all_agent)
-
-        pos0 = copy.deepcopy(agents[0, 0, :2])
-        theta0 = -(copy.deepcopy(agents[0,0, 4]))
-
-        coord = agents[..., :2]
-        vel = agents[..., 2:4]
-        coord -= pos0
-
-        coord = rotate(coord[..., 0], coord[..., 1], theta0)
-        vel = rotate(vel[..., 0], vel[..., 1], theta0)
-
-        agents[..., :2] = coord
-        agents[..., 2:4] = vel
-        agents[..., 4] = agents[..., 4] - copy.deepcopy(agents[0][0, 4])
-
-        # then recover lane's position
-        lane = copy.deepcopy(data['lane'])
-        lane[..., :2] -= pos0
-
-        output_coords = rotate(lane[..., 0], lane[..., 1], theta0)
-
-        lane[..., :2] = output_coords
-
-        output = {}
-        output['lane'] = lane
-        output['all_agent'] = agents[:,0]
-        other = {}
-        # one_case['traf'] = data['traf_p_c_f'][i]
-
-        other['traf'] = data['traf_p_c_f']
-        output['other'] = other
-
-        return output
 
     def eval_act(self):
         self.model.eval()
@@ -383,15 +292,6 @@ class Trainer:
             #     log[attr] = metric.compute()
             if not self.in_debug:
                 wandb.log(log)
-
-
-                # pred= []
-                # vec_b = batch['vec_based_rep'][0]
-                # agent = batch['agent'][0]
-                # for i in range(4):
-                #     vec_i = vec_b[i]
-                #     agent_i = agent[i]
-                #     pred.append(get_agent_pos_from_vec(batch['center'][0],vec_i[:2],vec_i[[2]],vec_i[[3]],vec_i[[4]],agent_i[5:7]))
 
     @time_me
     def train_one_epoch(self, train_data):
