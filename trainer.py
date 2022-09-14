@@ -199,7 +199,7 @@ class Trainer:
             for batch in eval_data:
 
                 seed(cnt)
-                for key in batch.keys():
+                for key in tqdm(batch.keys()):
                     if isinstance(batch[key], torch.DoubleTensor):
                         batch[key] = batch[key].float()
                     if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
