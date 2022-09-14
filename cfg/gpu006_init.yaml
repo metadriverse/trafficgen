@@ -15,6 +15,8 @@ recache: "True"
 min_agent: 8
 pad_num: 0
 hidden_dim: 1024
+draw: False
+
 # eval config
 need_eval: True
 eval_data_start_index: 50000

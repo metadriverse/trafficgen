@@ -206,7 +206,7 @@ class Trainer:
                         batch[key] = batch[key].cuda()
 
                 output= self.model(batch,eval=True)
-                pred_agent = output['pred_agent']
+                pred_agent = output['agent']
                 agent_num = len(pred_agent)
                 pred_agent = pred_agent[1:]
                 device = batch['center'].device

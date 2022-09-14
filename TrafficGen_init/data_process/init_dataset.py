@@ -26,6 +26,7 @@ class initDataset(Dataset):
         self.in_debug = cfg['debug']
         #self.recache = cfg['recache']
         self.eval = eval
+        self.draw = cfg['draw']
         self.data_len = None
         self.data_loaded = {}
         self.cfg = cfg
@@ -346,7 +347,7 @@ class initDataset(Dataset):
 
         other = {}
 
-        if self.eval:
+        if self.draw:
             other['traf'] = data['traffic_light']
             other['unsampled_lane'] = data['unsampled_lane']
 
@@ -355,7 +356,7 @@ class initDataset(Dataset):
         data['all_agent'] = data['all_agent'][0:-1:gap]
         data['lane'] = self.transform_coordinate_map(data)
         data['traffic_light'] = data['traffic_light'][0:-1:gap]
-        if self.eval:
+        if self.draw:
             other['lane'] = data['lane'][0]
             ego = agent[:, 0]
             ego_pos = copy.deepcopy(ego[[0], :2])[:, np.newaxis]
@@ -401,7 +402,7 @@ class initDataset(Dataset):
                 dic[k] = v[i]
             case_list.append(dic)
 
-        if self.eval:
+        if self.draw:
             case_list[0]['other'] = other
 
 
