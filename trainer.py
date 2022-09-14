@@ -196,10 +196,10 @@ class Trainer:
                            'speed': MMD(device=device,kernel_mul=1.0, kernel_num=1),
                            'position': MMD(device=device,kernel_mul=1.0, kernel_num=1)}
             cnt = 0
-            for batch in eval_data:
+            for batch in tqdm(eval_data):
 
                 seed(cnt)
-                for key in tqdm(batch.keys()):
+                for key in batch.keys():
                     if isinstance(batch[key], torch.DoubleTensor):
                         batch[key] = batch[key].float()
                     if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
