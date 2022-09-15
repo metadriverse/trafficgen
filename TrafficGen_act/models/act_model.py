@@ -102,9 +102,9 @@ class actuator(nn.Module):
             return pred, loss,loss_dic
 
         else:
-            b,m,t,d = pred['pos'].shape
-            start = torch.zeros([b,m,1,2],device=device)
-            pos = torch.cat([start,pred['pos']],dim=-2).cumsum(-2)
-            pred['pos'] = pos[:,:,1:]
+            # b,m,t,d = pred['pos'].shape
+            # start = torch.zeros([b,m,1,2],device=device)
+            # pos = torch.cat([start,pred['pos']],dim=-2).cumsum(-2)
+            # pred['pos'] = pos[:,:,1:]
 
             return pred

@@ -219,7 +219,7 @@ class actDataset(Dataset):
 
         ego_future = agent[:self.pred_len,0]
 
-        case_info['gt_pos'] = ego_future[1:,:2]-ego_future[:-1,:2]
+        case_info['gt_pos'] = ego_future[1:,:2]#-ego_future[:-1,:2]
         case_info['gt_vel'] = ego_future[1:,2:4]
         case_info['gt_heading'] = cal_rel_dir(ego_future[1:,4],0)
 
