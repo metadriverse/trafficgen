@@ -16,12 +16,12 @@ from torch.utils.data import DataLoader
 from utils.utils import get_time_str,time_me,transform_to_agent,from_list_to_batch,rotate,normalize_angle
 from utils.typedef import AgentType
 from metrics.mmd.mmd import MMD
-from TrafficGen_init.models.init_model import initializer
+
+from TrafficGen_init.models.init_model_ablation import initializer
 from TrafficGen_init.models.sceneGen import sceneGen
 from TrafficGen_init.data_process.init_dataset import initDataset,WaymoAgent
 
-from utils.visual_init import draw
-from utils.visual_act import draw_seq
+from utils.visual_init import draw,draw_seq
 
 from TrafficGen_act.models.act_model import actuator
 from TrafficGen_act.data_process.act_dataset import actDataset,process_case_to_input,process_map
@@ -385,7 +385,7 @@ class Trainer:
             sgd_count += 1
             self.total_sgd_count += 1
 
-    def get_gifs(self,vis=True):
+    def get_gifs(self,vis=True, snapshot=True):
         self.model.eval()
 
         with torch.no_grad():
@@ -399,20 +399,43 @@ class Trainer:
                 #pred_i['pred']=np.delete(pred_i['pred'],4,axis=1)
                 pred_list.append(pred_i)
                 if vis:
-                    dir_path = f'./vis/gif/{i}'
-                    if not os.path.exists(dir_path):
-                        os.mkdir(dir_path)
-                    ind = list(range(0,190,5))
-                    agent = pred_i[ind]
-                    for t in range(agent.shape[0]):
-                        agent_t = agent[t]
-                        agent_list = []
-                        for a in range(agent_t.shape[0]):
-                            agent_list.append(WaymoAgent(agent_t[[a]]))
 
-                        path = os.path.join(dir_path, f'{t}')
-                        cent,cent_mask,bound,bound_mask,_,_,rest,_ = process_map(data['lane'][np.newaxis],[data['traf'][int(t*5)]], center_num=256, edge_num=128,offest=0, lane_range=60)
-                        draw(cent[0],agent_list,edge=bound[0],other=rest[0],path=path,save=True)
+                    if snapshot:
+                        dir_path = f'./vis/snapshots/{i}'
+                        ind = list(range(0,190,10))
+                        agent = pred_i[ind]
+
+                        agent_0 = agent[0]
+                        agent0_list = []
+                        for a in range(agent_0.shape[0]):
+                            agent0_list.append(WaymoAgent(agent_0[[a]]))
+
+                        cent, cent_mask, bound, bound_mask, _, _, rest, _ = process_map(data['lane'][np.newaxis],
+                                                                                        [data['traf'][0]],
+                                                                                        center_num=256, edge_num=128,
+                                                                                        offest=0, lane_range=60)
+                        draw_seq(cent[0],agent0_list,agent[...,:2],edge=bound[0],other=rest[0],path=dir_path,save=True)
+
+
+                    else:
+
+                        dir_path = f'./vis/gif/{i}'
+                        if not os.path.exists(dir_path):
+                            os.mkdir(dir_path)
+
+                        ind = list(range(0,190,5))
+                        agent = pred_i[ind]
+                        for t in range(agent.shape[0]):
+                            agent_t = agent[t]
+                            agent_list = []
+                            for a in range(agent_t.shape[0]):
+                                agent_list.append(WaymoAgent(agent_t[[a]]))
+
+                            path = os.path.join(dir_path, f'{t}')
+                            cent,cent_mask,bound,bound_mask,_,_,rest,_ = process_map(data['lane'][np.newaxis],[data['traf'][int(t*5)]], center_num=256, edge_num=128,offest=0, lane_range=60)
+                            draw(cent[0],agent_list,edge=bound[0],other=rest[0],path=path,save=True)
+
+
                         # if t==0:
                         #     center, _, bounder, _, _, _, rester = WaymoDataset.process_map(inp, 2000, 1000, 50,0)
                         #     for k in range(1,agent_t.shape[0]):

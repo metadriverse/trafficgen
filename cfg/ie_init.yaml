@@ -13,6 +13,9 @@ phase: 'training'
 data_usage: 50000
 model: "init"
 recache: True
+pad_num: 0
+draw: False
+min_agent: 8
 
 # eval config
 need_eval: True

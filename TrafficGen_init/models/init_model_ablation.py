@@ -72,6 +72,7 @@ class initializer(nn.Module):
             bbox_logprob = pred['bbox'].log_prob(bbox)
 
             agents = get_agent_pos_from_vec(center_lane, pos[0], speed[0], vel_heading[0], heading[0], bbox[0])
+            agents.position = pos[0].cpu().numpy()
             agents_list.append(agents)
 
             vel_heading_logprob_ = vel_heading_logprob[0,the_indx]
