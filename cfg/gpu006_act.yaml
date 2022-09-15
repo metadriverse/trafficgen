@@ -1,7 +1,7 @@
 format_version: 4
 
 debug: False
-data_path: '/data0/pengzh/dynamic_data'
+data_path: '/data0/pengzh/v2_data'
 
 max_epoch: 200
 num_workers: 8
@@ -10,7 +10,7 @@ lr: 0.0003
 weight_decay: 0.0004
 device: 'cuda'
 phase: 'training'
-data_usage: 400000
+data_usage: 60000
 model: "act"
 recache: "True"
 pred_len: 90
@@ -18,7 +18,7 @@ pred_len: 90
 # eval config
 need_eval: False
 eval_data_start_index: 100000
-eval_data_usage: 4000
+eval_data_usage: 0
 eval_batch_size: 16 # 2 frame * 50 map  will be plotted
 eval_frequency: 5  # eval each epoch
 

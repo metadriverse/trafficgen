@@ -17,7 +17,7 @@ from utils.utils import get_time_str,time_me,transform_to_agent,from_list_to_bat
 from utils.typedef import AgentType
 from metrics.mmd.mmd import MMD
 
-from TrafficGen_init.models.init_model_ablation import initializer
+from TrafficGen_init.models.init_model import initializer
 from TrafficGen_init.models.sceneGen import sceneGen
 from TrafficGen_init.data_process.init_dataset import initDataset,WaymoAgent
 
@@ -251,7 +251,7 @@ class Trainer:
         with torch.no_grad():
             cnt = 0
             for batch in tqdm(eval_data):
-                seed(cnt)
+                #seed(cnt)
                 for key in batch.keys():
                     if isinstance(batch[key], torch.DoubleTensor):
                         batch[key] = batch[key].float()
@@ -259,6 +259,12 @@ class Trainer:
                         batch[key] = batch[key].cuda()
 
                 output= self.model(batch,eval=True,context_num=context_num)
+                center = batch['center'][0].cpu().numpy()
+                rest = batch['rest'][0].cpu().numpy()
+                bound = batch['bound'][0].cpu().numpy()
+                output_path = os.path.join('./cases/vis',f'{cnt}')
+                draw(center, output['agent'], other=rest, edge=bound, save=True,
+                     path=output_path)
 
                 pred_agent = output['agent']
                 agent = np.concatenate([x.get_inp(act=True) for x in pred_agent], axis=0)
@@ -414,6 +420,15 @@ class Trainer:
                                                                                         [data['traf'][0]],
                                                                                         center_num=256, edge_num=128,
                                                                                         offest=0, lane_range=60)
+                        # draw_dict = {}
+                        # draw_dict['a'] = cent[0]
+                        # draw_dict['b'] = agent0_list
+                        # draw_dict['c'] = agent[...,:2]
+                        # draw_dict['d'] = bound[0]
+                        # draw_dict['e'] = rest[0]
+                        #
+                        # with open('./draw.pkl', 'wb') as f:
+                        #     pickle.dump(draw_dict, f)
                         draw_seq(cent[0],agent0_list,agent[...,:2],edge=bound[0],other=rest[0],path=dir_path,save=True)
 
 
