@@ -28,6 +28,8 @@ class initializer(nn.Module):
         self.apply(self._init_weights)
         middle_layer_shape = [self.hidden_dim * 2, self.hidden_dim, 256]
 
+
+        self.K = cfg['gaussian_comp']
         self.prob_head = MLP_3([*middle_layer_shape, 1])
         #self.pos_head = MLP_3([*middle_layer_shape, 10 * (1 + 5)])
         self.pos_head = MLP_3([*middle_layer_shape, 2])
@@ -208,10 +210,7 @@ class initializer(nn.Module):
 
         return feature
 
-    # def feature_extract(self, data, random_mask):
-    #
-    #     # map features
-    #     return feature
+
 
     def compute_loss(self, data, pred_dists):
         BCE = torch.nn.BCEWithLogitsLoss()

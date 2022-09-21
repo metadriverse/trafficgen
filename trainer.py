@@ -13,11 +13,11 @@ from torch import optim
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader
 
-from utils.utils import get_time_str,time_me,transform_to_agent,from_list_to_batch,rotate,normalize_angle
+from utils.utils import get_time_str,time_me,transform_to_agent,from_list_to_batch,rotate,normalize_angle, get_agent_pos_from_vec
 from utils.typedef import AgentType
 from metrics.mmd.mmd import MMD
 
-from TrafficGen_init.models.init_model import initializer
+from TrafficGen_init.models.init_distribution import initializer
 from TrafficGen_init.models.sceneGen import sceneGen
 from TrafficGen_init.data_process.init_dataset import initDataset,WaymoAgent
 
@@ -264,12 +264,23 @@ class Trainer:
                     if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
                         batch[key] = batch[key].cuda()
 
-                output= self.model(batch,eval=True,context_num=context_num)
+                vec_rep = batch['vec_based_rep'][0]
+                batch_agent = batch['agent'][0]
+                agent_num = batch['agent_mask'][0].sum().item()
+
+                agent = get_agent_pos_from_vec(vec_rep[:,5:9],vec_rep[:,:2],vec_rep[:,2],vec_rep[:,3],vec_rep[:,4],batch_agent[:,5:7])
+                lis = []
+                for i in range(agent_num):
+                    lis.append(agent.get_agent(i))
+                    #lis.append(WaymoAgent(batch_agent[i].unsqueeze(0).numpy()))
+
+
+                #output= self.model(batch,eval=True,context_num=context_num)
                 center = batch['center'][0].cpu().numpy()
                 rest = batch['rest'][0].cpu().numpy()
                 bound = batch['bound'][0].cpu().numpy()
                 output_path = os.path.join('./cases/vis',f'{cnt}')
-                draw(center, output['agent'], other=rest, edge=bound, save=True,
+                draw(center, lis, other=rest, edge=bound, save=True,
                      path=output_path)
 
                 pred_agent = output['agent']

@@ -16,6 +16,7 @@ min_agent: 8
 pad_num: 0
 hidden_dim: 1024
 draw: False
+gaussian_comp: 5
 
 # eval config
 need_eval: True

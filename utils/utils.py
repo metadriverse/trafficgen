@@ -46,7 +46,7 @@ def get_agent_pos_from_vec(vec,long_lat,speed,vel_heading,heading,bbox):
     long_pos = vec_len*long_lat[...,0]
     lat_pos = vec_len*long_lat[...,1]
 
-    coord = rotate(lat_pos,long_pos,-vec_dir)
+    coord = rotate(lat_pos,long_pos,-np.pi/2+vec_dir)
 
     coord[:,0]+=x_center
     coord[:,1]+=y_center

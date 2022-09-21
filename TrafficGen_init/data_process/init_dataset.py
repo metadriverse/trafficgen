@@ -114,7 +114,7 @@ class initDataset(Dataset):
 
         vx,vy = agent[...,2], agent[...,3]
         v_value = np.sqrt(vx**2+vy**2)
-        low_vel = v_value<0.5
+        low_vel = v_value<0.1
 
         dir_v = np.arctan2(vy,vx)
         x1,y1,x2,y2 = selected_vec[...,0],selected_vec[...,1],selected_vec[...,2],selected_vec[...,3]
@@ -137,12 +137,12 @@ class initDataset(Dataset):
         cent_to_agent_x = agent_x - vec_x
         cent_to_agent_y = agent_y - vec_y
 
-        coord = rotate(cent_to_agent_x,cent_to_agent_y,-dir)
+        coord = rotate(cent_to_agent_x,cent_to_agent_y,np.pi/2-dir)
 
         vec_len = np.clip(np.sqrt(np.square(y2-y1) + np.square(x1-x2)), a_min=4.5, a_max=5.5)
 
-        lat_perc = np.clip(-coord[...,1],a_min=-vec_len/2,a_max=vec_len/2)/vec_len
-        long_perc = np.clip(coord[...,0],a_min=-vec_len/2,a_max=vec_len/2)/vec_len
+        lat_perc = np.clip(coord[...,0],a_min=-vec_len/2,a_max=vec_len/2)/vec_len
+        long_perc = np.clip(coord[...,1],a_min=-vec_len/2,a_max=vec_len/2)/vec_len
 
         total_mask = min_dist_mask*agent_mask*v_dir_mask*dir_mask
         total_mask[:,0]=1
@@ -314,34 +314,6 @@ class initDataset(Dataset):
         return
 
     def process(self, data):
-        # if self.eval:
-        #     other = {}
-        #     agent = copy.deepcopy(data['all_agent'])
-        #     data['all_agent'] = data['all_agent'][[0]]
-        #     lane = self.transform_coordinate_map(data)
-        #
-        #     ego = agent[:, 0]
-        #     ego_pos = copy.deepcopy(ego[[0], :2])[:, np.newaxis]
-        #     ego_heading = ego[[0], [4]]
-        #     agent[..., :2] -= ego_pos
-        #     agent[..., :2] = rotate(agent[..., 0], agent[..., 1], -ego_heading)
-        #     agent[..., 2:4] = rotate(agent[..., 2], agent[..., 3], -ego_heading)
-        #     agent[..., 4] -= ego_heading
-        #
-        #     agent_mask = agent[..., -1]
-        #     agent_type_mask = agent[..., -2]
-        #     agent_range_mask = (abs(agent[..., 0]) < RANGE) * (abs(agent[..., 1]) < RANGE)
-        #     mask = agent_mask * agent_type_mask * agent_range_mask
-        #
-        #     agent = WaymoAgent(agent)
-        #
-        #     other['gt_agent'] = agent.get_inp(act=True)
-        #     other['gt_agent_mask'] = mask
-        #     other['lane'] = lane[0]
-        #     other['traf'] = data['traffic_light']
-        #     other['unsampled_lane'] = data['unsampled_lane']
-        #     return other
-
         case_info = {}
         gap = 20
 
@@ -374,7 +346,6 @@ class initDataset(Dataset):
 
             other['gt_agent'] = agent.get_inp(act=True)
             other['gt_agent_mask'] = mask
-
 
         if self.cfg['model']=='sceneGen':
             sort_agent = True
