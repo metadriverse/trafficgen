@@ -13,7 +13,7 @@ lr: 0.0003
 weight_decay: 0.0004
 device: 'cpu'
 phase: 'training'
-data_usage: 16
+data_usage: 1
 model: "act"
 recache: True
 pred_len: 90
@@ -21,7 +21,7 @@ pred_len: 90
 # eval config
 need_eval: True
 eval_data_start_index: 0
-eval_data_usage: 0
+eval_data_usage: 400
 eval_batch_size: 1
 eval_frequency: 1
 

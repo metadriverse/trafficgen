@@ -250,8 +250,14 @@ class Trainer:
         eval_data = self.eval_data_loader
         with torch.no_grad():
             cnt = 0
-            for batch in tqdm(eval_data):
+            for data in tqdm(eval_data):
                 #seed(cnt)
+                # if cnt>70:
+                #     break
+                #     cnt+=1
+                #     continue
+                #for r in range(20):
+                batch = copy.deepcopy(data)
                 for key in batch.keys():
                     if isinstance(batch[key], torch.DoubleTensor):
                         batch[key] = batch[key].float()
@@ -396,13 +402,15 @@ class Trainer:
 
         with torch.no_grad():
             pred_list = []
-            for i in tqdm(range(16)):
+            #for i in tqdm([2,8,9,20,58,99,101,109,131,156,159,169,170]):
+            for i in tqdm([17]):
                 with open(f'./cases/initialized/{i}.pkl', 'rb+') as f:
                     data = pickle.load(f)
 
                 pred_i = self.inference_control(data)
 
-                #pred_i['pred']=np.delete(pred_i['pred'],4,axis=1)
+                pred_i=np.delete(pred_i,3,axis=1)
+
                 pred_list.append(pred_i)
                 if vis:
 
@@ -410,10 +418,12 @@ class Trainer:
                         dir_path = f'./vis/snapshots/{i}'
                         ind = list(range(0,190,10))
                         agent = pred_i[ind]
+                        #agent = agent[:,[6,7,10,12]]
 
                         agent_0 = agent[0]
                         agent0_list = []
-                        for a in range(agent_0.shape[0]):
+                        agent_num = agent_0.shape[0]
+                        for a in range(agent_num):
                             agent0_list.append(WaymoAgent(agent_0[[a]]))
 
                         cent, cent_mask, bound, bound_mask, _, _, rest, _ = process_map(data['lane'][np.newaxis],
@@ -459,7 +469,93 @@ class Trainer:
             # if save_path:
             #     self.save_as_metadrive_data(pred_list,scene_data,save_path)
 
-    def inference_control(self, data, ego_gt=True,length = 190, per_time = 10):
+    def get_gifs_from_gt(self,vis=True, snapshot=True):
+        self.model.eval()
+        eval_data = self.eval_data_loader.dataset
+        with torch.no_grad():
+            cnt = 0
+            for data in eval_data:
+                if vis:
+                    if snapshot:
+                        dir_path = f'./vis/snapshots/{cnt}'
+                        cnt+=1
+                        ind = list(range(0,120,10))
+                        agent = data['all_valid'][:120]
+                        agent = agent[ind]
+                        agent_0 = agent[0]
+                        agent0_list = []
+                        for a in range(agent_0.shape[0]):
+                            agent0_list.append(WaymoAgent(agent_0[[a]]))
+                        draw_seq(data['center'],agent0_list,agent[...,:2],edge=data['bound'],other=data['rest'],path=dir_path,save=True)
+
+
+                    else:
+
+                        dir_path = f'./vis/gif/{i}'
+                        if not os.path.exists(dir_path):
+                            os.mkdir(dir_path)
+
+                        ind = list(range(0,190,5))
+                        agent = pred_i[ind]
+                        for t in range(agent.shape[0]):
+                            agent_t = agent[t]
+                            agent_list = []
+                            for a in range(agent_t.shape[0]):
+                                agent_list.append(WaymoAgent(agent_t[[a]]))
+
+                            path = os.path.join(dir_path, f'{t}')
+                            cent,cent_mask,bound,bound_mask,_,_,rest,_ = process_map(data['lane'][np.newaxis],[data['traf'][int(t*5)]], center_num=256, edge_num=128,offest=0, lane_range=60)
+                            draw(cent[0],agent_list,edge=bound[0],other=rest[0],path=path,save=True)
+
+
+                        # if t==0:
+                        #     center, _, bounder, _, _, _, rester = WaymoDataset.process_map(inp, 2000, 1000, 50,0)
+                        #     for k in range(1,agent_t.shape[0]):
+                        #         heat_path = os.path.join(dir_path, f'{k-1}')
+                        #         draw(cent, heat_map[k-1], agent_t[:k], rest, edge=bound, save=True, path=heat_path)
+            # if save_path:
+            #     self.save_as_metadrive_data(pred_list,scene_data,save_path)
+
+    def get_metrics_for_act(self):
+        self.model.eval()
+        eval_data = self.eval_data_loader
+
+        mean_ade=0
+        mean_fde=0
+        with torch.no_grad():
+            cnt = 0
+            for batch in tqdm(eval_data):
+                for key in batch.keys():
+                    if isinstance(batch[key], torch.DoubleTensor):
+                        batch[key] = batch[key].float()
+                    if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
+                        batch[key] = batch[key].cuda()
+                pred = self.model(batch, False)
+                prob = pred['prob']
+                velo_pred = pred['velo']
+                pos_pred = pred['pos']
+                heading_pred = pred['heading']
+                all_pred = torch.cat([pos_pred, velo_pred, heading_pred.unsqueeze(-1)], dim=-1)
+                bs = prob.shape[0]
+                best_pred_idx = torch.argmax(prob, dim=-1)
+                best_pred_idx = best_pred_idx.view(bs, 1, 1, 1).repeat(1, 1, *all_pred.shape[2:])
+                best_pred = torch.gather(all_pred, dim=1, index=best_pred_idx).squeeze(1)
+
+                pred_pos = best_pred[...,:2]
+                gt_pos = batch['gt_pos']
+
+                de1 = pred_pos-gt_pos
+                de1 = (de1[...,0]**2+de1[...,1]**2)**0.5
+                fde = de1[:,-1].mean().item()
+                ade = de1.mean().item()
+                mean_ade = (mean_ade+ade)/(cnt+1)
+                mean_fde = (mean_fde+fde)/(cnt+1)
+                cnt+=1
+            print(mean_ade)
+            print(mean_fde)
+        return
+
+    def inference_control(self, data, ego_gt=True,length = 190, per_time = 20):
         # for every x time step, pred then update
         agent_num = data['agent_mask'].sum()
         data['agent_mask'] = data['agent_mask'][:agent_num]

@@ -88,7 +88,7 @@ class actuator(nn.Module):
         #speed_pred = nn.ReLU()(self.speed_head(pred_embed)).view(b,6,self.pred_len)
         velo_pred = self.velo_head(pred_embed).view(b,6,self.pred_len,2)
         pos_pred = self.pos_head(pred_embed).view(b,6,self.pred_len,2).cumsum(-2)
-        heading_pred = self.angle_head(pred_embed).view(b,6,self.pred_len).cumsum(-2)
+        heading_pred = self.angle_head(pred_embed).view(b,6,self.pred_len).cumsum(-1)
 
         pred = {}
         pred['prob'] = prob_pred

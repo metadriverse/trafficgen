@@ -32,17 +32,34 @@ def draw_heatmap(vector,vector_prob,gt_idx):
 
     return plt
 
-def draw_seq(center, agents, traj=None, other=None,heat_map=True,save=False, edge=None,path='../vis',abn_idx=None):
+def draw_seq(center, agents, traj=None, other=None,heat_map=False,save=False, edge=None,path='../vis',abn_idx=None):
     fig, ax = plt.subplots(figsize=(10, 10))
     plt.axis('equal')
+
+    shapes = []
+    collide = []
+    poly = agents[0].get_polygon()[0]
+    shapes.append(poly)
+    for i in range(1,len(agents)):
+        intersect = False
+        poly = agents[i].get_polygon()[0]
+        for shape in shapes:
+            if poly.intersects(shape):
+                intersect = True
+                collide.append(i)
+                break
+        if not intersect:
+            shapes.append(poly)
+
 
     colors = list(mcolors.TABLEAU_COLORS)
     lane_color = 'black'
     alpha = 0.12
-    linewidth = 8
+    linewidth = 3
+
     if heat_map:
         lane_color = 'white'
-        alpha=0.3
+        alpha=0.2
         linewidth = 6
     ax.axis('off')
 
@@ -53,7 +70,7 @@ def draw_seq(center, agents, traj=None, other=None,heat_map=True,save=False, edg
         x0, y0, x1, y1, = center[j, :4]
 
         if x0 == 0:break
-        ax.plot((x0, x1), (y0, y1),'--', color=lane_color, linewidth=2,alpha=0.2)
+        ax.plot((x0, x1), (y0, y1),'--', color=lane_color, linewidth=1,alpha=0.2)
 
         if traf_state==1:
             color = 'red'
@@ -79,34 +96,49 @@ def draw_seq(center, agents, traj=None, other=None,heat_map=True,save=False, edg
             # if lane[j, k, -1] == 0: continue
             x0, y0, x1, y1, = other[j,  :4]
             if x0 == 0:break
-            ax.plot((x0, x1), (y0, y1), lane_color, linewidth=0.7)
+            ax.plot((x0, x1), (y0, y1), lane_color, linewidth=0.7,alpha=0.9)
     for i in range(len(agents)):
-
+        if i in collide: continue
+        # if i<5:
+        #     color = 'red'
+        #     face_color = 'black'
+        # else:
+        #     color = 'royalblue'
+        #     face_color = col
         ind = i % 10
         col = colors[ind]
+        # if i in [6, 7, 10, 12]:
+        #     color='red'
+        #     face = 'black'
+        # else:
+        #     color='royalblue'
+        #     face = col
+
+        color='royalblue'
+        face = col
 
         traj_i = traj[:, i]
-        for j in range(traj_i.shape[0]-1):
+        len_t = traj_i.shape[0]-1
+        for j in range(len_t):
+            #if j>=3:break
+
             x0, y0 = traj_i[j]
             x1, y1 = traj_i[j+1]
 
             if abs(x0)<60 and abs(y0)<60 and abs(x1)<60 and abs(y1)<60:
-                ax.plot((x0, x1), (y0, y1), '-', color=col, linewidth=1.5,marker='.',markersize=4)
+                ax.plot((x0, x1), (y0, y1), '-', color=color, linewidth=1.8,marker='.',markersize=3)
 
         agent = agents[i]
-        center = agent.position[0]
-        vel = agent.velocity[0]
         rect = agent.get_rect()[0]
-        rect = plt.Polygon(rect, edgecolor=lane_color,
-                             facecolor=col, linewidth=1,zorder=10000,alpha=0.8)
-        #ax.plot([center[0], vel[0]+center[0]], [center[1], vel[1]+center[1]],'.-',color='lime',linewidth=1,markersize=2.5,zorder=10000)
+        rect = plt.Polygon(rect, edgecolor='black',
+                             facecolor=face, linewidth=0.5,zorder=10000)
         ax.add_patch(rect)
 
 
-    ax.set_facecolor('black')
+    #ax.set_facecolor('black')
     plt.autoscale()
     if save:
-        fig.savefig(path, dpi=100,bbox_inches='tight',pad_inches=0,facecolor=ax.get_facecolor())
+        fig.savefig(path, dpi=100,bbox_inches='tight',pad_inches=0)
 
     return plt
 
