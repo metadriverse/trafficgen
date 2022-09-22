@@ -34,10 +34,11 @@ class initializer(nn.Module):
 
         #self.pos_head = MLP_3([*middle_layer_shape, 2])
         self.speed_head = MLP_3([*middle_layer_shape, 1])
+        self.vel_heading_head = MLP_3([*middle_layer_shape, 1])
         self.pos_head = MLP_3([*middle_layer_shape, self.K * (1 + 5)])
         self.bbox_head = MLP_3([*middle_layer_shape, self.K * (1 + 5)])
         self.heading_head = MLP_3([*middle_layer_shape, self.K * (1 + 2)])
-        self.vel_heading_head = MLP_3([*middle_layer_shape, self.K * (1 + 2)])
+        #self.vel_heading_head = MLP_3([*middle_layer_shape, self.K * (1 + 2)])
         # self.speed_head = MLP_3([*middle_layer_shape, 10 * (1 + 2)])
 
     def _init_weights(self, module):
@@ -49,7 +50,7 @@ class initializer(nn.Module):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
 
-    def sample_from_distribution(self, pred,center_lane,repeat_num=3):
+    def sample_from_distribution(self, pred,center_lane,repeat_num=5):
         prob = pred['prob'][0]
         max_prob=0
 
@@ -65,6 +66,7 @@ class initializer(nn.Module):
         agents_list = []
         #pos = torch.clip(pred['pos'], min=-0.5, max=0.5)
         speed = torch.clip(pred['speed'], min=0)
+        vel_heading = pred['vel_heading']
         for i in range(repeat_num):
             pos = torch.clip(pred['pos'].sample(),min=-0.5,max=0.5)
             pos_logprob = pred['pos'].log_prob(pos)
@@ -72,8 +74,8 @@ class initializer(nn.Module):
             heading = torch.clip(pred['heading'].sample(),min=-np.pi/2,max=np.pi/2)
             heading_logprob = pred['heading'].log_prob(heading)
 
-            vel_heading = torch.clip(pred['vel_heading'].sample(),min=-np.pi/2,max=np.pi/2)
-            vel_heading_logprob = pred['vel_heading'].log_prob(vel_heading)
+            # vel_heading = torch.clip(pred['vel_heading'].sample(),min=-np.pi/2,max=np.pi/2)
+            # vel_heading_logprob = pred['vel_heading'].log_prob(vel_heading)
 
             bbox = torch.clip(pred['bbox'].sample(),min=1.5)
             bbox_logprob = pred['bbox'].log_prob(bbox)
@@ -85,10 +87,10 @@ class initializer(nn.Module):
             agents_list.append(agents)
             pos_logprob_ = pos_logprob[0,the_indx]
             heading_logprob_ = heading_logprob[0,the_indx]
-            vel_heading_logprob_ = vel_heading_logprob[0,the_indx]
+            #vel_heading_logprob_ = vel_heading_logprob[0,the_indx]
             bbox_logprob_ = bbox_logprob[0,the_indx]
             #speed_logprob_ = speed_logprob[0,the_indx]
-            all_prob = heading_logprob_+vel_heading_logprob_+bbox_logprob_+pos_logprob_
+            all_prob = heading_logprob_+bbox_logprob_+pos_logprob_
             prob_list.append(all_prob)
 
         max_indx = np.argmax(prob_list)
@@ -134,6 +136,7 @@ class initializer(nn.Module):
         # 3-5: variance and covariance
         #pos_out = self.pos_head(feature)
         speed_out = nn.ReLU()(self.speed_head(feature))
+        vel_heading_out = self.vel_heading_head(feature)
 
         pos_out = self.pos_head(feature).view([*feature.shape[:-1], K, -1])
         pos_weight = pos_out[..., 0]
@@ -160,15 +163,15 @@ class initializer(nn.Module):
 
         # speed distribution: 1 dimension
         # vel heading distribution: 1 dimension,range(-pi/2,pi/2)
-        vel_heading_out = self.vel_heading_head(feature).view([*feature.shape[:-1], K, -1])
-        vel_heading_weight = vel_heading_out[..., 0]
-        vel_heading_param = vel_heading_out[..., 1:]
-        vel_heading_distri = self.output_to_dist(vel_heading_param, 1)
-        vel_heading_weight = torch.distributions.Categorical(logits=vel_heading_weight)
-        vel_heading_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(vel_heading_weight,
-                                                                                    vel_heading_distri)
+        # vel_heading_out = self.vel_heading_head(feature).view([*feature.shape[:-1], K, -1])
+        # vel_heading_weight = vel_heading_out[..., 0]
+        # vel_heading_param = vel_heading_out[..., 1:]
+        # vel_heading_distri = self.output_to_dist(vel_heading_param, 1)
+        # vel_heading_weight = torch.distributions.Categorical(logits=vel_heading_weight)
+        # vel_heading_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(vel_heading_weight,
+        #                                                                             vel_heading_distri)
         return {'prob': prob_pred, 'pos': pos_gmm, 'bbox': bbox_gmm, 'heading': heading_gmm, 'speed': speed_out.squeeze(-1),
-                'vel_heading': vel_heading_gmm}
+                'vel_heading': vel_heading_out.squeeze(-1)}
 
     def agent_feature_extract(self, agent_feat,agent_mask, random_mask):
         agent = agent_feat[..., :-2]
@@ -222,6 +225,7 @@ class initializer(nn.Module):
     def compute_loss(self, data, pred_dists):
         BCE = torch.nn.BCEWithLogitsLoss()
         MSE = torch.nn.MSELoss(reduction='none')
+        L1 = torch.nn.L1Loss(reduction='none')
         prob_loss = BCE(pred_dists['prob'], data['gt_distribution'])
 
         line_mask = data['center_mask']
@@ -246,8 +250,11 @@ class initializer(nn.Module):
         bbox_loss = (torch.sum(bbox_loss * gt_mask, dim=1) / gt_sum).mean()
 
 
-        vel_heading_loss = -pred_dists['vel_heading'].log_prob(data['gt_vel_heading'])
+        # vel_heading_loss = -pred_dists['vel_heading'].log_prob(data['gt_vel_heading'])
+        # vel_heading_loss = (torch.sum(vel_heading_loss * gt_mask, dim=1) / gt_sum).mean()
+        vel_heading_loss = L1(pred_dists['vel_heading'],data['gt_vel_heading'])
         vel_heading_loss = (torch.sum(vel_heading_loss * gt_mask, dim=1) / gt_sum).mean()
+
 
         heading_loss = -pred_dists['heading'].log_prob(data['gt_heading'])
         heading_loss = (torch.sum(heading_loss * gt_mask, dim=1) / gt_sum).mean()

@@ -49,7 +49,7 @@ class initializer(nn.Module):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
 
-    def sample_from_distribution(self, pred,center_lane,repeat_num=3):
+    def sample_from_distribution(self, pred,center_lane,repeat_num=5):
         prob = pred['prob'][0]
         max_prob=0
 
@@ -290,7 +290,7 @@ class initializer(nn.Module):
 
             pred['prob'][:,idx_list]=0
             cnt=0
-            while cnt<3:
+            while cnt<8:
                 agents, prob, indx = self.sample_from_distribution(pred,center)
                 the_agent = agents.get_agent(indx)
                 poly = the_agent.get_polygon()[0]
