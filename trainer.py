@@ -42,7 +42,7 @@ class Trainer:
         self.args = args
         self.cfg = cfg
 
-        self.model_type = cfg['model']
+        #self.model_type = cfg['model']
 
         if args.distributed:
             torch.distributed.init_process_group(backend="nccl", rank=args.local_rank)
@@ -51,46 +51,64 @@ class Trainer:
             print('[TORCH] Training in distributed mode. Process %d, local %d, total %d.' % (
                 args.rank, args.local_rank, args.world_size))
 
-        if self.model_type == 'init':
-            train_dataset = initDataset(self.cfg, args)
-            model = initializer(cfg)
-        elif self.model_type == 'act':
-            train_dataset = actDataset(self.cfg, args)
-            model = actuator(cfg)
-        elif self.model_type == 'sceneGen':
-            train_dataset = initDataset(self.cfg, args)
-            model = sceneGen(cfg)
-        else:
-            raise NotImplementedError('no such model!')
 
+        init_dataset = initDataset(cfg['init'], args)
 
-        if len(train_dataset)>0:
-            data_loader = DataLoader(train_dataset, batch_size=cfg['batch_size'],
-                                     shuffle=True,
-                                     num_workers=self.cfg['num_workers'])
-            self.train_dataloader = data_loader
+        act_dataset = actDataset(cfg['act'], args)
+
+        model1 = initializer(cfg['init'])
+        #elif self.model_type == 'act':
+        #train_dataset = actDataset(self.cfg, args)
+        model2 = actuator(cfg['act'])
+        # elif self.model_type == 'sceneGen':
+        #     train_dataset = initDataset(self.cfg, args)
+        #     model = sceneGen(cfg)
+        # else:
+        #     raise NotImplementedError('no such model!')
         if args.distributed:
-            model.cuda(args.local_rank)
-            model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
-            model = DistributedDataParallel(model,
+            model1.cuda(args.local_rank)
+            model1 = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model1)
+            model1 = DistributedDataParallel(model1,
+                                            device_ids=[args.local_rank],
+                                            output_device=args.local_rank,
+                                            broadcast_buffers=False)  # only single machine
+            model2.cuda(args.local_rank)
+            model2 = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model2)
+            model2 = DistributedDataParallel(model2,
                                             device_ids=[args.local_rank],
                                             output_device=args.local_rank,
                                             broadcast_buffers=False)  # only single machine
         else:
-            model = torch.nn.DataParallel(model, list(range(1)))
-            model = model.to(self.cfg['device'])
+            model1 = torch.nn.DataParallel(model1, list(range(1)))
+            model1 = model1.to(cfg['device'])
+            model2 = torch.nn.DataParallel(model2, list(range(1)))
+            model2 = model2.to(cfg['device'])
 
-        optimizer = optim.AdamW(model.parameters(), lr=self.cfg['lr'], betas=(0.9, 0.999), eps=1e-09,
-                                weight_decay=self.cfg['weight_decay'], amsgrad=True)
+        if len(init_dataset)>0:
+            init_loader = DataLoader(init_dataset, batch_size=cfg['init']['batch_size'],
+                                     shuffle=True,
+                                     num_workers=self.cfg['init']['num_workers'])
+            self.init_dataloader = init_loader
+
+
+        optimizer = optim.AdamW(model1.parameters(), lr=self.cfg['init']['lr'], betas=(0.9, 0.999), eps=1e-09,
+                                weight_decay=self.cfg['init']['weight_decay'], amsgrad=True)
 
         self.eval_data_loader = None
 
         if self.main_process and self.cfg["need_eval"]:
-            test_set = actDataset(self.cfg, args, eval=True) if self.model_type=='act' else initDataset(self.cfg, args, eval=True)
-            self.eval_data_loader = DataLoader(test_set, shuffle=False, batch_size=cfg['eval_batch_size'],
-                                               num_workers=self.cfg['num_workers'])
 
-        self.model = model
+            test_act_dataset = actDataset(cfg['act'], args, eval=True)
+            test_init_dataset = initDataset(cfg['init'], args, eval=True)
+
+            self.eval_init_loader = DataLoader(test_init_dataset, shuffle=False, batch_size=cfg['init']['eval_batch_size'],
+                                               num_workers=self.cfg['init']['num_workers'])
+            self.eval_act_loader = DataLoader(test_act_dataset, shuffle=False, batch_size=cfg['act']['eval_batch_size'],
+                                               num_workers=self.cfg['act']['num_workers'])
+
+        self.model1 = model1
+        self.model2 = model2
+
         self.in_debug = cfg["debug"]  # if in debug, wandb will log to TEST instead of cvpr
         self.optimizer = optimizer
 
@@ -105,7 +123,7 @@ class Trainer:
         self.wandb_log_freq = wandb_log_freq
         self.total_sgd_count = 1
         self.training_start_time = time.time()
-        #self.mmd_loss = MMD_loss()
+
         if self.main_process:
             self.make_dir()
             if not self.in_debug:
@@ -119,6 +137,111 @@ class Trainer:
             print("gpu number:{}".format(gpu_num))
             print("gpu available:", torch.cuda.is_available())
 
+    def save_model(self):
+        if self.current_epoch % self.save_freq == 0 and self.main_process:
+            if self.model_type == 'act':
+                model_name = f'act_{self.current_epoch}'
+            else:
+                model_name = f'init_{self.current_epoch}'
+
+            model_save_name = os.path.join(self.exp_data_path, 'saved_models', model_name)
+            state = {
+                'state_dict': self.model.state_dict(),
+                'optimizer': self.optimizer.state_dict(),
+                'epoch': self.current_epoch
+            }
+            torch.save(state, model_save_name)
+            self.print('\n model saved to %s' % model_save_name)
+
+    def load_model(self, model,model_path, device):
+        state = torch.load(model_path, map_location=torch.device(device))
+        model.load_state_dict(state["state_dict"])
+        # self.optimizer.load_state_dict(state["optimizer"])
+        # self.current_epoch = state["epoch"]
+
+    @staticmethod
+    def reduce_mean_on_all_proc(tensor):
+        nprocs = torch.distributed.get_world_size()
+        rt = tensor.clone()
+        dist.all_reduce(rt, op=dist.ReduceOp.SUM)
+        rt /= nprocs
+        return rt
+
+    def print(self, *info):
+        "Use this print instead of naive print, since we run in parallel"
+        if self.main_process:
+            print(*info)
+
+    def print_log(self, log: dict):
+        self.print("========== Epoch: {} ==========".format(self.current_epoch))
+        for key, value in log.items():
+            self.print(key, ": ", value)
+
+    @property
+    def main_process(self):
+        return True if self.args.rank == 0 else False
+
+    @property
+    def distributed(self):
+        return True if self.args.distributed else False
+
+    def gather_loss_stat(self, loss):
+        return loss.item() if not self.distributed else self.reduce_mean_on_all_proc(loss).item()
+
+    def make_dir(self):
+        os.makedirs(self.exp_data_path, exist_ok=False)
+        os.mkdir(os.path.join(self.exp_data_path, "saved_models"))
+
+    def get_gifs_from_gt(self, vis=True, snapshot=True):
+        self.model.eval()
+        eval_data = self.eval_data_loader.dataset
+        with torch.no_grad():
+            cnt = 0
+            for data in eval_data:
+                if vis:
+                    if snapshot:
+                        dir_path = f'./vis/snapshots/{cnt}'
+                        cnt += 1
+                        ind = list(range(0, 120, 10))
+                        agent = data['all_valid'][:120]
+                        agent = agent[ind]
+                        agent_0 = agent[0]
+                        agent0_list = []
+                        for a in range(agent_0.shape[0]):
+                            agent0_list.append(WaymoAgent(agent_0[[a]]))
+                        draw_seq(data['center'], agent0_list, agent[..., :2], edge=data['bound'], other=data['rest'],
+                                 path=dir_path, save=True)
+
+
+                    else:
+
+                        dir_path = f'./vis/gif/{i}'
+                        if not os.path.exists(dir_path):
+                            os.mkdir(dir_path)
+
+                        ind = list(range(0, 190, 5))
+                        agent = pred_i[ind]
+                        for t in range(agent.shape[0]):
+                            agent_t = agent[t]
+                            agent_list = []
+                            for a in range(agent_t.shape[0]):
+                                agent_list.append(WaymoAgent(agent_t[[a]]))
+
+                            path = os.path.join(dir_path, f'{t}')
+                            cent, cent_mask, bound, bound_mask, _, _, rest, _ = process_map(data['lane'][np.newaxis],
+                                                                                            [data['traf'][int(t * 5)]],
+                                                                                            center_num=256,
+                                                                                            edge_num=128, offest=0,
+                                                                                            lane_range=60)
+                            draw(cent[0], agent_list, edge=bound[0], other=rest[0], path=path, save=True)
+
+                        # if t==0:
+                        #     center, _, bounder, _, _, _, rester = WaymoDataset.process_map(inp, 2000, 1000, 50,0)
+                        #     for k in range(1,agent_t.shape[0]):
+                        #         heat_path = os.path.join(dir_path, f'{k-1}')
+                        #         draw(cent, heat_map[k-1], agent_t[:k], rest, edge=bound, save=True, path=heat_path)
+            # if save_path:
+            #     self.save_as_metadrive_data(pred_list,scene_data,save_path)
     def train(self):
         while self.current_epoch < self.max_epoch:
             epoch_start_time = time.time()
@@ -139,7 +262,6 @@ class Trainer:
                     self.save_model()
                     if self.cfg["need_eval"]:
                         self.eval_init()
-
 
     def eval_act(self):
         self.model.eval()
@@ -185,7 +307,39 @@ class Trainer:
                 loss = self.metrics(output,inp)
                 eval_results.append(loss)
         return
+    def eval_init(self):
+        self.model.eval()
+        eval_data = self.eval_data_loader
+        with torch.no_grad():
+            cnt = 0
+            imgs = {}
+            for batch in eval_data:
+                seed(cnt)
+                self.wash(batch)
+                output= self.model(batch,eval=True)
+                center = batch['center'][0].cpu().numpy()
+                rest = batch['rest'][0].cpu().numpy()
+                bound = batch['bound'][0].cpu().numpy()
+                pred_agent = output['agent']
+                if cnt < 30:
+                    imgs[f'vis_{cnt}'] = wandb.Image(draw(center, pred_agent, rest, edge=bound))
 
+                cnt += 1
+            log = {}
+            log['imgs'] = imgs
+            if not self.in_debug:
+                wandb.log(log)
+
+    def wash(self,batch):
+        for key in batch.keys():
+            if isinstance(batch[key], np.ndarray):
+                batch[key] = Tensor(batch[key])
+            if isinstance(batch[key], torch.DoubleTensor):
+                batch[key] = batch[key].float()
+            if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
+                batch[key] = batch[key].cuda()
+            if 'mask' in key:
+                batch[key] = batch[key].to(bool)
     def get_metrics(self):
         self.model.eval()
         device = self.cfg['device']
@@ -241,46 +395,35 @@ class Trainer:
                 wandb.log(log)
 
     def get_cases(self):
-        context_num = 1
+        context_num = 4
 
         if not os.path.exists('./cases/initialized'):
             os.mkdir('./cases/initialized')
         save_path = './cases/initialized'
-        self.model.eval()
-        eval_data = self.eval_data_loader
+        self.model1.eval()
+        eval_data = self.eval_init_loader
         with torch.no_grad():
-            cnt = 0
-            for data in tqdm(eval_data):
-                #seed(cnt)
-                # if cnt>70:
-                #     break
-                #     cnt+=1
-                #     continue
-                #for r in range(20):
+            #cnt = 0
+            for idx,data in tqdm(enumerate(eval_data)):
+                if not idx in [42,65,77,109,114,138,141,154,270,285,348, 369,395]:continue
                 batch = copy.deepcopy(data)
-                for key in batch.keys():
-                    if isinstance(batch[key], torch.DoubleTensor):
-                        batch[key] = batch[key].float()
-                    if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
-                        batch[key] = batch[key].cuda()
+                self.wash(batch)
+                # vec_rep = batch['vec_based_rep'][0]
+                # batch_agent = batch['agent'][0]
+                # agent_num = batch['agent_mask'][0].sum().item()
+                #
+                # agent = get_agent_pos_from_vec(vec_rep[:,5:9],vec_rep[:,:2],vec_rep[:,2],vec_rep[:,3],vec_rep[:,4],batch_agent[:,5:7])
+                # lis = []
+                # for i in range(agent_num):
+                #     lis.append(agent.get_agent(i))
+                #     #lis.append(WaymoAgent(batch_agent[i].unsqueeze(0).numpy()))
 
-                vec_rep = batch['vec_based_rep'][0]
-                batch_agent = batch['agent'][0]
-                agent_num = batch['agent_mask'][0].sum().item()
-
-                agent = get_agent_pos_from_vec(vec_rep[:,5:9],vec_rep[:,:2],vec_rep[:,2],vec_rep[:,3],vec_rep[:,4],batch_agent[:,5:7])
-                lis = []
-                for i in range(agent_num):
-                    lis.append(agent.get_agent(i))
-                    #lis.append(WaymoAgent(batch_agent[i].unsqueeze(0).numpy()))
-
-
-                #output= self.model(batch,eval=True,context_num=context_num)
+                output= self.model1(batch,eval=True,context_num=context_num)
                 center = batch['center'][0].cpu().numpy()
                 rest = batch['rest'][0].cpu().numpy()
                 bound = batch['bound'][0].cpu().numpy()
-                output_path = os.path.join('./cases/vis',f'{cnt}')
-                draw(center, lis, other=rest, edge=bound, save=True,
+                output_path = os.path.join('./cases/vis',f'{idx}')
+                draw(center, output['agent'], other=rest, edge=bound, save=True,
                      path=output_path)
 
                 pred_agent = output['agent']
@@ -302,14 +445,14 @@ class Trainer:
                 output['agent_mask'] = agent_mask
                 output['lane'] = batch['other']['lane'][0].cpu().numpy()
                 output['unsampled_lane'] = batch['other']['unsampled_lane'][0].cpu().numpy()
-                output['traf'] = self.eval_data_loader.dataset[0]['other']['traf']
+                output['traf'] = self.eval_init_loader.dataset[idx]['other']['traf']
                 output['gt_agent'] = batch['other']['gt_agent'][0].cpu().numpy()
                 output['gt_agent_mask'] = batch['other']['gt_agent_mask'][0].cpu().numpy()
 
-                p = os.path.join(save_path, f'{cnt}.pkl')
+                p = os.path.join(save_path, f'{idx}.pkl')
                 with open(p, 'wb') as f:
                     pickle.dump(output, f)
-                cnt+=1
+                #cnt+=1
         return
 
     def get_heatmaps(self):
@@ -342,34 +485,6 @@ class Trainer:
                     draw(center,  pred_agent[:j+1], other=rest, heat_map=heat_maps[j],edge=bound, save=True, path=output_path)
                 cnt+=1
         return
-
-    def eval_init(self):
-        self.model.eval()
-        eval_data = self.eval_data_loader
-        with torch.no_grad():
-            cnt = 0
-            imgs = {}
-            for batch in eval_data:
-                seed(cnt)
-                for key in batch.keys():
-                    if isinstance(batch[key], torch.DoubleTensor):
-                        batch[key] = batch[key].float()
-                    if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
-                        batch[key] = batch[key].cuda()
-                output= self.model(batch,eval=True)
-
-                center = batch['center'][0].cpu().numpy()
-                rest = batch['rest'][0].cpu().numpy()
-                bound = batch['bound'][0].cpu().numpy()
-                pred_agent = output['agent']
-                if cnt < 30:
-                    imgs[f'vis_{cnt}'] = wandb.Image(draw(center, pred_agent, rest, edge=bound))
-
-                cnt += 1
-            log = {}
-            log['imgs'] = imgs
-            if not self.in_debug:
-                wandb.log(log)
 
     @time_me
     def train_one_epoch(self, train_data):
@@ -409,22 +524,23 @@ class Trainer:
             self.total_sgd_count += 1
 
     def get_gifs(self,vis=True, snapshot=True):
-        self.model.eval()
-
+        self.model2.eval()
+        cnt=0
         with torch.no_grad():
             pred_list = []
-            #for i in tqdm([2,8,9,20,58,99,101,109,131,156,159,169,170]):
-            for i in tqdm([17]):
+            #for i in tqdm([5,7,14,25,46,92]):
+            #for i in tqdm([42,65,77,109,114,138,141,154,270,285,348, 369,395]):
+            for i in tqdm([395]):
+            #for i in [0,1,2]:
                 with open(f'./cases/initialized/{i}.pkl', 'rb+') as f:
                     data = pickle.load(f)
 
                 pred_i = self.inference_control(data)
 
-                pred_i=np.delete(pred_i,3,axis=1)
+                #pred_i=np.delete(pred_i,3,axis=1)
 
                 pred_list.append(pred_i)
                 if vis:
-
                     if snapshot:
                         dir_path = f'./vis/snapshots/{i}'
                         ind = list(range(0,190,10))
@@ -439,28 +555,20 @@ class Trainer:
 
                         cent, cent_mask, bound, bound_mask, _, _, rest, _ = process_map(data['lane'][np.newaxis],
                                                                                         [data['traf'][0]],
-                                                                                        center_num=256, edge_num=128,
+                                                                                        center_num=1000, edge_num=500,
                                                                                         offest=0, lane_range=60)
-                        # draw_dict = {}
-                        # draw_dict['a'] = cent[0]
-                        # draw_dict['b'] = agent0_list
-                        # draw_dict['c'] = agent[...,:2]
-                        # draw_dict['d'] = bound[0]
-                        # draw_dict['e'] = rest[0]
-                        #
-                        # with open('./draw.pkl', 'wb') as f:
-                        #     pickle.dump(draw_dict, f)
                         draw_seq(cent[0],agent0_list,agent[...,:2],edge=bound[0],other=rest[0],path=dir_path,save=True)
 
-
                     else:
-
-                        dir_path = f'./vis/gif/{i}'
+                        dir_path = f'./vis/gif/{cnt}'
                         if not os.path.exists(dir_path):
                             os.mkdir(dir_path)
 
                         ind = list(range(0,190,5))
                         agent = pred_i[ind]
+                        #agent = agent[:,:5]
+                        #agent_num = agent.shape[0]
+                        agent = np.delete(agent,[2],axis=1)
                         for t in range(agent.shape[0]):
                             agent_t = agent[t]
                             agent_list = []
@@ -468,9 +576,9 @@ class Trainer:
                                 agent_list.append(WaymoAgent(agent_t[[a]]))
 
                             path = os.path.join(dir_path, f'{t}')
-                            cent,cent_mask,bound,bound_mask,_,_,rest,_ = process_map(data['lane'][np.newaxis],[data['traf'][int(t*5)]], center_num=256, edge_num=128,offest=0, lane_range=60)
-                            draw(cent[0],agent_list,edge=bound[0],other=rest[0],path=path,save=True)
-
+                            cent,cent_mask,bound,bound_mask,_,_,rest,_ = process_map(data['lane'][np.newaxis],[data['traf'][int(t*5)]], center_num=2000, edge_num=1000,offest=0, lane_range=80,rest_num=1000)
+                            draw(cent[0],agent_list,edge=bound[0],other=rest[0],path=path,save=True,vis_range=80)
+                        cnt+=1
 
                         # if t==0:
                         #     center, _, bounder, _, _, _, rester = WaymoDataset.process_map(inp, 2000, 1000, 50,0)
@@ -480,52 +588,130 @@ class Trainer:
             # if save_path:
             #     self.save_as_metadrive_data(pred_list,scene_data,save_path)
 
-    def get_gifs_from_gt(self,vis=True, snapshot=True):
-        self.model.eval()
-        eval_data = self.eval_data_loader.dataset
+
+    def forward_simulation(self):
+
+        self.model1.eval()
+        self.model2.eval()
+        eval_data = self.eval_data_loader
         with torch.no_grad():
             cnt = 0
-            for data in eval_data:
-                if vis:
-                    if snapshot:
-                        dir_path = f'./vis/snapshots/{cnt}'
-                        cnt+=1
-                        ind = list(range(0,120,10))
-                        agent = data['all_valid'][:120]
-                        agent = agent[ind]
-                        agent_0 = agent[0]
-                        agent0_list = []
-                        for a in range(agent_0.shape[0]):
-                            agent0_list.append(WaymoAgent(agent_0[[a]]))
-                        draw_seq(data['center'],agent0_list,agent[...,:2],edge=data['bound'],other=data['rest'],path=dir_path,save=True)
+            for data in tqdm(eval_data):
+                if cnt<10:
+                    cnt+=1
+                    continue
+                batch = copy.deepcopy(data)
+                for key in batch.keys():
+                    if isinstance(batch[key], torch.DoubleTensor):
+                        batch[key] = batch[key].float()
+                    if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
+                        batch[key] = batch[key].cuda()
+                output = self.model1(batch, eval=True)
+
+                unified_data = {}
+                unified_data['map'] = batch['other']['lane']
+                unified_data['traf'] = self.eval_data_loader.dataset[cnt]['other']['traf']
+                unified_data['traf'] = unified_data['traf']+unified_data['traf']
+                unified_data['agent'] = output['agent']
+                unified_data['agent_vec_indx'] = np.stack(output['idx'])[np.newaxis].astype(int)
+                self.simulate_one_epoch(unified_data,cnt)
+                cnt+=1
+        return
+    def from_waymo_agent_to_inp(self,agent):
+
+        agent_inp = np.concatenate([x.get_inp() for x in agent],axis=0)
+        agent_inp = agent_inp[:32]
+        agent_num = agent_inp.shape[0]
+        agent_inp = np.pad(agent_inp, ([0, 32 - agent_num], [0, 0]))
+        agent_mask = np.zeros([agent_num])
+        agent_mask = np.pad(agent_mask, ([0, 32 - agent_num]))
+        agent_mask[:agent_num] = 1
+        agent_mask = agent_mask.astype(bool)
+        return agent_inp,agent_mask
+    def before_simulate(self,inp,step):
+
+        map_range = 50
+        agent = inp['agent']
+        # delete out of boundary agent
+        agent = list(filter(lambda x: (abs(x.position[0,0])<(map_range) and abs(x.position[0,1])<(map_range)), agent))
+        agent_num = len(agent)
+        model_inp = {}
+
+        agent_inp,agent_mask = self.from_waymo_agent_to_inp(agent)
+        model_inp['agent_mask'] = agent_mask[np.newaxis]
+        model_inp['agent_feat'] = agent_inp[np.newaxis]
+        model_inp['agent_vec_indx'] = inp['agent_vec_indx']
+        vec_based_rep = copy.deepcopy(agent_inp[...,8:])
+        agent = copy.deepcopy(agent_inp[...,:8])
+        agent[...,:2]/=map_range
+        agent[...,2:4]/=30
+        vec_based_rep[..., 5:9] *= map_range
+        vec_based_rep[..., 2] *= 30
+        model_inp['center'],model_inp['center_mask'],model_inp['bound'], model_inp['bound_mask'],\
+        model_inp['cross'],model_inp['cross_mask'],model_inp['rest'],model_inp['rest_mask'] = process_map(inp['map'],[inp['traf'][step]], lane_range=map_range, offest=0)
+        self.train_dataloader.dataset._process_map_inp(model_inp)
+
+        self.wash(model_inp)
+
+        output = self.model1(model_inp, eval=True, context_num=agent_num)
+        inp['agent'] = output['agent']
+        inp['agent_vec_indx'] = output['idx']
+        return
+
+    def after_simulate(self,inp,step,cnt):
+        if not os.path.exists(f'./cases/simulation/{cnt}'):
+            os.mkdir(f'./cases/simulation/{cnt}')
+        save_path = f'./cases/simulation/{cnt}'
+        path = os.path.join(save_path, f'{int(step/5)}')
+        cent, cent_mask, bound, bound_mask, _, _, rest, _ = process_map(inp['map'],
+                                                                        [inp['traf'][int(step)]], center_num=2000,
+                                                                        edge_num=1000, offest=0, lane_range=50,
+                                                                        rest_num=1000)
+        draw(cent[0], inp['agent'], edge=bound[0], other=rest[0], path=path, save=True, vis_range=50)
+    def simulate_step(self,inp,step,forward_step=5):
+        output = {}
+        agent = inp['agent']
+        agent = np.concatenate([x.get_inp(act=True) for x in agent], axis=0)
+        agent = agent[:32]
+        agent_num = agent.shape[0]
+        agent = np.pad(agent, ([0, 32 - agent_num], [0, 0]))
+        agent_mask = np.zeros([agent_num])
+        agent_mask = np.pad(agent_mask, ([0, 32 - agent_num]))
+        agent_mask[:agent_num] = 1
+        agent_mask = agent_mask.astype(bool)
+
+        output['all_agent'] = agent
+        output['agent_mask'] = agent_mask
+        output['lane'] = inp['map'][0].numpy()
+        output['traf'] = [inp['traf'][step]]
+        pred_agent = self.inference_control(output,ego_gt=False,length=forward_step,per_time=10)
+        agent_one_frame = pred_agent[-1]
+        agent = np.pad(agent_one_frame, ([0, 32 - agent_num], [0, 0]))
+        case = {}
+
+        case['center'],case['center_mask'],case['bound'], case['bound_mask'],\
+        case['cross'],case['cross_mask'],case['rest'],case['rest_mask'] = process_map(inp['map'],[inp['traf'][step+forward_step]], lane_range=50, offest=0)
+        case['agent'] = agent[np.newaxis]
+        case['agent_mask'] = agent_mask[np.newaxis]
+        self.train_dataloader.dataset.filter_agent(case)
+        inp['agent_vec_indx'] = case['agent_vec_indx']
+        agent_list = []
+
+        for i in range(agent_one_frame.shape[0]):
+            agent_list.append(WaymoAgent(agent_one_frame[[i]],case['vec_based_rep'][0,[i]]))
+        inp['agent'] = agent_list
 
 
-                    else:
-
-                        dir_path = f'./vis/gif/{i}'
-                        if not os.path.exists(dir_path):
-                            os.mkdir(dir_path)
-
-                        ind = list(range(0,190,5))
-                        agent = pred_i[ind]
-                        for t in range(agent.shape[0]):
-                            agent_t = agent[t]
-                            agent_list = []
-                            for a in range(agent_t.shape[0]):
-                                agent_list.append(WaymoAgent(agent_t[[a]]))
-
-                            path = os.path.join(dir_path, f'{t}')
-                            cent,cent_mask,bound,bound_mask,_,_,rest,_ = process_map(data['lane'][np.newaxis],[data['traf'][int(t*5)]], center_num=256, edge_num=128,offest=0, lane_range=60)
-                            draw(cent[0],agent_list,edge=bound[0],other=rest[0],path=path,save=True)
-
-
-                        # if t==0:
-                        #     center, _, bounder, _, _, _, rester = WaymoDataset.process_map(inp, 2000, 1000, 50,0)
-                        #     for k in range(1,agent_t.shape[0]):
-                        #         heat_path = os.path.join(dir_path, f'{k-1}')
-                        #         draw(cent, heat_map[k-1], agent_t[:k], rest, edge=bound, save=True, path=heat_path)
-            # if save_path:
-            #     self.save_as_metadrive_data(pred_list,scene_data,save_path)
+    def simulate_one_epoch(self,inp,cnt,interval = 5):
+        self.after_simulate(inp,0,cnt)
+        for i in range(0,350,interval):
+            # filter out of range agent and spawn new one
+            self.before_simulate(inp,i)
+            # forward simulation
+            self.simulate_step(inp,i,forward_step=interval+1)
+            # draw results
+            self.after_simulate(inp,i+interval,cnt)
+        return
 
     def get_metrics_for_act(self):
         self.model.eval()
@@ -609,7 +795,7 @@ class Trainer:
             if self.cfg['device'] == 'cuda':
                 self.model.cuda()
 
-            pred = self.model(batch,False)
+            pred = self.model2(batch,False)
             prob = pred['prob']
             velo_pred = pred['velo']
             pos_pred = pred['pos']
@@ -636,71 +822,8 @@ class Trainer:
                 pred_agent[i+1:i + per_time+1, j, 2:4] = copy.deepcopy(vel[:pad_len])
                 pred_agent[i+1:i + per_time+1, j, 4] = copy.deepcopy(heading[:pad_len])
 
-        # transformed = {}
-        # #transformed['agent'],transformed['lane'] = transform_to_agent(pred_agent[0,0],pred_agent,data['lane'])
-        # transformed['agent'], transformed['lane'] = pred_agent, data['lane']
-        # #transformed['traf'] = data['traf'][0]
-        # transformed['pred'] = transformed['agent']
-        # transformed['agent'] = transformed['agent'][0]
-        # output = process_case_to_input(transformed,agent_range=300,edge_num=1000,center_num=6000)
-        # output['pred'] = transformed['pred']
-        # output['lane'] = data['lane']
         return pred_agent
 
-    def save_model(self):
-        if self.current_epoch % self.save_freq == 0 and self.main_process:
-            if self.model_type=='act':
-                model_name = f'act_{self.current_epoch}'
-            else:
-                model_name = f'init_{self.current_epoch}'
-
-            model_save_name = os.path.join(self.exp_data_path, 'saved_models', model_name)
-            state = {
-                'state_dict': self.model.state_dict(),
-                'optimizer': self.optimizer.state_dict(),
-                'epoch': self.current_epoch
-            }
-            torch.save(state, model_save_name)
-            self.print('\n model saved to %s' % model_save_name)
-
-    def load_model(self, model_path,device):
-        state = torch.load(model_path,map_location=torch.device(device))
-        self.model.load_state_dict(state["state_dict"])
-        self.optimizer.load_state_dict(state["optimizer"])
-        self.current_epoch = state["epoch"]
-
-    @staticmethod
-    def reduce_mean_on_all_proc(tensor):
-        nprocs = torch.distributed.get_world_size()
-        rt = tensor.clone()
-        dist.all_reduce(rt, op=dist.ReduceOp.SUM)
-        rt /= nprocs
-        return rt
-
-    def print(self, *info):
-        "Use this print instead of naive print, since we run in parallel"
-        if self.main_process:
-            print(*info)
-
-    def print_log(self, log: dict):
-        self.print("========== Epoch: {} ==========".format(self.current_epoch))
-        for key, value in log.items():
-            self.print(key, ": ", value)
-
-    @property
-    def main_process(self):
-        return True if self.args.rank == 0 else False
-
-    @property
-    def distributed(self):
-        return True if self.args.distributed else False
-
-    def gather_loss_stat(self, loss):
-        return loss.item() if not self.distributed else self.reduce_mean_on_all_proc(loss).item()
-
-    def make_dir(self):
-        os.makedirs(self.exp_data_path, exist_ok=False)
-        os.mkdir(os.path.join(self.exp_data_path, "saved_models"))
 
     # def metrics(self,pred,gt):
     #     #gt.pop('other')

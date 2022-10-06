@@ -30,7 +30,7 @@ class initDataset(Dataset):
         self.data_len = None
         self.data_loaded = {}
         self.cfg = cfg
-        self.pad_num = cfg['pad_num']
+        #self.pad_num = cfg['pad_num']
         self.load_data()
 
         super(initDataset, self).__init__()
@@ -52,14 +52,18 @@ class initDataset(Dataset):
                 file_cnt+=1
             data = self.process(datas)
             case_cnt=0
-            data_len = 1 if self.eval else len(data)
-
-            for i in range(data_len):
-                agent_num = data[i]['agent_mask'].sum()
-                if agent_num<self.cfg['min_agent']:
-                    continue
-                self.data_loaded[cnt+case_cnt] = data[i]
+            data_len = len(data)
+            #data_len = 1 if self.eval else len(data)
+            if self.eval:
+                self.data_loaded[cnt+case_cnt] = data[0]
                 case_cnt+=1
+            else:
+                for i in range(data_len):
+                    #agent_num = data[i]['agent_mask'].sum()
+                    # if agent_num<self.cfg['min_agent']:
+                    #     continue
+                    self.data_loaded[cnt+case_cnt] = data[i]
+                    case_cnt+=1
             cnt+=case_cnt
         self.data_len = cnt
         print('Dataset len: {} (rank: {}), start_index: {}, end_index: {}'.format(self.data_len, self.rank,

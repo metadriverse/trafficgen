@@ -23,10 +23,19 @@ class WaymoAgent:
         self.MAX_SPEED = max_speed
 
         if from_inp:
+
             self.position = feature[..., :2]*self.RANGE
             self.velocity = feature[..., 2:4]*self.MAX_SPEED
-            self.heading = np.arctan2(feature[..., 5],feature[..., 4])
+            self.heading = np.arctan2(feature[..., 5],feature[..., 4])[...,np.newaxis]
             self.length_width = feature[..., 6:8]
+            type = np.ones_like(self.heading)
+            self.feature = np.concatenate(
+            [self.position,self.velocity, self.heading,self.length_width,type],axis=-1)
+            if vec_based_info is not None:
+                vec_based_rep = copy.deepcopy(vec_based_info)
+                vec_based_rep[..., 5:9] *= self.RANGE
+                vec_based_rep[..., 2] *= self.MAX_SPEED
+                self.vec_based_info = vec_based_rep
 
         else:
             self.feature = feature
@@ -40,6 +49,16 @@ class WaymoAgent:
     def get_agent(self,indx):
         return WaymoAgent(self.feature[[indx]],self.vec_based_info[[indx]])
 
+    def get_list(self):
+        bs, agent_num, feature_dim = self.feature.shape
+        vec_dim = self.vec_based_info.shape[-1]
+        feature = self.feature.reshape([-1,feature_dim])
+        vec_rep = self.vec_based_info.reshape([-1,vec_dim])
+        agent_num = feature.shape[0]
+        lis = []
+        for i in range(agent_num):
+            lis.append(WaymoAgent(feature[[i]],vec_rep[[i]]))
+        return lis
 
     def get_inp(self,act=False,act_inp=False):
 
@@ -98,7 +117,7 @@ class WaymoAgent:
 
 
     def get_polygon(self):
-        rect_list = self.get_rect(pad=0.2)
+        rect_list = self.get_rect(pad=0.25)
 
         poly_list = []
         for i in range(len(rect_list)):

@@ -283,26 +283,30 @@ class initializer(nn.Module):
         shapes = []
 
         for i in range(context_num):
-            context_agent = data['agent'][0,[i]].cpu().numpy()
-            context_agent = WaymoAgent(context_agent)
+            context_agent = data['agent_feat'][0,[i],:8].cpu().numpy()
+            context_feat = data['agent_feat'][0,[i],8:].cpu().numpy()
+            context_agent = WaymoAgent(context_agent,context_feat,from_inp=True)
             context_poly = context_agent.get_polygon()[0]
             shapes.append(context_poly)
             pred_list.append(context_agent)
-            vec_indx = data['vec_based_rep'][..., 0]
+            vec_indx = data['agent_vec_indx'].to(int)
             idx_list.append(vec_indx[0, i].item())
 
 
-        minimum_agent = self.cfg['pad_num']
+        #min_agent = self.cfg['pad_num']
+        max_agent = self.cfg['max_num']
+        #agent_num = np.clip(agent_num,a_min=min_agent,a_max=max_agent)
         center = data['center'][0]
         center_mask = data['center_mask'][0].cpu().numpy()
-
-        for i in range(context_num,max(agent_num,minimum_agent)):
+        for i in range(context_num,max_agent):
             data['agent_mask'][:, :i] = 1
             data['agent_mask'][:,i:]=0
 
-            pred, _, _ = self.forward(data, False, False)
+            pred, _, _ = self.forward(data, False, False,compute_loss=False)
 
+            inner_map = (torch.abs(center[:,0])<40) * (torch.abs(center[:,1])<40)
             pred['prob'][:,idx_list]=0
+            pred['prob'][:,inner_map]=0
             cnt=0
             while cnt<3:
                 agents, prob, indx = self.sample_from_distribution(pred,center)
@@ -329,11 +333,12 @@ class initializer(nn.Module):
 
         output = {}
         output['agent'] = pred_list
-        output['prob'] = prob_list
+        output['idx'] = idx_list
         output['heat_maps'] = heat_maps
+        output['prob'] = prob_list
 
         return output
-    def forward(self, data, random_mask=True, eval=False,context_num=1):
+    def forward(self, data, random_mask=True, eval=False,context_num=1,compute_loss=True):
         if eval==True:
             return self.inference(data,context_num=context_num)
 
@@ -343,9 +348,12 @@ class initializer(nn.Module):
         feature = feature[:,:center_num]
         # Sample location, bounding box, heading and velocity.
 
-        pred_dists = self.feature_to_dists(feature,  self.K)
-        losses, total_loss = self.compute_loss(data, pred_dists)
 
+        pred_dists = self.feature_to_dists(feature,  self.K)
+        if compute_loss:
+            losses, total_loss = self.compute_loss(data, pred_dists)
+        else:
+            losses, total_loss = 0,0
         pred = pred_dists
         pred['prob'] = nn.Sigmoid()(pred['prob'])
 
