@@ -10,22 +10,15 @@ if __name__ == "__main__":
     trainer = Trainer(exp_name=args.exp_name,
                       cfg=cfg,
                       args=args)
+
     device = cfg['device']
 
-    if cfg['model']=='init' or cfg['model']=='sceneGen':
+    trainer.load_model(trainer.model1,'model_weights/init_20',device)
+    trainer.load_model(trainer.model2, 'model_weights/act_70', device)
+    trainer.place_vehicles(vis=True)
+    initialized_num = cfg['init']['eval_data_usage']
+    trainer.generate_traj(initialized_num,snapshot=True)
 
-        trainer.train()
 
-        #trainer.load_model('model_weights/init_100',device)
-        #trainer.get_metrics()
-        #trainer.eval_init()
-        #trainer.get_heatmaps()
-        #trainer.get_cases()
-    else:
-        #trainer.load_model('model_weights/act_70', device)
-        #trainer.get_metrics_for_act()
-        trainer.train()
-        #trainer.eval_act()
-        #trainer.get_gifs()
-        #trainer.get_gifs_from_gt()
+
 

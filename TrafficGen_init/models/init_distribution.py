@@ -24,10 +24,7 @@ class initializer(nn.Module):
         self.line_encode = MLP_3([4, 256, 512, self.hidden_dim])
         self.type_embedding = nn.Embedding(20, self.hidden_dim)
         self.traf_embedding = nn.Embedding(4, self.hidden_dim)
-
-        self.apply(self._init_weights)
         middle_layer_shape = [self.hidden_dim * 2, self.hidden_dim, 256]
-
 
         self.K = cfg['gaussian_comp']
         self.prob_head = MLP_3([*middle_layer_shape, 1])
@@ -38,6 +35,7 @@ class initializer(nn.Module):
         self.pos_head = MLP_3([*middle_layer_shape, self.K * (1 + 5)])
         self.bbox_head = MLP_3([*middle_layer_shape, self.K * (1 + 5)])
         self.heading_head = MLP_3([*middle_layer_shape, self.K * (1 + 2)])
+        self.apply(self._init_weights)
         #self.vel_heading_head = MLP_3([*middle_layer_shape, self.K * (1 + 2)])
         # self.speed_head = MLP_3([*middle_layer_shape, 10 * (1 + 2)])
 
@@ -304,9 +302,9 @@ class initializer(nn.Module):
 
             pred, _, _ = self.forward(data, False, False,compute_loss=False)
 
-            inner_map = (torch.abs(center[:,0])<40) * (torch.abs(center[:,1])<40)
+            #inner_map = (torch.abs(center[:,0])<40) * (torch.abs(center[:,1])<40)
             pred['prob'][:,idx_list]=0
-            pred['prob'][:,inner_map]=0
+            #pred['prob'][:,inner_map]=0
             cnt=0
             while cnt<3:
                 agents, prob, indx = self.sample_from_distribution(pred,center)

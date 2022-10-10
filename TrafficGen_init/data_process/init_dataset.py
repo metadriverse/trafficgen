@@ -23,14 +23,13 @@ class initDataset(Dataset):
         self.data_path = cfg['data_path']
         self.rank = args.rank if args is not None else 1
         self.process_num = args.world_size if args is not None and args.distributed else 1
-        self.in_debug = cfg['debug']
-        #self.recache = cfg['recache']
+
         self.eval = eval
         self.draw = cfg['draw']
         self.data_len = None
         self.data_loaded = {}
         self.cfg = cfg
-        #self.pad_num = cfg['pad_num']
+
         self.load_data()
 
         super(initDataset, self).__init__()

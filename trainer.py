@@ -51,20 +51,9 @@ class Trainer:
             print('[TORCH] Training in distributed mode. Process %d, local %d, total %d.' % (
                 args.rank, args.local_rank, args.world_size))
 
-
-        init_dataset = initDataset(cfg['init'], args)
-
-        act_dataset = actDataset(cfg['act'], args)
-
         model1 = initializer(cfg['init'])
-        #elif self.model_type == 'act':
-        #train_dataset = actDataset(self.cfg, args)
         model2 = actuator(cfg['act'])
-        # elif self.model_type == 'sceneGen':
-        #     train_dataset = initDataset(self.cfg, args)
-        #     model = sceneGen(cfg)
-        # else:
-        #     raise NotImplementedError('no such model!')
+
         if args.distributed:
             model1.cuda(args.local_rank)
             model1 = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model1)
@@ -84,20 +73,29 @@ class Trainer:
             model2 = torch.nn.DataParallel(model2, list(range(1)))
             model2 = model2.to(cfg['device'])
 
-        if len(init_dataset)>0:
-            init_loader = DataLoader(init_dataset, batch_size=cfg['init']['batch_size'],
+        if self.cfg["train_init"]:
+            init_dataset = initDataset(cfg['init'], args)
+            train_init_loader = DataLoader(init_dataset, batch_size=cfg['init']['batch_size'],
                                      shuffle=True,
                                      num_workers=self.cfg['init']['num_workers'])
-            self.init_dataloader = init_loader
+            self.train_dataloader = train_init_loader
+            optimizer = optim.AdamW(model1.parameters(), lr=self.cfg['init']['lr'], betas=(0.9, 0.999), eps=1e-09,
+                                    weight_decay=self.cfg['init']['weight_decay'], amsgrad=True)
+            self.optimizer = optimizer
 
+        if self.cfg["train_act"]:
+            act_dataset = actDataset(cfg['act'], args)
+            train_act_loader = DataLoader(act_dataset, batch_size=cfg['act']['batch_size'],
+                                     shuffle=True,
+                                     num_workers=self.cfg['act']['num_workers'])
+            self.train_dataloader = train_act_loader
+            optimizer = optim.AdamW(model2.parameters(), lr=self.cfg['act']['lr'], betas=(0.9, 0.999), eps=1e-09,
+                                    weight_decay=self.cfg['act']['weight_decay'], amsgrad=True)
+            self.optimizer = optimizer
 
-        optimizer = optim.AdamW(model1.parameters(), lr=self.cfg['init']['lr'], betas=(0.9, 0.999), eps=1e-09,
-                                weight_decay=self.cfg['init']['weight_decay'], amsgrad=True)
-
-        self.eval_data_loader = None
+        #self.eval_data_loader = None
 
         if self.main_process and self.cfg["need_eval"]:
-
             test_act_dataset = actDataset(cfg['act'], args, eval=True)
             test_init_dataset = initDataset(cfg['init'], args, eval=True)
 
@@ -110,7 +108,6 @@ class Trainer:
         self.model2 = model2
 
         self.in_debug = cfg["debug"]  # if in debug, wandb will log to TEST instead of cvpr
-        self.optimizer = optimizer
 
         self.batch_size = cfg['batch_size']
         self.max_epoch = cfg['max_epoch']
@@ -192,56 +189,7 @@ class Trainer:
         os.makedirs(self.exp_data_path, exist_ok=False)
         os.mkdir(os.path.join(self.exp_data_path, "saved_models"))
 
-    def get_gifs_from_gt(self, vis=True, snapshot=True):
-        self.model.eval()
-        eval_data = self.eval_data_loader.dataset
-        with torch.no_grad():
-            cnt = 0
-            for data in eval_data:
-                if vis:
-                    if snapshot:
-                        dir_path = f'./vis/snapshots/{cnt}'
-                        cnt += 1
-                        ind = list(range(0, 120, 10))
-                        agent = data['all_valid'][:120]
-                        agent = agent[ind]
-                        agent_0 = agent[0]
-                        agent0_list = []
-                        for a in range(agent_0.shape[0]):
-                            agent0_list.append(WaymoAgent(agent_0[[a]]))
-                        draw_seq(data['center'], agent0_list, agent[..., :2], edge=data['bound'], other=data['rest'],
-                                 path=dir_path, save=True)
 
-
-                    else:
-
-                        dir_path = f'./vis/gif/{i}'
-                        if not os.path.exists(dir_path):
-                            os.mkdir(dir_path)
-
-                        ind = list(range(0, 190, 5))
-                        agent = pred_i[ind]
-                        for t in range(agent.shape[0]):
-                            agent_t = agent[t]
-                            agent_list = []
-                            for a in range(agent_t.shape[0]):
-                                agent_list.append(WaymoAgent(agent_t[[a]]))
-
-                            path = os.path.join(dir_path, f'{t}')
-                            cent, cent_mask, bound, bound_mask, _, _, rest, _ = process_map(data['lane'][np.newaxis],
-                                                                                            [data['traf'][int(t * 5)]],
-                                                                                            center_num=256,
-                                                                                            edge_num=128, offest=0,
-                                                                                            lane_range=60)
-                            draw(cent[0], agent_list, edge=bound[0], other=rest[0], path=path, save=True)
-
-                        # if t==0:
-                        #     center, _, bounder, _, _, _, rester = WaymoDataset.process_map(inp, 2000, 1000, 50,0)
-                        #     for k in range(1,agent_t.shape[0]):
-                        #         heat_path = os.path.join(dir_path, f'{k-1}')
-                        #         draw(cent, heat_map[k-1], agent_t[:k], rest, edge=bound, save=True, path=heat_path)
-            # if save_path:
-            #     self.save_as_metadrive_data(pred_list,scene_data,save_path)
     def train(self):
         while self.current_epoch < self.max_epoch:
             epoch_start_time = time.time()
@@ -394,37 +342,31 @@ class Trainer:
             if not self.in_debug:
                 wandb.log(log)
 
-    def get_cases(self):
-        context_num = 4
+    def place_vehicles(self,vis=True):
+        context_num = 1
 
-        if not os.path.exists('./cases/initialized'):
-            os.mkdir('./cases/initialized')
+        vis_path = './vis/initialized'
+        if not os.path.exists(vis_path):
+            os.makedirs(vis_path)
         save_path = './cases/initialized'
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+
         self.model1.eval()
         eval_data = self.eval_init_loader
         with torch.no_grad():
-            #cnt = 0
             for idx,data in tqdm(enumerate(eval_data)):
-                if not idx in [42,65,77,109,114,138,141,154,270,285,348, 369,395]:continue
                 batch = copy.deepcopy(data)
                 self.wash(batch)
-                # vec_rep = batch['vec_based_rep'][0]
-                # batch_agent = batch['agent'][0]
-                # agent_num = batch['agent_mask'][0].sum().item()
-                #
-                # agent = get_agent_pos_from_vec(vec_rep[:,5:9],vec_rep[:,:2],vec_rep[:,2],vec_rep[:,3],vec_rep[:,4],batch_agent[:,5:7])
-                # lis = []
-                # for i in range(agent_num):
-                #     lis.append(agent.get_agent(i))
-                #     #lis.append(WaymoAgent(batch_agent[i].unsqueeze(0).numpy()))
-
                 output= self.model1(batch,eval=True,context_num=context_num)
                 center = batch['center'][0].cpu().numpy()
                 rest = batch['rest'][0].cpu().numpy()
                 bound = batch['bound'][0].cpu().numpy()
-                output_path = os.path.join('./cases/vis',f'{idx}')
-                draw(center, output['agent'], other=rest, edge=bound, save=True,
-                     path=output_path)
+
+                if vis:
+                    output_path = os.path.join('./vis/initialized',f'{idx}')
+                    draw(center, output['agent'], other=rest, edge=bound, save=True,
+                         path=output_path)
 
                 pred_agent = output['agent']
                 agent = np.concatenate([x.get_inp(act=True) for x in pred_agent], axis=0)
@@ -452,38 +394,6 @@ class Trainer:
                 p = os.path.join(save_path, f'{idx}.pkl')
                 with open(p, 'wb') as f:
                     pickle.dump(output, f)
-                #cnt+=1
-        return
-
-    def get_heatmaps(self):
-        if not os.path.exists('./vis/heatmap'):
-            os.mkdir('./vis/heatmap')
-        self.model.eval()
-        eval_data = self.eval_data_loader
-        with torch.no_grad():
-            cnt = 0
-            for batch in tqdm(eval_data):
-                seed(cnt)
-                for key in batch.keys():
-                    if isinstance(batch[key], torch.DoubleTensor):
-                        batch[key] = batch[key].float()
-                    if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
-                        batch[key] = batch[key].cuda()
-                output= self.model(batch,eval=True)
-                heat_maps = output['heat_maps']
-                pred_agent = output['agent']
-                path = f'./vis/heatmap/{cnt}'
-                if not os.path.exists(path):
-                    os.mkdir(path)
-
-                center = batch['center'][0].cpu().numpy()
-                rest = batch['rest'][0].cpu().numpy()
-                bound = batch['bound'][0].cpu().numpy()
-
-                for j in range(len(pred_agent) - 1):
-                    output_path = os.path.join(path, f'{j}')
-                    draw(center,  pred_agent[:j+1], other=rest, heat_map=heat_maps[j],edge=bound, save=True, path=output_path)
-                cnt+=1
         return
 
     @time_me
@@ -523,68 +433,63 @@ class Trainer:
             sgd_count += 1
             self.total_sgd_count += 1
 
-    def get_gifs(self,vis=True, snapshot=True):
+    def generate_traj(self, data_num,snapshot=True, ):
         self.model2.eval()
         cnt=0
         with torch.no_grad():
             pred_list = []
-            #for i in tqdm([5,7,14,25,46,92]):
-            #for i in tqdm([42,65,77,109,114,138,141,154,270,285,348, 369,395]):
-            for i in tqdm([395]):
-            #for i in [0,1,2]:
+
+            for i in tqdm(range(data_num)):
                 with open(f'./cases/initialized/{i}.pkl', 'rb+') as f:
                     data = pickle.load(f)
 
                 pred_i = self.inference_control(data)
 
-                #pred_i=np.delete(pred_i,3,axis=1)
-
                 pred_list.append(pred_i)
-                if vis:
-                    if snapshot:
-                        dir_path = f'./vis/snapshots/{i}'
-                        ind = list(range(0,190,10))
-                        agent = pred_i[ind]
-                        #agent = agent[:,[6,7,10,12]]
 
-                        agent_0 = agent[0]
-                        agent0_list = []
-                        agent_num = agent_0.shape[0]
-                        for a in range(agent_num):
-                            agent0_list.append(WaymoAgent(agent_0[[a]]))
+                if snapshot:
+                    dir_path = f'./vis/snapshots/{i}'
+                    ind = list(range(0,190,10))
+                    agent = pred_i[ind]
 
-                        cent, cent_mask, bound, bound_mask, _, _, rest, _ = process_map(data['lane'][np.newaxis],
-                                                                                        [data['traf'][0]],
-                                                                                        center_num=1000, edge_num=500,
-                                                                                        offest=0, lane_range=60)
-                        draw_seq(cent[0],agent0_list,agent[...,:2],edge=bound[0],other=rest[0],path=dir_path,save=True)
+                    agent_0 = agent[0]
+                    agent0_list = []
+                    agent_num = agent_0.shape[0]
+                    for a in range(agent_num):
+                        agent0_list.append(WaymoAgent(agent_0[[a]]))
 
-                    else:
-                        dir_path = f'./vis/gif/{cnt}'
-                        if not os.path.exists(dir_path):
-                            os.mkdir(dir_path)
+                    cent, cent_mask, bound, bound_mask, _, _, rest, _ = process_map(data['lane'][np.newaxis],
+                                                                                    [data['traf'][0]],
+                                                                                    center_num=1000, edge_num=500,
+                                                                                    offest=0, lane_range=60)
+                    draw_seq(cent[0],agent0_list,agent[...,:2],edge=bound[0],other=rest[0],path=dir_path,save=True)
 
-                        ind = list(range(0,190,5))
-                        agent = pred_i[ind]
-                        #agent = agent[:,:5]
-                        #agent_num = agent.shape[0]
-                        agent = np.delete(agent,[2],axis=1)
-                        for t in range(agent.shape[0]):
-                            agent_t = agent[t]
-                            agent_list = []
-                            for a in range(agent_t.shape[0]):
-                                agent_list.append(WaymoAgent(agent_t[[a]]))
+                else:
+                    dir_path = f'./vis/gif/{cnt}'
+                    if not os.path.exists(dir_path):
+                        os.mkdir(dir_path)
 
-                            path = os.path.join(dir_path, f'{t}')
-                            cent,cent_mask,bound,bound_mask,_,_,rest,_ = process_map(data['lane'][np.newaxis],[data['traf'][int(t*5)]], center_num=2000, edge_num=1000,offest=0, lane_range=80,rest_num=1000)
-                            draw(cent[0],agent_list,edge=bound[0],other=rest[0],path=path,save=True,vis_range=80)
-                        cnt+=1
+                    ind = list(range(0,190,5))
+                    agent = pred_i[ind]
+                    #agent = agent[:,:5]
+                    #agent_num = agent.shape[0]
+                    agent = np.delete(agent,[2],axis=1)
+                    for t in range(agent.shape[0]):
+                        agent_t = agent[t]
+                        agent_list = []
+                        for a in range(agent_t.shape[0]):
+                            agent_list.append(WaymoAgent(agent_t[[a]]))
 
-                        # if t==0:
-                        #     center, _, bounder, _, _, _, rester = WaymoDataset.process_map(inp, 2000, 1000, 50,0)
-                        #     for k in range(1,agent_t.shape[0]):
-                        #         heat_path = os.path.join(dir_path, f'{k-1}')
-                        #         draw(cent, heat_map[k-1], agent_t[:k], rest, edge=bound, save=True, path=heat_path)
+                        path = os.path.join(dir_path, f'{t}')
+                        cent,cent_mask,bound,bound_mask,_,_,rest,_ = process_map(data['lane'][np.newaxis],[data['traf'][int(t*5)]], center_num=2000, edge_num=1000,offest=0, lane_range=80,rest_num=1000)
+                        draw(cent[0],agent_list,edge=bound[0],other=rest[0],path=path,save=True,vis_range=80)
+                    cnt+=1
+
+                    # if t==0:
+                    #     center, _, bounder, _, _, _, rester = WaymoDataset.process_map(inp, 2000, 1000, 50,0)
+                    #     for k in range(1,agent_t.shape[0]):
+                    #         heat_path = os.path.join(dir_path, f'{k-1}')
+                    #         draw(cent, heat_map[k-1], agent_t[:k], rest, edge=bound, save=True, path=heat_path)
             # if save_path:
             #     self.save_as_metadrive_data(pred_list,scene_data,save_path)
 
@@ -700,7 +605,6 @@ class Trainer:
         for i in range(agent_one_frame.shape[0]):
             agent_list.append(WaymoAgent(agent_one_frame[[i]],case['vec_based_rep'][0,[i]]))
         inp['agent'] = agent_list
-
 
     def simulate_one_epoch(self,inp,cnt,interval = 5):
         self.after_simulate(inp,0,cnt)
@@ -877,3 +781,87 @@ class Trainer:
     #     metrics['coord'] = coord_list
     #     metrics['dir'] = dir_list
     #     return metrics
+
+
+    # def get_heatmaps(self):
+    #     if not os.path.exists('./vis/heatmap'):
+    #         os.mkdir('./vis/heatmap')
+    #     self.model.eval()
+    #     eval_data = self.eval_data_loader
+    #     with torch.no_grad():
+    #         cnt = 0
+    #         for batch in tqdm(eval_data):
+    #             seed(cnt)
+    #             for key in batch.keys():
+    #                 if isinstance(batch[key], torch.DoubleTensor):
+    #                     batch[key] = batch[key].float()
+    #                 if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
+    #                     batch[key] = batch[key].cuda()
+    #             output= self.model(batch,eval=True)
+    #             heat_maps = output['heat_maps']
+    #             pred_agent = output['agent']
+    #             path = f'./vis/heatmap/{cnt}'
+    #             if not os.path.exists(path):
+    #                 os.mkdir(path)
+    #
+    #             center = batch['center'][0].cpu().numpy()
+    #             rest = batch['rest'][0].cpu().numpy()
+    #             bound = batch['bound'][0].cpu().numpy()
+    #
+    #             for j in range(len(pred_agent) - 1):
+    #                 output_path = os.path.join(path, f'{j}')
+    #                 draw(center,  pred_agent[:j+1], other=rest, heat_map=heat_maps[j],edge=bound, save=True, path=output_path)
+    #             cnt+=1
+    #     return
+
+
+    # def get_gifs_from_gt(self, vis=True, snapshot=True):
+    #     self.model.eval()
+    #     eval_data = self.eval_data_loader.dataset
+    #     with torch.no_grad():
+    #         cnt = 0
+    #         for data in eval_data:
+    #             if vis:
+    #                 if snapshot:
+    #                     dir_path = f'./vis/snapshots/{cnt}'
+    #                     cnt += 1
+    #                     ind = list(range(0, 120, 10))
+    #                     agent = data['all_valid'][:120]
+    #                     agent = agent[ind]
+    #                     agent_0 = agent[0]
+    #                     agent0_list = []
+    #                     for a in range(agent_0.shape[0]):
+    #                         agent0_list.append(WaymoAgent(agent_0[[a]]))
+    #                     draw_seq(data['center'], agent0_list, agent[..., :2], edge=data['bound'], other=data['rest'],
+    #                              path=dir_path, save=True)
+    #
+    #
+    #                 else:
+    #
+    #                     dir_path = f'./vis/gif/{i}'
+    #                     if not os.path.exists(dir_path):
+    #                         os.mkdir(dir_path)
+    #
+    #                     ind = list(range(0, 190, 5))
+    #                     agent = pred_i[ind]
+    #                     for t in range(agent.shape[0]):
+    #                         agent_t = agent[t]
+    #                         agent_list = []
+    #                         for a in range(agent_t.shape[0]):
+    #                             agent_list.append(WaymoAgent(agent_t[[a]]))
+    #
+    #                         path = os.path.join(dir_path, f'{t}')
+    #                         cent, cent_mask, bound, bound_mask, _, _, rest, _ = process_map(data['lane'][np.newaxis],
+    #                                                                                         [data['traf'][int(t * 5)]],
+    #                                                                                         center_num=256,
+    #                                                                                         edge_num=128, offest=0,
+    #                                                                                         lane_range=60)
+    #                         draw(cent[0], agent_list, edge=bound[0], other=rest[0], path=path, save=True)
+    #
+    #                     # if t==0:
+    #                     #     center, _, bounder, _, _, _, rester = WaymoDataset.process_map(inp, 2000, 1000, 50,0)
+    #                     #     for k in range(1,agent_t.shape[0]):
+    #                     #         heat_path = os.path.join(dir_path, f'{k-1}')
+    #                     #         draw(cent, heat_map[k-1], agent_t[:k], rest, edge=bound, save=True, path=heat_path)
+    #         # if save_path:
+    #         #     self.save_as_metadrive_data(pred_list,scene_data,save_path)
