@@ -1,4 +1,4 @@
-/results/
+git remote add origin git@github.com:metadriverse/trafficgen.git/results/
 *.pyc
 
 .idea
