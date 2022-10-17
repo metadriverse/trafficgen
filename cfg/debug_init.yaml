@@ -1,31 +1,35 @@
 # Config format schema number
 format_version: 4
-
 debug: True
-#data_path: "./TrafficGen_init/data_sample"
-data_path: "/Users/fenglan/Downloads/waymo/v2_data"
 max_epoch: 50
 num_workers: 0
 batch_size: 4
-lr: 0.0003
-weight_decay: 0.0004
-device: 'cpu'
-phase: 'training'
-data_usage: 10
-model: "init"
-#model: "sceneGen"
-hidden_dim: 1024
-gaussian_comp: 5
 
-pad_num: 0
-min_agent: 8
-draw: True
 
-# eval config
-need_eval: True
-eval_data_start_index: 0
-eval_data_usage: 4
-eval_batch_size: 1 # 2 frame * 50 map  will be plotted
-eval_frequency: 1  # eval each epoch
+init:
+
+  data_path: "/Users/fenglan/Downloads/waymo/v2_data"
+  lr: 0.0003
+  weight_decay: 0.0004
+  device: 'cpu'
+  phase: 'training'
+  data_usage: 10
+  model: "init"
+  #model: "sceneGen"
+  hidden_dim: 1024
+  gaussian_comp: 5
+
+  pad_num: 1
+  max_num: 8
+  min_agent: 1
+  draw: True
+
+  # eval config
+  need_eval: True
+  eval_data_start_index: 0
+  eval_data_usage: 40
+  eval_batch_size: 1 # 2 frame * 50 map  will be plotted
+  eval_frequency: 1
+ # eval each epoch
 
 

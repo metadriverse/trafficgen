@@ -13,8 +13,8 @@ if __name__ == "__main__":
 
     device = cfg['device']
 
-    trainer.load_model(trainer.model1,'model_weights/init_20',device)
-    trainer.load_model(trainer.model2, 'model_weights/act_70', device)
+    trainer.load_model(trainer.model1,'model_weights/init',device)
+    trainer.load_model(trainer.model2, 'model_weights/act', device)
     trainer.place_vehicles(vis=True)
     initialized_num = cfg['init']['eval_data_usage']
     trainer.generate_traj(initialized_num,snapshot=True)

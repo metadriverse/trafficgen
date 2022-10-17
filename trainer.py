@@ -355,7 +355,7 @@ class Trainer:
         self.model1.eval()
         eval_data = self.eval_init_loader
         with torch.no_grad():
-            for idx,data in tqdm(enumerate(eval_data)):
+            for idx,data in enumerate(tqdm(eval_data)):
                 batch = copy.deepcopy(data)
                 self.wash(batch)
                 output= self.model1(batch,eval=True,context_num=context_num)
