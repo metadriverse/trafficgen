@@ -4,7 +4,7 @@
 <!-- === Header Starts === -->
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title> Human-AI Shared Control via Policy Dissection</title>
+    <title> TrafficGen: Learning to Generate Diverse and Realistic Traffic Scenarios</title>
     <link href="./assets/bootstrap.min.css" rel="stylesheet">
     <link href="./assets/font.css" rel="stylesheet" type="text/css">
     <link href="./assets/style.css" rel="stylesheet" type="text/css">
@@ -40,10 +40,10 @@
             <tr>
                 <td>
                     <div style="padding-top: 0pt;padding-left: 140pt;padding-bottom: 12pt" class="title" id="lang">
-                        <b> Human-AI Shared Control via Policy Dissection </b>
+                        <b> TrafficGen: Learning to Generate Diverse<br>
+                            and Realistic Traffic Scenarios </b>
                     </div>
-                    <p style="text-align:center;padding-left: 155pt">Neural Information Processing Systems (NeurIPS)
-                        2022</p>
+
                 </td>
             </tr>
         </table>
@@ -52,30 +52,30 @@
     </div>
     <!-- === Title Ends === -->
     <div class="author">
+        <a href="#" target="_blank">Lan Feng</a><sup>1</sup>,
         <a href="https://Quanyili.github.io">Quanyi Li</a><sup>1,4</sup>,&nbsp;
         <a href="https://pengzhenghao.github.io" target="_blank">Zhenghao Peng</a><sup>3</sup>,&nbsp;&nbsp;
-        <a href="https://hbwu-ntu.github.io/" target="_blank">Haibin Wu</a><sup>1</sup>,
-        <a href="#" target="_blank">Lan Feng</a><sup>2</sup>,
+        <a href="https://ariostgx.github.io/website/" target="_blank">Shuhan Tan</a><sup>5</sup>,&nbsp;&nbsp;
         <a href="https://boleizhou.github.io/" target="_blank">Bolei Zhou</a><sup>3</sup>&nbsp;
 
     </div>
 
     <div class="institution" style="font-size: 11pt;">
         <div>
-            <sup>1</sup>Centre for Perceptual and Interactive Intelligence,
-            <sup>2</sup>ETH Zurich, <br>
+            <sup>1</sup>ETH Zurich,
+            <sup>2</sup>Centre for Perceptual and Interactive Intelligence, <br>
             <sup>3</sup>University of California, Los Angeles
             <sup>4</sup>University of Edinburgh<br>
-
+            <sup>5</sup>The University of Texas at Austin
         </div>
     </div>
     <table border="0" align="center">
         <tr>
             <td align="center" style="padding: 0pt 0 15pt 0">
-                <a class="bar" href="https://metadriverse.github.io/policydissect/"><b>Webpage</b></a> |
-                <a class="bar" href="https://github.com/metadriverse/policydissect"><b>Code</b></a> |
-                <a class="bar" href="https://youtu.be/7UmScmKMFE4"><b>Video</b></a> |
-                <a class="bar" href="https://arxiv.org/pdf/2206.00152.pdf"><b>Paper</b></a>
+                <a class="bar" href="https://metadriverse.github.io/trafficgen/"><b>Webpage</b></a> |
+<!--                <a class="bar" href="https://github.com/metadriverse/policydissect"><b>Code</b></a> |-->
+                <a class="bar" href="https://youtu.be/jPS93-d6msM"><b>Video</b></a> |
+                <a class="bar" href="https://arxiv.org/pdf/2210.06609.pdf"><b>Paper</b></a>
             </td>
         </tr>
     </table>
@@ -106,70 +106,62 @@
         </div>
         <div class="text">
             <p>
-                Inspired by the neuroscience approach to investigate the motor cortex in primates<a
-                    href="ref-1"><sup>1</sup></a>, we
-                develop a simple
-                yet effective frequency-based approach called <em>Policy Dissection </em> to align the intermediate
-                representation of the learned neural controller
-                with the kinematic attributes of the agent behavior. Without modifying the neural controller or
-                retraining the model, the proposed approach can convert a given RL-trained policy into a
-                goal-conditioned policy, where specific units can be activated to evoke desired behaviors and complete
-                goals.
-                This, in turn, enables Human-AI shared control where human can control the trained AI and finish complex
-                tasks.
+                This work introduces a data-driven method called <em>TrafficGen  </em> for traffic scenario generation.
+                It learns from the fragmented human driving data collected in the real world and then can generate
+                realistic traffic scenarios. TrafficGen is an autoregressive generative model with an encoder-decoder
+                architecture. In each autoregressive iteration, it first encodes the current traffic context with the
+                attention mechanism and then decodes a vehicle's initial state followed by generating its long
+                trajectory.
+
+
             </p>
 
             <div class="teaser" style="width: 105%; margin-left: -25pt">
                 <img src="assets/record.png">
                 <div class="text">
                     <br>
-                    Fig. 1 Identifying motor primitives from observational data
+                    Fig. 1 The autoregressive sampling process for vehicle placement.
                 </div>
             </div>
 
             <p>
-                We first roll out the trained policy and record the neural activities and track kinematic attributes,
-                like yaw and velocity.
-                After frequency matching, kinematic attributes are associated with certain units, which are further
-                called motor primitives. The curves of kinematic attributes and the aligned motor
-                primitive are painted in the same colors.
-                For clarity, we only show the result of one recorded episode and a proportion of units, and the curves
-                of units are sorted by their amplitude.
+                TrafficGen synthesizes a complete traffic scenario in an autoregressive way.
+                The first step is to place vehicles on the given map.
+                At each iteration, a vehicle is placed by sampling the spatial probability distribution over all the
+                regions in the scene. We visualize current spatial distribution through the iteration-varying heatmap.
+At              the end of sampling, a set of N vehicles are placed at the map and forms the traffic snapshot.
             </p>
             <p>
-                A behavior can be described by changing a subset of kinematic attributes, which can be achieved by
-                activating a set of corresponding motor primitives. Therefore, these movement generation building
-                blocks, are associated with certain behaviors, yielding the stimulation-evoked map.
-                Taking back-flip shown as an example, this behavior can be described by increasing 1. height 2. pitch
-                and 3. knee force. Therefore, we can evoke this behavior by activating motor primitives related to
-                the three kinematic attributes.
+                We use a motion forecasting model as the trajectory generator since it can output multi-mode diverse
+                samples. However, motion forecasting models cannot be directly used for long trajectory generation,
+                since they are brittle to distributional shift. We sample one possible future trajectory for each
+                vehicle. To mitigate the long-term cumulative error, only the first several steps of the trajectory
+                are used. Then the long trajectories of a vehicle are generated by several rollouts.
             </p>
 
-            <div class="text" style="font-size: 10pt;" id="ref-1">
-                <p>
-                    1. Exerting electrical stimulation on different areas of motor cortex can elicit meaningful body
-                    movements <a
-                        href="https://reader.elsevier.com/reader/sd/pii/S0896627302010036?token=EE38E077CD5A6737DC1EEDF1309838A9B609E4A47110E15E53C9B42F1EA173094A37ACE7622CFC4B43C21E049E63B947&originRegion=eu-west-1&originCreation=20220920182935">
-                    <em>Graziano,
-                        Michael SA, et al. "The cortical control of movement revisited." Neuron 36.3 (2002):
-                        349-362.</em>
-                </a>
+<!--            <div class="text" style="font-size: 10pt;" id="ref-1">-->
+<!--                <p>-->
+<!--                    1. Exerting electrical stimulation on different areas of motor cortex can elicit meaningful body-->
+<!--                    movements <a-->
+<!--                        href="https://reader.elsevier.com/reader/sd/pii/S0896627302010036?token=EE38E077CD5A6737DC1EEDF1309838A9B609E4A47110E15E53C9B42F1EA173094A37ACE7622CFC4B43C21E049E63B947&originRegion=eu-west-1&originCreation=20220920182935">-->
+<!--                    <em>Graziano,-->
+<!--                        Michael SA, et al. "The cortical control of movement revisited." Neuron 36.3 (2002):-->
+<!--                        349-362.</em>-->
+<!--                </a>-->
 
-                </p>
-            </div>
+<!--                </p>-->
+<!--            </div>-->
+
         </div>
     </div>
 </div>
 
 
 <div class="section" style="">
-    <div class="title" id="Parkour Demo">Case Study: Parkour</div>
+    <div class="title" id="Parkour Demo">Generating diverse traffic scenarios</div>
     <p>
-        We trained bipedal robots, Cassie, in <a href="https://github.com/NVIDIA-Omniverse/IsaacGymEnvs">IsaacGym </a>.
-        Though this robot is trained to <b>move forward only</b>, activating identified primitives can evoke complex
-        behaviors
-        like crouching, forward jumping and back-flipping. Please refer to <a
-            href="https://arxiv.org/pdf/2206.00152.pdf">our paper</a> for how to discover these skills.
+        With only HD map and traffic light signals as input, TrafficGen can generate diverse traffic scenarios
+        on different maps.
     </p>
     <center>
         <video class="video-container" width="100%" height="500" style="" autoplay
@@ -178,10 +170,8 @@
         </video>
     </center>
     <p>
-        In the following parkour video, we show that with human
-        instruction, the robot can combine these skills and overcome complex situations.
-        This neural controller with probed primitives and the shared control interface are all released <a
-            href="https://github.com/metadriverse/policydissect"> here</a>.
+        In the following video, we show that by sampling many times on the same map, TrafficGen and generate different
+        scenarios.
     </p>
     <center>
         <video class="video-container" width="100%" height="508" style="padding-right: 10pt" autoplay
@@ -191,43 +181,43 @@
     </center>
 </div>
 
-<div class="section" style="">
-    <div class="title" id="Tracking Demo">Ablation Study: Comparison with goal-conditioned controller</div>
-    <div class="text">
-        <p>
-            To quantify the coarseness of the goal-tracking controller empowered by <em>Policy Dissection</em>,
-            an explicit goal-conditioned controller following a target yaw is trained in <a
-                href="https://github.com/NVIDIA-Omniverse/IsaacGymEnvs">IsaacGym </a>.
-            We directly identify the primitives related to yaw rate in this controller with the proposed method, and
-            employ
-            a PID controller to determine the output of the neuron related to yaw rate. This enables a new way,
-            neural primitive activation, to track target command besides explicitly indicating the goal in the network
-            input.
-        </p>
-        <p>
-            Consequently, experiments can be conducted to fairly compare these two methods for quantifying the
-            coarseness of <em>Policy Dissection</em> enabled goal-conditioned control.
-            As shown in the video, the tracking precision of the goal-conditioned controller achieved by our method is
-            compatible to the explict goal-conditioned control method.
-            <br><br><em><b>Note</b>: the explict target yaw command in the observation is set to 0 for the primitive
-            activation command tracking.</em>
-        </p>
-    </div>
-    <center>
-        <video class="video-container" width="100%" height="508" style="padding-right: 10pt" autoplay
-               muted loop id="tracking_video">
-            <source src="assets/acc_tracking.mp4" type=video/mp4>
-        </video>
-    </center>
-</div>
+<!--<div class="section" style="">-->
+<!--    <div class="title" id="Tracking Demo">Ablation Study: Comparison with goal-conditioned controller</div>-->
+<!--    <div class="text">-->
+<!--        <p>-->
+<!--            To quantify the coarseness of the goal-tracking controller empowered by <em>Policy Dissection</em>,-->
+<!--            an explicit goal-conditioned controller following a target yaw is trained in <a-->
+<!--                href="https://github.com/NVIDIA-Omniverse/IsaacGymEnvs">IsaacGym </a>.-->
+<!--            We directly identify the primitives related to yaw rate in this controller with the proposed method, and-->
+<!--            employ-->
+<!--            a PID controller to determine the output of the neuron related to yaw rate. This enables a new way,-->
+<!--            neural primitive activation, to track target command besides explicitly indicating the goal in the network-->
+<!--            input.-->
+<!--        </p>-->
+<!--        <p>-->
+<!--            Consequently, experiments can be conducted to fairly compare these two methods for quantifying the-->
+<!--            coarseness of <em>Policy Dissection</em> enabled goal-conditioned control.-->
+<!--            As shown in the video, the tracking precision of the goal-conditioned controller achieved by our method is-->
+<!--            compatible to the explict goal-conditioned control method.-->
+<!--            <br><br><em><b>Note</b>: the explict target yaw command in the observation is set to 0 for the primitive-->
+<!--            activation command tracking.</em>-->
+<!--        </p>-->
+<!--    </div>-->
+<!--    <center>-->
+<!--        <video class="video-container" width="100%" height="508" style="padding-right: 10pt" autoplay-->
+<!--               muted loop id="tracking_video">-->
+<!--            <source src="assets/acc_tracking.mp4" type=video/mp4>-->
+<!--        </video>-->
+<!--    </center>-->
+<!--</div>-->
 
 <div class="section" style=" text-align: left">
     <div class="title" id="Demo Video">Demo Video</div>
-    We provide a demo video to show human-AI shared control systems empowered by <em>Policy Dissection</em>
-    can be built on various tasks, including quadrupedal robot locomotion, autonomous driving and classic gym tasks.
+    We provide a demo video to show scenarios generated by <em>TrafficGen</em> exhibits complex social behaviors. The
+    generated scenarios can have many downstream applications, such as RL training and SDV testing.
     <div class="body">
         <div class="video-container" style="position: relative; padding-top: 2%; margin: 0pt auto; text-align: center;">
-            <iframe width="900" height="506" src="https://www.youtube.com/embed/7UmScmKMFE4"
+            <iframe width="900" height="506" src="https://youtu.be/jPS93-d6msM"
                     title="YouTube video player" frameborder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowfullscreen></iframe>
@@ -242,14 +232,12 @@
     </div>
     If you find this work useful in your project, please consider to cite it through:
     <pre>
- @inproceedings{
-    li2022humanai,
-    title={Human-{AI} Shared Control via Policy Dissection},
-    author={Quanyi Li and Zhenghao Peng and Haibin Wu and Lan Feng and Bolei Zhou},
-    booktitle={Thirty-Sixth Conference on Neural Information Processing Systems},
-    year={2022},
-    url={https://openreview.net/forum?id=LCOv-GVVDkp}
- }
+@article{feng2022trafficgen,
+  title={TrafficGen: Learning to Generate Diverse and Realistic Traffic Scenarios},
+  author={Feng, Lan and Li, Quanyi and Peng, Zhenghao and Tan, Shuhan and Zhou, Bolei},
+  journal={arXiv preprint arXiv:2210.06609},
+  year={2022}
+}
     </pre>
     <!-- Adjust the frame size based on the demo (Every project differs). -->
 </div>
