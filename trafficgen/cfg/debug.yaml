@@ -1,59 +1,15 @@
 # Config format schema number
 format_version: 4
-debug: True
-max_epoch: 50
-num_workers: 0
-batch_size: 4
-device: 'cpu'
-need_eval: True
-train_init: False
-train_act: False
 
-init:
-  max_epoch: 50
-  num_workers: 0
-  batch_size: 4
-  data_path: "/Users/fenglan/Downloads/waymo/v2_data"
-  lr: 0.0003
-  weight_decay: 0.0004
-  device: 'cpu'
-  phase: 'training'
-  data_usage: 1
-  model: "init"
+device: 'cpu'
+data_path: "/Users/fenglan/Downloads/waymo/v2_data"
+data_usage: 2
+
+init_model:
   hidden_dim: 1024
+  max_num: 13
   gaussian_comp: 5
 
-  #pad_num: 13
-  max_num: 13
-  min_agent: 1
-  draw: True
-  # eval config
-  need_eval: True
-  eval_data_start_index: 0
-  eval_data_usage: 10
-  eval_batch_size: 1 # 2 frame * 50 map  will be plotted
-  eval_frequency: 1
- # eval each epoch
-act:
-  data_path: "/Users/fenglan/Downloads/waymo/v2_data"
-  max_epoch: 50
-  num_workers: 0
-  batch_size: 16
-  lr: 0.0003
-  weight_decay: 0.0004
-
-  phase: 'training'
-  data_usage: 1
-  model: "act"
-  recache: True
-  pred_len: 90
-
-  # eval config
-  need_eval: True
-  eval_data_start_index: 0
-  eval_data_usage: 0
-  eval_batch_size: 1
-  eval_frequency: 1
 
 
 

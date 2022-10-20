@@ -15,7 +15,7 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 class actuator(nn.Module):
     """ A transformer model with wider latent space """
 
-    def __init__(self,cfg):
+    def __init__(self):
         super().__init__()
 
         # input embedding stem
