@@ -1,0 +1,27 @@
+# Config format schema number
+format_version: 4
+
+debug: False
+data_path: '/home/lfeng/waymo/v2_data'
+max_epoch: 50
+num_workers: 2
+batch_size: 16
+lr: 0.0003
+weight_decay: 0.0004
+device: 'cuda'
+phase: 'training'
+data_usage: 50000
+model: "init"
+recache: True
+pad_num: 0
+draw: False
+min_agent: 8
+
+# eval config
+need_eval: True
+eval_data_start_index: 50000
+eval_data_usage: 20
+eval_batch_size: 16 # 2 frame * 50 map  will be plotted
+eval_frequency: 1  # eval each epoch
+
+
