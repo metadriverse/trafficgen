@@ -77,9 +77,12 @@ class Trainer:
                 batch[key] = batch[key].to(bool)
 
     def generate_scenarios(self):
+        # generate temp data in ./cases/initialized, and visualize in ./vis/initialized
+        self.place_vehicles(vis=True)
 
-        self.place_vehicles()
-        self.generate_traj(gif=True)
+        # generate trajectory from temp data, and visualize in ./vis/snapshots.
+        # set gif to True to generate gif in ./vis/gif
+        self.generate_traj(snapshot=True,gif=False)
 
     def place_vehicles(self,vis=True):
         context_num = 1
