@@ -133,7 +133,12 @@ class Trainer:
 
         return
 
-    def generate_traj(self, snapshot=True,gif=False):
+    def generate_traj(self, snapshot=False,gif=False):
+        if not os.path.exists('./vis/snapshots'):
+            os.mkdir('./vis/snapshots')
+        if not os.path.exists('./vis/gif'):
+            os.mkdir('./vis/gif')
+
         self.model2.eval()
         cnt=0
         with torch.no_grad():
@@ -148,6 +153,7 @@ class Trainer:
                 pred_list.append(pred_i)
 
                 if snapshot:
+
                     dir_path = f'./vis/snapshots/{i}'
                     ind = list(range(0,190,10))
                     agent = pred_i[ind]
