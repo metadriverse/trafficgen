@@ -2,8 +2,8 @@
 format_version: 4
 
 device: 'cpu'
-data_path: "/Users/fenglan/Downloads/waymo/v2_data"
-data_usage: 2
+data_path:
+data_usage:
 
 init_model:
   hidden_dim: 1024
