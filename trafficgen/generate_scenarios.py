@@ -2,6 +2,7 @@ from utils.arg_parse import get_parsed_args
 from l5kit.configs import load_config_data
 from trainer import Trainer
 from utils.typedef import AgentType,RoadEdgeType,RoadLineType
+import yaml
 # ============================== Main =======================================
 
 
@@ -9,7 +10,11 @@ if __name__ == "__main__":
 
     # ===== parse args =====
     args = get_parsed_args()
-    cfg = load_config_data(f'./cfg/{args.cfg}.yaml')
+
+    cfg_path = f'./cfg/{args.cfg}.yaml'
+    with open(cfg_path) as f:
+        cfg = yaml.load(f, Loader=yaml.FullLoader)
+
     trainer = Trainer(exp_name=args.exp_name,
                       cfg=cfg,
                       args=args)
