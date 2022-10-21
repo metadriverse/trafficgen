@@ -1,7 +1,6 @@
 imageio==2.10.1
 l5kit==1.5.0
 matplotlib==3.4.3
-numpy==1.18.5
 protobuf==4.21.7
 scipy==1.7.1
 setuptools==58.0.4
