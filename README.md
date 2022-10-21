@@ -5,9 +5,7 @@ Download one proto file from
 'waymo_open_dataset_motion_v_1_1_0/uncompressed/scenario/training_20s' for debug
 
 Run "
-python trans20.py /inp_path /outp_path None " to preprocess the proto file
-
-The processed data can be used for training
+python script/trans20.py /inp_path /outp_path None " to preprocess the proto file
 
 processed data {
 
@@ -27,10 +25,8 @@ processed data {
 
 0. pip install -e .
 
-1. Download model to TrafficFormerV2/model_weights directory
-https://drive.google.com/file/d/15mhhcolpVdg9oEphC6gxuODo9mtoWIBT/view?usp=sharing
+1. Download model to trafficgen/model_weights directory
+https://drive.google.com/drive/folders/1TbCV6y-vssvG3YsuA6bAtD9lUX39DH9C?usp=sharing
 
-2. python TrafficGen_demo.py --cfg debug_init
+2. python generate_scenarios.py --cfg debug
 
-
-Generated traffic scenarios will be saved in TrafficFormerV2/heatmap
