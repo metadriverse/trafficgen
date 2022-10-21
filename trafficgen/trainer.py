@@ -191,7 +191,6 @@ class Trainer:
                     output = os.path.join(f'./vis/gif/{cnt}', f'movie_{i}.gif')
                     imageio.mimsave(output, images, duration=0.15)
 
-
                     cnt+=1
 
                     # if t==0:
