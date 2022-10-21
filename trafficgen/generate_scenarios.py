@@ -1,5 +1,4 @@
 from utils.arg_parse import get_parsed_args
-from l5kit.configs import load_config_data
 from trainer import Trainer
 from utils.typedef import AgentType,RoadEdgeType,RoadLineType
 import yaml
