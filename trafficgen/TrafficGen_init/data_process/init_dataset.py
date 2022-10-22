@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 import torch
 from torch import Tensor
 import copy
-from utils.utils import process_map,rotate,cal_rel_dir
+from trafficgen.utils.utils import process_map,rotate,cal_rel_dir
 from shapely.geometry import Polygon
 
 LANE_SAMPLE = 10

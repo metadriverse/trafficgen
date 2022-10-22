@@ -7,13 +7,13 @@ import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from utils.utils import transform_to_agent,from_list_to_batch,rotate
+from trafficgen.utils.utils import transform_to_agent,from_list_to_batch,rotate
 import imageio
 
 from TrafficGen_init.models.init_distribution import initializer
 from TrafficGen_init.data_process.init_dataset import initDataset,WaymoAgent
 
-from utils.visual_init import draw,draw_seq
+from trafficgen.utils.visual_init import draw,draw_seq
 
 from TrafficGen_act.models.act_model import actuator
 from TrafficGen_act.data_process.act_dataset import process_case_to_input,process_map

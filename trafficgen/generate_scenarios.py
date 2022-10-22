@@ -1,6 +1,6 @@
-from utils.arg_parse import get_parsed_args
+from trafficgen.utils.arg_parse import get_parsed_args
 from trainer import Trainer
-from utils.typedef import AgentType,RoadEdgeType,RoadLineType
+from trafficgen.utils.typedef import AgentType,RoadEdgeType,RoadLineType
 import yaml
 # ============================== Main =======================================
 

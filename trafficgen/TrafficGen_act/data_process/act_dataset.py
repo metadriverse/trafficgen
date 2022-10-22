@@ -4,7 +4,7 @@ import pickle
 
 import numpy as np
 from torch.utils.data import Dataset
-from utils.utils import process_map,rotate,cal_rel_dir
+from trafficgen.utils.utils import process_map,rotate,cal_rel_dir
 from TrafficGen_init.data_process.agent_process import WaymoAgent
 
 LANE_SAMPLE = 10

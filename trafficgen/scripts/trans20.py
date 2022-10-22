@@ -6,7 +6,7 @@ try:
     import tensorflow as tf
 except ImportError:
     pass
-from utils import scenario_pb2
+from trafficgen.utils import scenario_pb2
 import os
 import pickle
 import numpy as np
