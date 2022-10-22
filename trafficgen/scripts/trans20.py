@@ -404,13 +404,13 @@ def compute_width(scene):
     return
 
 
-def parse_data(inut_path, output_path, pre_fix=None):
+def parse_data(input_path, output_path, pre_fix=None):
     MAX=100000
     cnt = 0
     scenario = scenario_pb2.Scenario()
-    file_list = os.listdir(inut_path)
+    file_list = os.listdir(input_path)
     for file in tqdm(file_list):
-        file_path = os.path.join(inut_path, file)
+        file_path = os.path.join(input_path, file)
         if not 'tfrecord' in file_path:
             continue
         dataset = tf.data.TFRecordDataset(file_path, compression_type='')
