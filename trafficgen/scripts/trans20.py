@@ -17,6 +17,7 @@ LANE_DIM = 4
 TIME_SAMPLE = 3  # sample 64 time step, 64*3 = 192
 BATCH_SIZE = 190  # 64*3 < 192, ok
 
+PROJECT_ROOT = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 def yaw_to_y(angles):
     ret = []
@@ -408,6 +409,13 @@ def parse_data(input_path, output_path, pre_fix=None):
     MAX=100000
     cnt = 0
     scenario = scenario_pb2.Scenario()
+
+    # Project root folder:
+    input_path = os.path.join(PROJECT_ROOT, input_path)
+    output_path = os.path.join(PROJECT_ROOT, output_path)
+    os.makedirs(output_path, exist_ok=True)
+    print(f"Loading data from: {input_path} and output to: {output_path} ...")
+
     file_list = os.listdir(input_path)
     for file in tqdm(file_list):
         file_path = os.path.join(input_path, file)

@@ -30,27 +30,31 @@ Download from Waymo Dataset
 
 Note: You can download multiple files from above link and put them
 
-### Step 3: Transform raw 
+### Step 3: Transform raw data in TF files to python objects
+
 ```bash
-python trafficgen/scripts/trans20.py /raw_data /output_path None
+python trafficgen/scripts/trans20.py ./raw_data ./processed_data None
 ```
-The processed data has the following attributes
 
+The processed data has the following attributes:
 - `id`: scenario id
-- `all_agent`: [190,n,9] 190 frames, n agents, 9 dim feature [coord,velocity,heading,length,width,type,validity]
-- `traffic_light`
-- `lane`: [n,4] n points, [coord,type,id(which lane this point belongs to)]
+- `all_agent`: A `[190, n, 9]` array which contains 190 frames, n agents, 9 features `[coord, velocity, heading, length, width, type, validity]`
+- `traffic_light`: TODO-What the fuck is this?
+- `lane`: A `[n,4]` array which contains n points and `[coord, type, id(which lane this point belongs to)]` features.
 
-### Pretrained Model
-https://drive.google.com/drive/folders/1TbCV6y-vssvG3YsuA6bAtD9lUX39DH9C?usp=sharing
+### Step 4: Download and retrieve pretrained TrafficGen model
 
-Put the pretrained model into ```/trafficgen/trafficen/model_weights```
+Please download two models from this link: https://drive.google.com/drive/folders/1TbCV6y-vssvG3YsuA6bAtD9lUX39DH9C?usp=sharing
 
-## Generate Traffic Scenarios
+And then put them into `./trafficgen/model_weights` folder.
+
+### Step 5: Generate new traffic scenarios based on existing traffic scenarios
 
 ```bash
 # change the data usage and set the data dir in debug.yaml
-vim cfg/debug.yaml
+
+# CWD: ./trafficgen
+vim ./trafficgen/cfg/debug.yaml
 
 python generate_scenarios.py --cfg None
 ```
