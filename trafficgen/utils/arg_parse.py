@@ -5,7 +5,7 @@ import torch
 
 def get_parsed_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--cfg', type=str, default='main')
+    parser.add_argument('--cfg', type=str, default='demo.yaml')
     parser.add_argument('--local_rank', default=-1, type=int)
     parser.add_argument('--distributed', default=False, type=bool)
     parser.add_argument('--exp_name', default="none", type=str)

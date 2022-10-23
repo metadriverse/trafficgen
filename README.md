@@ -53,8 +53,8 @@ And then put them into `./trafficgen/model_weights` folder.
 ```bash
 # change the data usage and set the data dir in debug.yaml
 
-# CWD: ./trafficgen
-vim ./trafficgen/cfg/debug.yaml
+# You can change 
+# vim ./trafficgen/cfg/demo.yaml
 
-python generate_scenarios.py --cfg None
+python trafficgen/generate_scenarios.py
 ```

@@ -7,7 +7,7 @@ from drivingforce.TrafficFormerDynamic.load_for_metadrive import AgentType,RoadE
 if __name__ == "__main__":
     # ===== parse args =====
     args = get_parsed_args()
-    cfg = load_config_data(f'cfg/{args.cfg}.yaml')
+    cfg = load_config_data(f'cfg/{args.cfg}')
     trainer = Trainer(exp_name=args.exp_name,
                       cfg=cfg,
                       args=args)

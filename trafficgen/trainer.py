@@ -60,11 +60,6 @@ class Trainer:
         self.print("========== Epoch: {} ==========".format(self.current_epoch))
         for key, value in log.items():
             self.print(key, ": ", value)
-
-    @property
-    def make_dir(self):
-        os.makedirs(self.exp_data_path, exist_ok=False)
-        os.mkdir(os.path.join(self.exp_data_path, "saved_models"))
     def wash(self,batch):
         for key in batch.keys():
             if isinstance(batch[key], np.ndarray):
