@@ -1,6 +1,10 @@
-# TrafficGen: TODO: The title of the paper
+# TrafficGen: Learning to Generate Diverse and Realistic Traffic Scenarios
 
-TODO: some links here, take a look on MetaDrive project.
+[**Webpage**](https://metadriverse.github.io/trafficgen/) | 
+[**Code**](https://github.com/metadriverse/trafficgen) |
+[**Video**](https://youtu.be/jPS93-d6msM) |
+[**Paper**](https://arxiv.org/pdf/2210.06609.pdf)
+
 
 ## Generating traffic flow with TrafficGen
 
@@ -53,8 +57,11 @@ And then put them into `./trafficgen/model_weights` folder.
 ```bash
 # change the data usage and set the data dir in debug.yaml
 
-# You can change 
-# vim ./trafficgen/cfg/demo.yaml
+# First, you have to change working directory
+cd trafficgen
 
-python trafficgen/generate_scenarios.py
+python trafficgen/generate_scenarios.py [--gif] [--num_trajectories 10]
 ```
+
+Set `--gif` flag to generate GIF files.
+
