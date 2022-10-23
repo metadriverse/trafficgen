@@ -4,9 +4,9 @@ import numpy as np
 import copy
 from torch import Tensor
 import torch
-from utils.typedef import RoadLineType,RoadEdgeType
+from trafficgen.utils.typedef import RoadLineType,RoadEdgeType
 from shapely.geometry import Polygon
-from TrafficGen_init.data_process.agent_process import WaymoAgent
+from trafficgen.TrafficGen_init.data_process.agent_process import WaymoAgent
 
 def time_me(fn):
     def _wrapper(*args, **kwargs):

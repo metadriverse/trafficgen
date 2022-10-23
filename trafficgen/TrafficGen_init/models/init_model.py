@@ -1,14 +1,14 @@
 import torch
 import torch.nn as nn
 
-from utils.model_utils import MLP_3, CG_stacked
+from trafficgen.utils.model_utils import MLP_3, CG_stacked
 import copy
 from torch import Tensor
 copy_func = copy.deepcopy
-from utils.visual_init import get_heatmap
-from TrafficGen_init.data_process.init_dataset import WaymoAgent
+from trafficgen.utils.visual_init import get_heatmap
+from trafficgen.TrafficGen_init.data_process.init_dataset import WaymoAgent
 from random import choices
-from utils.utils import get_agent_pos_from_vec
+from trafficgen.utils.utils import get_agent_pos_from_vec
 import numpy as np
 class initializer(nn.Module):
     """ A transformer model with wider latent space """

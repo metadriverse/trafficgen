@@ -1,13 +1,13 @@
 from drivingforce.TrafficTranformer.utils.arg_parse import get_parsed_args
 from l5kit.configs import load_config_data
-from utils.train import Trainer
+from trafficgen.utils.train import Trainer
 from drivingforce.TrafficFormerDynamic.load_for_metadrive import AgentType,RoadEdgeType,RoadLineType
 # ============================== Main =======================================
 
 if __name__ == "__main__":
     # ===== parse args =====
     args = get_parsed_args()
-    cfg = load_config_data(f'cfg/{args.cfg}.yaml')
+    cfg = load_config_data(f'cfg/{args.cfg}')
     trainer = Trainer(exp_name=args.exp_name,
                       cfg=cfg,
                       args=args)

@@ -1,13 +1,12 @@
 import torch
 import torch.nn as nn
 
-from utils.model_utils import MLP_3, CG_stacked
+from trafficgen.utils.model_utils import MLP_3, CG_stacked
 import copy
 
-from .init_model import initializer
 from random import choices
 copy_func = copy.deepcopy
-from utils.utils import get_agent_pos_from_vec
+from trafficgen.utils.utils import get_agent_pos_from_vec
 import numpy as np
 class sceneGen(nn.Module):
 

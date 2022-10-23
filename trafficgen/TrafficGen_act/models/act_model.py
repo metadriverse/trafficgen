@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import math
 
-from utils.model_utils import MLP_3,CG_stacked
+from trafficgen.utils.model_utils import MLP_3,CG_stacked
 from TrafficGen_act.models.critertion import loss_v1
 import copy
 logger = logging.getLogger(__name__)

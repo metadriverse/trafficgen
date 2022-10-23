@@ -10,7 +10,7 @@ from google.protobuf import symbol_database as _symbol_database
 
 _sym_db = _symbol_database.Default()
 
-import utils.map_pb2 as map__pb2
+import trafficgen.utils.map_pb2 as map__pb2
 
 DESCRIPTOR = _descriptor.FileDescriptor(
     name='scenario.proto',

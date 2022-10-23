@@ -1,6 +1,15 @@
-## Installation
+# TrafficGen: Learning to Generate Diverse and Realistic Traffic Scenarios
 
-### Basic Installation
+[**Webpage**](https://metadriverse.github.io/trafficgen/) | 
+[**Code**](https://github.com/metadriverse/trafficgen) |
+[**Video**](https://youtu.be/jPS93-d6msM) |
+[**Paper**](https://arxiv.org/pdf/2210.06609.pdf)
+
+
+## Generating traffic flow with TrafficGen
+
+
+### Step 1: Setup python environment
 
 ```bash
 # Clone the code to local
@@ -13,40 +22,46 @@ conda activate trafficgen
 
 # Install basic dependency
 pip install -e .
-
-cd trafficgen
 ```
 
+### Step 2: Download dataset for road and traffic
 
-### Waymo Dataset
-- Register in https://waymo.com/open/
-- Open https://console.cloud.google.com/storage/browser/waymo_open_dataset_motion_v_1_1_0;tab=objects?pli=1&prefix=&forceOnObjectsSortingFiltering=false
-- Download one proto file from 'waymo_open_dataset_motion_v_1_1_0/uncompressed/scenario/training_20s'
+Download from Waymo Dataset
+- Register your Google account in: https://waymo.com/open/
+- Open the following link with your Google account logged in: https://console.cloud.google.com/storage/browser/waymo_open_dataset_motion_v_1_1_0
+- Download one or more proto files from `waymo_open_dataset_motion_v_1_1_0/uncompressed/scenario/training_20s`
+- Move download files to `./raw_data/`
 
-### Data Preprocess
+Note: You can download multiple files from above link and put them
+
+### Step 3: Transform raw data in TF files to python objects
+
 ```bash
-python script/trans20.py /inp_path /output_path None
+python trafficgen/scripts/trans20.py ./raw_data ./processed_data None
 ```
-The processed data has the following attributes
 
-- 'id': scenario id
+The processed data has the following attributes:
+- `id`: scenario id
+- `all_agent`: A `[190, n, 9]` array which contains 190 frames, n agents, 9 features `[coord, velocity, heading, length, width, type, validity]`
+- `traffic_light`: TODO-What the fuck is this?
+- `lane`: A `[n,4]` array which contains n points and `[coord, type, id(which lane this point belongs to)]` features.
 
-- 'all_agent': [190,n,9] 190 frames, n agents, 9 dim feature [coord,velocity,heading,length,width,type,validity]
+### Step 4: Download and retrieve pretrained TrafficGen model
 
-- 'traffic_light'
+Please download two models from this link: https://drive.google.com/drive/folders/1TbCV6y-vssvG3YsuA6bAtD9lUX39DH9C?usp=sharing
 
-- 'lane': [n,4] n points, [coord,type,id(which lane this point belongs to)]
+And then put them into `./trafficgen/model_weights` folder.
 
-### Pretrained Model
-https://drive.google.com/drive/folders/1TbCV6y-vssvG3YsuA6bAtD9lUX39DH9C?usp=sharing
-
-Put the pretrained model into ```/trafficgen/trafficen/model_weights```
-
-## Generate Traffic Scenarios
+### Step 5: Generate new traffic scenarios based on existing traffic scenarios
 
 ```bash
 # change the data usage and set the data dir in debug.yaml
-vim cfg/debug.yaml
 
-python generate_scenarios.py --cfg None
+# First, you have to change working directory
+cd trafficgen
+
+python trafficgen/generate_scenarios.py [--gif] [--num_trajectories 10]
 ```
+
+Set `--gif` flag to generate GIF files.
+
