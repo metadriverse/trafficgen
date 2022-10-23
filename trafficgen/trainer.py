@@ -10,8 +10,8 @@ from torch.utils.data import DataLoader
 from trafficgen.utils.utils import transform_to_agent,from_list_to_batch,rotate
 import imageio
 
-from TrafficGen_init.models.init_distribution import initializer
-from TrafficGen_init.data_process.init_dataset import initDataset,WaymoAgent
+from trafficgen.TrafficGen_init.models.init_distribution import initializer
+from trafficgen.TrafficGen_init.data_process.init_dataset import initDataset,WaymoAgent
 
 from trafficgen.utils.visual_init import draw,draw_seq
 
@@ -71,13 +71,13 @@ class Trainer:
             if 'mask' in key:
                 batch[key] = batch[key].to(bool)
 
-    def generate_scenarios(self):
+    def generate_scenarios(self, snapshot=True, gif=True):
         # generate temp data in ./cases/initialized, and visualize in ./vis/initialized
         self.place_vehicles(vis=True)
 
         # generate trajectory from temp data, and visualize in ./vis/snapshots.
         # set gif to True to generate gif in ./vis/gif
-        self.generate_traj(snapshot=True,gif=False)
+        self.generate_traj(snapshot=snapshot, gif=gif)
 
     def place_vehicles(self,vis=True):
         context_num = 1
@@ -131,7 +131,7 @@ class Trainer:
 
         return
 
-    def generate_traj(self, snapshot=False,gif=False):
+    def generate_traj(self, snapshot=False, gif=False):
         if not os.path.exists('./vis/snapshots'):
             os.mkdir('./vis/snapshots')
         if not os.path.exists('./vis/gif'):
@@ -204,6 +204,11 @@ class Trainer:
                     #         draw(cent, heat_map[k-1], agent_t[:k], rest, edge=bound, save=True, path=heat_path)
             # if save_path:
             #     self.save_as_metadrive_data(pred_list,scene_data,save_path)
+
+        if gif:
+            print("GIF files have been generated to vis/gif folder.")
+        if snapshot:
+            print("Trajectory visualization has been generated to vis/snapshots folder.")
 
     def inference_control(self, data, ego_gt=True,length = 190, per_time = 20):
         # for every x time step, pred then update

@@ -1,5 +1,5 @@
 import os
-from TrafficGen_init.data_process.agent_process import WaymoAgent
+from trafficgen.TrafficGen_init.data_process.agent_process import WaymoAgent
 import pickle
 import numpy as np
 from torch.utils.data import Dataset
@@ -8,6 +8,7 @@ from torch import Tensor
 import copy
 from trafficgen.utils.utils import process_map,rotate,cal_rel_dir
 from shapely.geometry import Polygon
+from trafficgen.utils.typedef import RoadLineType,RoadEdgeType
 
 LANE_SAMPLE = 10
 RANGE = 50
@@ -21,6 +22,8 @@ class initDataset(Dataset):
     def __init__(self, cfg):
         self.total_data_usage = cfg["data_usage"]
         self.data_path = cfg['data_path']
+
+        print("Dataset path is: ", self.data_path)
 
         self.data_len = None
         self.data_loaded = {}

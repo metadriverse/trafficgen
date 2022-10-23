@@ -2,7 +2,7 @@
 format_version: 4
 
 device: 'cpu'
-data_path: ./processed_data
+data_path: processed_data # relative path to repo root
 data_usage: 10
 
 init_model:
