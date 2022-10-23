@@ -27,6 +27,7 @@ def yaw_to_y(angles):
         ret.append(angle_to_y)
     return np.array(ret)
 
+
 class RoadLineType(Enum):
     UNKNOWN = 0
     BROKEN_SINGLE_WHITE = 1
@@ -54,6 +55,7 @@ class RoadLineType(Enum):
         return True if line in [
             RoadLineType.BROKEN_DOUBLE_YELLOW, RoadLineType.BROKEN_SINGLE_YELLOW, RoadLineType.BROKEN_SINGLE_WHITE
         ] else False
+
 
 def yaw_to_theta(angles, thetas):
     """
@@ -93,7 +95,7 @@ def transform_coord(coords, angle):
 
 
 def extract_tracks(f, sdc_index):
-    #agents = np.zeros([len(f), BATCH_SIZE, 9])
+    # agents = np.zeros([len(f), BATCH_SIZE, 9])
     agents = np.zeros([len(f), BATCH_SIZE, 9])
     sdc = f[sdc_index]
     sdc_x = np.array([state.center_x for state in sdc.states])
@@ -117,14 +119,14 @@ def extract_tracks(f, sdc_index):
         valid = np.array([[state.valid] for state in f[i].states])
         t = np.expand_dims(np.repeat(f[i].object_type, len(valid)), axis=-1)
 
-        #time_sample = int(len(pos)/BATCH_SIZE)  # some case may do not have 20s
-        #time_sample = min(time_sample, TIME_SAMPLE)
-        #agents[i] = np.concatenate((pos, velocity, head, l, w, t, valid), axis=-1)[::time_sample, ...][:BATCH_SIZE]
+        # time_sample = int(len(pos)/BATCH_SIZE)  # some case may do not have 20s
+        # time_sample = min(time_sample, TIME_SAMPLE)
+        # agents[i] = np.concatenate((pos, velocity, head, l, w, t, valid), axis=-1)[::time_sample, ...][:BATCH_SIZE]
 
         agents[i] = np.concatenate((pos, velocity, head, l, w, t, valid), axis=-1)[:BATCH_SIZE]
     ego = agents[sdc_index]
     others = np.delete(agents, sdc_index, axis=0)
-    #others = np.transpose(others,[1,0,2])
+    # others = np.transpose(others,[1,0,2])
     # others[abs(others[..., 0] > 80), -1] = 0
     # others[abs(others[..., 1] > 80), -1] = 0
 
@@ -132,9 +134,9 @@ def extract_tracks(f, sdc_index):
 
 
 def extract_dynamic(f, sdc):
-    #dynamics = np.zeros([BATCH_SIZE, 32, 6])
+    # dynamics = np.zeros([BATCH_SIZE, 32, 6])
     dynamics = []
-    #time_sample = min(int(len(sdc.states)/BATCH_SIZE), TIME_SAMPLE)
+    # time_sample = min(int(len(sdc.states)/BATCH_SIZE), TIME_SAMPLE)
     # sdc_x = np.array([state.center_x for state in sdc.states])[::time_sample, ...][:BATCH_SIZE]
     # sdc_y = np.array([state.center_y for state in sdc.states])[::time_sample, ...][:BATCH_SIZE]
     # sdc_yaw = np.array([state.heading for state in sdc.states])[::time_sample, ...][:BATCH_SIZE]
@@ -144,7 +146,7 @@ def extract_dynamic(f, sdc):
     sdc_theta = yaw_to_y(sdc_yaw).astype(np.float32)
 
     for i in range(BATCH_SIZE):
-        #states = f[i * time_sample].lane_states
+        # states = f[i * time_sample].lane_states
         states = f[i].lane_states
         traf_list = []
         for j in range(len(states)):
@@ -153,12 +155,12 @@ def extract_dynamic(f, sdc):
             traf[1:4] = transform_coord(
                 np.array([[states[j].stop_point.x - sdc_x[i], states[j].stop_point.y - sdc_y[i], 0]]),
                 np.array([sdc_theta[i]]))
-            if states[j].state in [1,4,7]:
-                state_ = 1 # stop
-            elif states[j].state in [2,5,8]:
-                state_ = 2 # caution
-            elif states[j].state in [3,6]:
-                state_ = 3 # go
+            if states[j].state in [1, 4, 7]:
+                state_ = 1  # stop
+            elif states[j].state in [2, 5, 8]:
+                state_ = 2  # caution
+            elif states[j].state in [3, 6]:
+                state_ = 3  # go
             else:
                 state_ = 0  # unknown
             traf[4] = state_
@@ -187,7 +189,7 @@ def down_sampling(line, type=0):
         for i in range(0, point_num):
             ret.append(line[i])
     else:
-        for i in range(0,point_num,SAMPLE_NUM):
+        for i in range(0, point_num, SAMPLE_NUM):
             ret.append(line[i])
 
     return ret
@@ -228,7 +230,7 @@ def extract_center(f):
     f = f.lane
 
     poly = down_sampling(extract_poly(f.polyline)[:, :2])
-    poly = [np.insert(x,2,f.type) for x in poly]
+    poly = [np.insert(x, 2, f.type) for x in poly]
 
     center['interpolating'] = f.interpolating
 
@@ -244,46 +246,41 @@ def extract_center(f):
 
     center['right_neighbor'] = extract_neighbors(f.right_neighbors)
 
-    return poly,center
+    return poly, center
 
 
 def extract_line(f):
-
     f = f.road_line
     poly = down_sampling(extract_poly(f.polyline)[:, :2])
     type = f.type + 5
-    poly = [np.insert(x,2,type) for x in poly]
+    poly = [np.insert(x, 2, type) for x in poly]
     return poly
 
 
 def extract_edge(f):
-
     f = f.road_edge
     poly = down_sampling(extract_poly(f.polyline)[:, :2])
     type = 15 if f.type == 1 else 16
-    poly = [np.insert(x,2,type) for x in poly]
+    poly = [np.insert(x, 2, type) for x in poly]
 
     return poly
 
 
 def extract_stop(f):
-
     f = f.stop_sign
-    ret = np.array([f.position.x, f.position.y,17])
+    ret = np.array([f.position.x, f.position.y, 17])
 
     return [ret]
 
 
 def extract_crosswalk(f):
-
     f = f.crosswalk
-    poly = down_sampling(extract_poly(f.polygon)[:, :2],1)
-    poly = [np.insert(x,2,18) for x in poly]
+    poly = down_sampling(extract_poly(f.polygon)[:, :2], 1)
+    poly = [np.insert(x, 2, 18) for x in poly]
     return poly
 
 
 def extract_bump(f):
-
     f = f.speed_bump
     poly = down_sampling(extract_poly(f.polygon)[:, :2], 1)
     poly = [np.insert(x, 2, 19) for x in poly]
@@ -293,12 +290,12 @@ def extract_bump(f):
 def extract_map(f):
     maps = []
     center_infos = {}
-    #nearbys = dict()
+    # nearbys = dict()
     for i in range(len(f)):
         id = f[i].id
 
         if f[i].HasField('lane'):
-            line,center_info = extract_center(f[i])
+            line, center_info = extract_center(f[i])
             center_infos[id] = center_info
 
         elif f[i].HasField('road_line'):
@@ -321,8 +318,7 @@ def extract_map(f):
         line = [np.insert(x, 3, id) for x in line]
         maps = maps + line
 
-
-    return np.array(maps),center_infos
+    return np.array(maps), center_infos
 
 
 def transform_coordinate_map(map, sdc):
@@ -339,41 +335,42 @@ def transform_coordinate_map(map, sdc):
     for i in range(BATCH_SIZE):
         ret[i] = map
         ret[i][..., :2] = transform_coord(ret[i][..., :2] - pos[i],
-                                           np.expand_dims(sdc_theta[i], -1))
-
+                                          np.expand_dims(sdc_theta[i], -1))
 
     # ret[abs(ret[:, :, :, 1]) > 80,-1] =0
     # ret[abs(ret[:, :, :, 2]) > 80, -1] = 0
-    valid_ret = np.sum(ret[...,-1],-1)
+    valid_ret = np.sum(ret[..., -1], -1)
     lane_mask = valid_ret.astype(bool)
-    ret[ret[...,-1]==0,:] = 0
+    ret[ret[..., -1] == 0, :] = 0
 
-    return ret,lane_mask
+    return ret, lane_mask
+
 
 def add_traff_to_lane(scene):
     traf = scene['traf_p_c_f']
     lane = scene['lane']
     traf_buff = np.zeros([*lane.shape[:2]])
     for i in range(BATCH_SIZE):
-        lane_i_id = lane[i,:,0,-1]
+        lane_i_id = lane[i, :, 0, -1]
         for a_traf in traf[i]:
             lane_id = a_traf[0]
             state = a_traf[-2]
-            lane_idx = np.where(lane_i_id==lane_id)
-            traf_buff[i,lane_idx] = state
+            lane_idx = np.where(lane_i_id == lane_id)
+            traf_buff[i, lane_idx] = state
     return traf_buff
+
 
 def nearest_point(point, line):
     dist = np.square(line - point)
     dist = np.sqrt(dist[:, 0] + dist[:, 1])
     return np.argmin(dist)
 
+
 def extract_width(map, polyline, boundary):
     l_width = np.zeros(polyline.shape[0])
     for b in boundary:
-        idx = map[:,-1]==b['id']
-        b_polyline = map[idx][:,:2]
-
+        idx = map[:, -1] == b['id']
+        b_polyline = map[idx][:, :2]
 
         start_p = polyline[b['index'][0]]
         start_index = nearest_point(start_p, b_polyline)
@@ -392,13 +389,13 @@ def extract_width(map, polyline, boundary):
 
 def compute_width(scene):
     lane = scene['unsampled_lane']
-    lane_id = np.unique(lane[...,-1]).astype(int)
+    lane_id = np.unique(lane[..., -1]).astype(int)
     center_infos = scene['center_info']
 
     for id in lane_id:
         if not id in center_infos.keys():
             continue
-        id_set = lane[...,-1]==id
+        id_set = lane[..., -1] == id
         points = lane[id_set]
 
         width = np.zeros((points.shape[0], 2))
@@ -414,7 +411,7 @@ def compute_width(scene):
 
 
 def parse_data(input_path, output_path, pre_fix=None):
-    MAX=100000
+    MAX = 100000
     cnt = 0
     scenario = scenario_pb2.Scenario()
     file_list = os.listdir(input_path)
@@ -425,7 +422,7 @@ def parse_data(input_path, output_path, pre_fix=None):
         dataset = tf.data.TFRecordDataset(file_path, compression_type='')
         for j, data in enumerate(dataset.as_numpy_iterator()):
             try:
-                if pre_fix=='None':
+                if pre_fix == 'None':
                     p = os.path.join(output_path, '{}.pkl'.format(cnt))
                 else:
                     p = os.path.join(output_path, '{}_{}.pkl'.format(pre_fix, cnt))
@@ -440,7 +437,7 @@ def parse_data(input_path, output_path, pre_fix=None):
                 scene['traf_p_c_f'] = extract_dynamic(scenario.dynamic_map_states, ego)
                 global SAMPLE_NUM
                 SAMPLE_NUM = 10
-                scene['lane'],scene['center_info'] = extract_map(scenario.map_features)
+                scene['lane'], scene['center_info'] = extract_map(scenario.map_features)
 
                 SAMPLE_NUM = 10e9
                 scene['unsampled_lane'], _ = extract_map(scenario.map_features)
@@ -454,8 +451,8 @@ def parse_data(input_path, output_path, pre_fix=None):
                 scene['sdc_theta'] = sdc_theta
                 scene['sdc_pos'] = pos
                 compute_width(scene)
-                #scene['lane'], scene['lane_mask'] = transform_coordinate_map(lane, ego)
-                #scene['traf_p_c_f'] = add_traff_to_lane(scene)
+                # scene['lane'], scene['lane_mask'] = transform_coordinate_map(lane, ego)
+                # scene['traf_p_c_f'] = add_traff_to_lane(scene)
 
             except:
                 print(f'fail to parse {cnt},continue')

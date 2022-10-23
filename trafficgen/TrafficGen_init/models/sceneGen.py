@@ -5,9 +5,12 @@ from trafficgen.utils.model_utils import MLP_3, CG_stacked
 import copy
 
 from random import choices
+
 copy_func = copy.deepcopy
 from trafficgen.utils.utils import get_agent_pos_from_vec
 import numpy as np
+
+
 class sceneGen(nn.Module):
 
     def __init__(self, cfg):
@@ -43,7 +46,7 @@ class sceneGen(nn.Module):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
 
-    def map_feature_extract(self,lane_inp,line_mask,context_agent):
+    def map_feature_extract(self, lane_inp, line_mask, context_agent):
         device = lane_inp.device
 
         polyline = lane_inp[..., :4]
@@ -53,7 +56,7 @@ class sceneGen(nn.Module):
 
         polyline_type_embed = self.type_embedding(polyline_type)
         polyline_traf_embed = self.traf_embedding(polyline_traf)
-        polyline_traf_embed = torch.zeros_like(polyline_traf_embed,device=device)
+        polyline_traf_embed = torch.zeros_like(polyline_traf_embed, device=device)
 
         # agent features
         line_enc = self.line_encode(polyline) + polyline_traf_embed + polyline_type_embed
@@ -134,46 +137,47 @@ class sceneGen(nn.Module):
         return {'prob': prob_pred, 'pos': pos_out, 'bbox': bbox_gmm, 'heading': heading_gmm,
                 'speed': speed_out.squeeze(-1),
                 'vel_heading': vel_heading_gmm}
+
     def _obtain_step_input(self, step_idx, data):
         # TODO Obtain the input data for the current step for feature extraction:
         # 1. process the data as if there are only agent (0, 1, ..., step_idx-1) in the scene.
         # 2. if step_idx == 0, then there is no agent in the scene.
-        data['agent_mask'][:,:step_idx] = True
+        data['agent_mask'][:, :step_idx] = True
         data['agent_mask'][:, step_idx:] = False
         return
-    def compute_loss(self, data, pred_dists,mask,agent_vec_idx,step_idx):
+
+    def compute_loss(self, data, pred_dists, mask, agent_vec_idx, step_idx):
         BCE = torch.nn.BCEWithLogitsLoss()
         MSE = torch.nn.MSELoss(reduction='none')
-        prob_loss = BCE(pred_dists['prob'], data['gt_distri'][:,step_idx])
+        prob_loss = BCE(pred_dists['prob'], data['gt_distri'][:, step_idx])
 
         line_mask = data['center_mask']
         prob_loss = torch.sum(prob_loss * line_mask) / max(torch.sum(line_mask), 1)
         # long lat loss
         mask = mask.unsqueeze(-1)
 
-        gather2 = agent_vec_idx.unsqueeze(-1).unsqueeze(-1).repeat(1,1,2)
+        gather2 = agent_vec_idx.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, 2)
         gather1 = agent_vec_idx.unsqueeze(-1)
-        gt_pos = torch.gather(data['gt_long_lat'],1,gather2)
-        gt_bbox = torch.gather(data['gt_bbox'],1,gather2)
-        gt_speed = torch.gather(data['gt_speed'],1,gather1)
+        gt_pos = torch.gather(data['gt_long_lat'], 1, gather2)
+        gt_bbox = torch.gather(data['gt_bbox'], 1, gather2)
+        gt_speed = torch.gather(data['gt_speed'], 1, gather1)
         gt_vel_heading = torch.gather(data['gt_vel_heading'], 1, gather1)
         gt_heading = torch.gather(data['gt_heading'], 1, gather1)
 
-        pos_loss = MSE(pred_dists['pos'],gt_pos).mean(-1)
-        pos_loss = (pos_loss*mask).sum()/mask.sum()
+        pos_loss = MSE(pred_dists['pos'], gt_pos).mean(-1)
+        pos_loss = (pos_loss * mask).sum() / mask.sum()
 
-        speed_loss = MSE(pred_dists['speed'],gt_speed)
-        speed_loss = (speed_loss*mask).sum()/mask.sum()
+        speed_loss = MSE(pred_dists['speed'], gt_speed)
+        speed_loss = (speed_loss * mask).sum() / mask.sum()
 
         bbox_loss = -pred_dists['bbox'].log_prob(gt_bbox)
-        bbox_loss = (bbox_loss*mask).sum()/mask.sum()
-
+        bbox_loss = (bbox_loss * mask).sum() / mask.sum()
 
         vel_heading_loss = -pred_dists['vel_heading'].log_prob(gt_vel_heading)
-        vel_heading_loss = (vel_heading_loss*mask).sum()/mask.sum()
+        vel_heading_loss = (vel_heading_loss * mask).sum() / mask.sum()
 
         heading_loss = -pred_dists['heading'].log_prob(gt_heading)
-        heading_loss = (heading_loss*mask).sum()/mask.sum()
+        heading_loss = (heading_loss * mask).sum() / mask.sum()
 
         losses = {}
 
@@ -187,32 +191,31 @@ class sceneGen(nn.Module):
         total_loss = prob_loss + pos_loss + heading_loss + speed_loss + vel_heading_loss + bbox_loss
 
         return losses, total_loss
-    def sample_from_distribution(self, pred,center_lane,repeat_num=10):
 
+    def sample_from_distribution(self, pred, center_lane, repeat_num=10):
 
         prob_list = []
         agents_list = []
         pos = torch.clip(pred['pos'], min=-0.5, max=0.5)
         speed = torch.clip(pred['speed'], min=0)
         for i in range(repeat_num):
-
-            heading = torch.clip(pred['heading'].sample(),min=-np.pi/2,max=np.pi/2)
+            heading = torch.clip(pred['heading'].sample(), min=-np.pi / 2, max=np.pi / 2)
             heading_logprob = pred['heading'].log_prob(heading)
 
-            vel_heading = torch.clip(pred['vel_heading'].sample(),min=-np.pi/2,max=np.pi/2)
+            vel_heading = torch.clip(pred['vel_heading'].sample(), min=-np.pi / 2, max=np.pi / 2)
             vel_heading_logprob = pred['vel_heading'].log_prob(vel_heading)
 
-            bbox = torch.clip(pred['bbox'].sample(),min=1.5)
+            bbox = torch.clip(pred['bbox'].sample(), min=1.5)
             bbox_logprob = pred['bbox'].log_prob(bbox)
 
             agents = get_agent_pos_from_vec(center_lane, pos[0], speed[0], vel_heading[0], heading[0], bbox[0])
             agents_list.append(agents)
-            #pos_logprob_ = pos_logprob[0,the_indx]
-            heading_logprob_ = heading_logprob[0,0]
-            vel_heading_logprob_ = vel_heading_logprob[0,0]
-            bbox_logprob_ = bbox_logprob[0,0]
-            #speed_logprob_ = speed_logprob[0,the_indx]
-            all_prob = heading_logprob_+vel_heading_logprob_+bbox_logprob_
+            # pos_logprob_ = pos_logprob[0,the_indx]
+            heading_logprob_ = heading_logprob[0, 0]
+            vel_heading_logprob_ = vel_heading_logprob[0, 0]
+            bbox_logprob_ = bbox_logprob[0, 0]
+            # speed_logprob_ = speed_logprob[0,the_indx]
+            all_prob = heading_logprob_ + vel_heading_logprob_ + bbox_logprob_
             prob_list.append(all_prob)
 
         max_indx = np.argmax(prob_list)
@@ -233,7 +236,7 @@ class sceneGen(nn.Module):
 
         all_preds = []
         generated_indx = []
-        generated_indx.append(data['agent_vec_indx'][0,0].item())
+        generated_indx.append(data['agent_vec_indx'][0, 0].item())
         for step_idx in range(1, max_agent_num):
             # construct the input data that contain only the agents (0, 1, ..., step_idx-1)
             agent_enc = self.agent_feature_extract(data['agent_feat'])
@@ -247,15 +250,15 @@ class sceneGen(nn.Module):
             K = 10
             pred_feat = latent[0][-1]
 
-            feature = self.map_feature_extract(data['lane_inp'],data['lane_mask'],pred_feat)
+            feature = self.map_feature_extract(data['lane_inp'], data['lane_mask'], pred_feat)
             center_num = data['center'].shape[1]
             feature = feature[:, :center_num]
 
             prob_pred = self.prob_head(feature).squeeze(-1)
 
             prob = nn.Sigmoid()(prob_pred[0])
-            prob = prob*data['center_mask'][0]
-            prob[generated_indx]=0
+            prob = prob * data['center_mask'][0]
+            prob[generated_indx] = 0
             max_prob = -10
             for i in range(3):
                 indx = choices(list(range(prob.shape[-1])), prob)[0]
@@ -265,15 +268,15 @@ class sceneGen(nn.Module):
                     max_prob = max(vec_logprob_, max_prob)
             generated_indx.append(the_indx)
 
-            feature = feature[:,[the_indx]]
+            feature = feature[:, [the_indx]]
 
             pred_dists = self.feature_to_dists(feature, K)
 
-            agent = self.sample_from_distribution(pred_dists,data['center'][0,[the_indx]])
+            agent = self.sample_from_distribution(pred_dists, data['center'][0, [the_indx]])
 
             next_inp = agent.get_inp()
-            next_inp = torch.tensor(next_inp,device=data['agent_feat'].device)
-            data['agent_feat'][0,step_idx] = next_inp
+            next_inp = torch.tensor(next_inp, device=data['agent_feat'].device)
+            data['agent_feat'][0, step_idx] = next_inp
             all_preds.append(agent)
 
         output = {}
@@ -281,18 +284,18 @@ class sceneGen(nn.Module):
         return output
 
     def forward(self, data, eval=False):
-        if eval==True:
+        if eval == True:
             return self.inference(data)
 
         max_agent_num = torch.max(torch.sum(data['gt_distribution'], dim=1)).to(int).item()
-        max_agent_num = min(max_agent_num,16)
+        max_agent_num = min(max_agent_num, 16)
         all_losses = []
         all_total_loss = 0
         all_preds = []
         data['agent_mask_gt'] = copy.deepcopy(data['agent_mask'])
-        bs,lane_num = data['gt_distribution'].shape
-        device =  data['gt_distribution'].device
-        gt_distri = torch.zeros([bs,max_agent_num,lane_num],device=device)
+        bs, lane_num = data['gt_distribution'].shape
+        device = data['gt_distribution'].device
+        gt_distri = torch.zeros([bs, max_agent_num, lane_num], device=device)
         data['gt_distri'] = gt_distri
         agent_enc = self.agent_feature_extract(data['agent_feat'])
 
@@ -303,7 +306,7 @@ class sceneGen(nn.Module):
 
         for step_idx in range(1, max_agent_num):
             # construct the input data that contain only the agents (0, 1, ..., step_idx-1)
-            input_feat = agent_enc[:,:step_idx]
+            input_feat = agent_enc[:, :step_idx]
 
             if step_idx == 1:
                 _, latent = self.feat_lstm(input_feat)
@@ -314,35 +317,34 @@ class sceneGen(nn.Module):
             K = 10
             pred_feat = latent[0][-1]
 
-            feature = self.map_feature_extract(data['lane_inp'],data['lane_mask'],pred_feat)
+            feature = self.map_feature_extract(data['lane_inp'], data['lane_mask'], pred_feat)
             center_num = data['center'].shape[1]
             feature = feature[:, :center_num]
 
             prob_pred = self.prob_head(feature).squeeze(-1)
-            bs,lane_num,feature_dim = feature.shape
+            bs, lane_num, feature_dim = feature.shape
 
             agent_vec_indx = data['agent_vec_indx'][:, step_idx]
-            gather_feat = agent_vec_indx.view(bs,1,1).repeat(1,1,feature_dim)
-            feature = torch.gather(feature,1,gather_feat)
+            gather_feat = agent_vec_indx.view(bs, 1, 1).repeat(1, 1, feature_dim)
+            feature = torch.gather(feature, 1, gather_feat)
 
             pred_dists = self.feature_to_dists(feature, K)
             pred_dists['prob'] = prob_pred
 
             mask = data['agent_mask_gt'][:, step_idx]
-            losses, total_loss = self.compute_loss(data, pred_dists,mask,agent_vec_indx,step_idx)
+            losses, total_loss = self.compute_loss(data, pred_dists, mask, agent_vec_indx, step_idx)
             all_losses.append(losses)
             all_preds.append(pred_dists)
             all_total_loss += total_loss
 
-        loss_num = max_agent_num-1
+        loss_num = max_agent_num - 1
         keys = all_losses[0].keys()
         all_ = {}
         for key in keys:
-            all_[key]=0
+            all_[key] = 0
         for i in range(loss_num):
             for key in keys:
-                all_[key]+=all_losses[i][key]/loss_num
-        all_total_loss/=(max_agent_num-1)
+                all_[key] += all_losses[i][key] / loss_num
+        all_total_loss /= (max_agent_num - 1)
 
         return all_preds, all_total_loss, all_
-

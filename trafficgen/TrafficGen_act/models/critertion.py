@@ -1,6 +1,7 @@
 import torch
 
-def loss_v1(pred,gt):
+
+def loss_v1(pred, gt):
     MSE = torch.nn.MSELoss(reduction='none')
     L1 = torch.nn.L1Loss(reduction='none')
     CLS = torch.nn.CrossEntropyLoss()
@@ -30,11 +31,11 @@ def loss_v1(pred,gt):
     heading_loss = L1(heading_gt, heading_pred).mean(-1)
     heading_loss = torch.gather(heading_loss, dim=1, index=min_index.unsqueeze(-1)).mean()
 
-    loss_sum = 10*pos_loss+velo_loss+heading_loss+cls_loss
+    loss_sum = 10 * pos_loss + velo_loss + heading_loss + cls_loss
 
     loss_dict = {}
     loss_dict['cls_loss'] = cls_loss
     loss_dict['velo_loss'] = velo_loss
     loss_dict['heading_loss'] = heading_loss
     loss_dict['pos_loss'] = pos_loss
-    return loss_sum,loss_dict
+    return loss_sum, loss_dict

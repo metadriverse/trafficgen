@@ -64,11 +64,11 @@ def transform_coord(coords, angle):
     return output_coords
 
 
-def extract_tracks(f, sdc_index,pred_list):
-    #agents = np.zeros([len(f), BATCH_SIZE, 9])
+def extract_tracks(f, sdc_index, pred_list):
+    # agents = np.zeros([len(f), BATCH_SIZE, 9])
     agents = np.zeros([len(f), BATCH_SIZE, 9])
     pred_mask = np.zeros(len(f))
-    pred_mask[pred_list]=1
+    pred_mask[pred_list] = 1
     sdc = f[sdc_index]
     sdc_x = np.array([state.center_x for state in sdc.states])
     sdc_y = np.array([state.center_y for state in sdc.states])
@@ -91,25 +91,25 @@ def extract_tracks(f, sdc_index,pred_list):
         valid = np.array([[state.valid] for state in f[i].states])
         t = np.expand_dims(np.repeat(f[i].object_type, len(valid)), axis=-1)
 
-        #time_sample = int(len(pos)/BATCH_SIZE)  # some case may do not have 20s
-        #time_sample = min(time_sample, TIME_SAMPLE)
-        #agents[i] = np.concatenate((pos, velocity, head, l, w, t, valid), axis=-1)[::time_sample, ...][:BATCH_SIZE]
+        # time_sample = int(len(pos)/BATCH_SIZE)  # some case may do not have 20s
+        # time_sample = min(time_sample, TIME_SAMPLE)
+        # agents[i] = np.concatenate((pos, velocity, head, l, w, t, valid), axis=-1)[::time_sample, ...][:BATCH_SIZE]
 
         agents[i] = np.concatenate((pos, velocity, head, l, w, t, valid), axis=-1)[:BATCH_SIZE]
     ego = agents[sdc_index]
     others = np.delete(agents, sdc_index, axis=0)
-    pred_mask = np.delete(pred_mask,sdc_index,axis=0)
-    #others = np.transpose(others,[1,0,2])
+    pred_mask = np.delete(pred_mask, sdc_index, axis=0)
+    # others = np.transpose(others,[1,0,2])
     # others[abs(others[..., 0] > 80), -1] = 0
     # others[abs(others[..., 1] > 80), -1] = 0
 
-    return ego, others,pred_mask
+    return ego, others, pred_mask
 
 
 def extract_dynamic(f, sdc):
-    #dynamics = np.zeros([BATCH_SIZE, 32, 6])
+    # dynamics = np.zeros([BATCH_SIZE, 32, 6])
     dynamics = []
-    #time_sample = min(int(len(sdc.states)/BATCH_SIZE), TIME_SAMPLE)
+    # time_sample = min(int(len(sdc.states)/BATCH_SIZE), TIME_SAMPLE)
     # sdc_x = np.array([state.center_x for state in sdc.states])[::time_sample, ...][:BATCH_SIZE]
     # sdc_y = np.array([state.center_y for state in sdc.states])[::time_sample, ...][:BATCH_SIZE]
     # sdc_yaw = np.array([state.heading for state in sdc.states])[::time_sample, ...][:BATCH_SIZE]
@@ -119,7 +119,7 @@ def extract_dynamic(f, sdc):
     sdc_theta = yaw_to_y(sdc_yaw).astype(np.float32)
 
     for i in range(BATCH_SIZE):
-        #states = f[i * time_sample].lane_states
+        # states = f[i * time_sample].lane_states
         states = f[i].lane_states
         traf_list = []
         for j in range(len(states)):
@@ -128,12 +128,12 @@ def extract_dynamic(f, sdc):
             traf[1:4] = transform_coord(
                 np.array([[states[j].stop_point.x - sdc_x[i], states[j].stop_point.y - sdc_y[i], 0]]),
                 np.array([sdc_theta[i]]))
-            if states[j].state in [1,4,7]:
-                state_ = 1 # stop
-            elif states[j].state in [2,5,8]:
-                state_ = 2 # caution
-            elif states[j].state in [3,6]:
-                state_ = 3 # go
+            if states[j].state in [1, 4, 7]:
+                state_ = 1  # stop
+            elif states[j].state in [2, 5, 8]:
+                state_ = 2  # caution
+            elif states[j].state in [3, 6]:
+                state_ = 3  # go
             else:
                 state_ = 0  # unknown
             traf[4] = state_
@@ -162,7 +162,7 @@ def down_sampling(line, type=0):
         for i in range(0, point_num):
             ret.append(line[i])
     else:
-        for i in range(0,point_num,SAMPLE_NUM):
+        for i in range(0, point_num, SAMPLE_NUM):
             ret.append(line[i])
 
     return ret
@@ -183,52 +183,46 @@ def extract_neighbors(fb):
 
 
 def extract_center(f):
-
     f = f.lane
 
     poly = down_sampling(extract_poly(f.polyline)[:, :2])
-    poly = [np.insert(x,2,f.type) for x in poly]
+    poly = [np.insert(x, 2, f.type) for x in poly]
 
     return poly
 
 
 def extract_line(f):
-
     f = f.road_line
     poly = down_sampling(extract_poly(f.polyline)[:, :2])
     type = f.type + 5
-    poly = [np.insert(x,2,type) for x in poly]
+    poly = [np.insert(x, 2, type) for x in poly]
     return poly
 
 
 def extract_edge(f):
-
     f = f.road_edge
     poly = down_sampling(extract_poly(f.polyline)[:, :2])
     type = 15 if f.type == 1 else 16
-    poly = [np.insert(x,2,type) for x in poly]
+    poly = [np.insert(x, 2, type) for x in poly]
 
     return poly
 
 
 def extract_stop(f):
-
     f = f.stop_sign
-    ret = np.array([f.position.x, f.position.y,17])
+    ret = np.array([f.position.x, f.position.y, 17])
 
     return [ret]
 
 
 def extract_crosswalk(f):
-
     f = f.crosswalk
-    poly = down_sampling(extract_poly(f.polygon)[:, :2],1)
-    poly = [np.insert(x,2,18) for x in poly]
+    poly = down_sampling(extract_poly(f.polygon)[:, :2], 1)
+    poly = [np.insert(x, 2, 18) for x in poly]
     return poly
 
 
 def extract_bump(f):
-
     f = f.speed_bump
     poly = down_sampling(extract_poly(f.polygon)[:, :2], 1)
     poly = [np.insert(x, 2, 19) for x in poly]
@@ -237,7 +231,7 @@ def extract_bump(f):
 
 def extract_map(f):
     maps = []
-    #nearbys = dict()
+    # nearbys = dict()
     for i in range(len(f)):
         id = f[i].id
 
@@ -281,36 +275,33 @@ def transform_coordinate_map(map, sdc):
     for i in range(BATCH_SIZE):
         ret[i] = map
         ret[i][..., :2] = transform_coord(ret[i][..., :2] - pos[i],
-                                           np.expand_dims(sdc_theta[i], -1))
-
+                                          np.expand_dims(sdc_theta[i], -1))
 
     # ret[abs(ret[:, :, :, 1]) > 80,-1] =0
     # ret[abs(ret[:, :, :, 2]) > 80, -1] = 0
-    valid_ret = np.sum(ret[...,-1],-1)
+    valid_ret = np.sum(ret[..., -1], -1)
     lane_mask = valid_ret.astype(bool)
-    ret[ret[...,-1]==0,:] = 0
+    ret[ret[..., -1] == 0, :] = 0
 
-    return ret,lane_mask
+    return ret, lane_mask
+
 
 def add_traff_to_lane(scene):
     traf = scene['traf_p_c_f']
     lane = scene['lane']
     traf_buff = np.zeros([*lane.shape[:2]])
     for i in range(BATCH_SIZE):
-        lane_i_id = lane[i,:,0,-1]
+        lane_i_id = lane[i, :, 0, -1]
         for a_traf in traf[i]:
             lane_id = a_traf[0]
             state = a_traf[-2]
-            lane_idx = np.where(lane_i_id==lane_id)
-            traf_buff[i,lane_idx] = state
+            lane_idx = np.where(lane_i_id == lane_id)
+            traf_buff[i, lane_idx] = state
     return traf_buff
 
 
-
-
-
 def parse_data(input_path, output_path, pre_fix=None):
-    MAX=100000
+    MAX = 100000
     cnt = 0
     scenario = scenario_pb2.Scenario()
     file_list = os.listdir(input_path)
@@ -321,7 +312,7 @@ def parse_data(input_path, output_path, pre_fix=None):
         dataset = tf.data.TFRecordDataset(file_path, compression_type='')
         for j, data in enumerate(dataset.as_numpy_iterator()):
             try:
-                if pre_fix=='None':
+                if pre_fix == 'None':
                     p = os.path.join(output_path, '{}.pkl'.format(cnt))
                 else:
                     p = os.path.join(output_path, '{}_{}.pkl'.format(pre_fix, cnt))
@@ -332,11 +323,11 @@ def parse_data(input_path, output_path, pre_fix=None):
                 sdc_index = scenario.sdc_track_index
 
                 pred_list = [i.track_index for i in scenario.tracks_to_predict]
-                scene['ego_p_c_f'], scene['nbrs_p_c_f'],scene['pred_list'] = extract_tracks(scenario.tracks, sdc_index,pred_list)
+                scene['ego_p_c_f'], scene['nbrs_p_c_f'], scene['pred_list'] = extract_tracks(scenario.tracks, sdc_index,
+                                                                                             pred_list)
 
                 ego = scenario.tracks[sdc_index]
                 scene['traf_p_c_f'] = extract_dynamic(scenario.dynamic_map_states, ego)
-
 
                 scene['lane'] = extract_map(scenario.map_features)
 

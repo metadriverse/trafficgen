@@ -6,6 +6,7 @@ from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from google.protobuf import reflection as _reflection
 from google.protobuf import symbol_database as _symbol_database
+
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
@@ -722,7 +723,7 @@ _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 ObjectState = _reflection.GeneratedProtocolMessageType(
     'ObjectState',
-    (_message.Message, ),
+    (_message.Message,),
     {
         'DESCRIPTOR': _OBJECTSTATE,
         '__module__': 'scenario_pb2'
@@ -733,7 +734,7 @@ _sym_db.RegisterMessage(ObjectState)
 
 Track = _reflection.GeneratedProtocolMessageType(
     'Track',
-    (_message.Message, ),
+    (_message.Message,),
     {
         'DESCRIPTOR': _TRACK,
         '__module__': 'scenario_pb2'
@@ -744,7 +745,7 @@ _sym_db.RegisterMessage(Track)
 
 DynamicMapState = _reflection.GeneratedProtocolMessageType(
     'DynamicMapState',
-    (_message.Message, ),
+    (_message.Message,),
     {
         'DESCRIPTOR': _DYNAMICMAPSTATE,
         '__module__': 'scenario_pb2'
@@ -755,7 +756,7 @@ _sym_db.RegisterMessage(DynamicMapState)
 
 RequiredPrediction = _reflection.GeneratedProtocolMessageType(
     'RequiredPrediction',
-    (_message.Message, ),
+    (_message.Message,),
     {
         'DESCRIPTOR': _REQUIREDPREDICTION,
         '__module__': 'scenario_pb2'
@@ -766,7 +767,7 @@ _sym_db.RegisterMessage(RequiredPrediction)
 
 Scenario = _reflection.GeneratedProtocolMessageType(
     'Scenario',
-    (_message.Message, ),
+    (_message.Message,),
     {
         'DESCRIPTOR': _SCENARIO,
         '__module__': 'scenario_pb2'

@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class RoadLineType(Enum):
     UNKNOWN = 0
     BROKEN_SINGLE_WHITE = 1

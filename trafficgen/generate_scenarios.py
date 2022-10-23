@@ -34,8 +34,3 @@ if __name__ == "__main__":
     trainer.load_model(trainer.model2, os.path.join(model_weights_folder_path, 'act'), device)
 
     trainer.generate_scenarios(snapshot=True, gif=args.gif)
-
-
-
-
-

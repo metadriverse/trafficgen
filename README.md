@@ -54,14 +54,18 @@ And then put them into `./trafficgen/model_weights` folder.
 
 ### Step 5: Generate new traffic scenarios based on existing traffic scenarios
 
+Running following scripts will generate images and GIFs (if with `--gif`) visualizing the new traffic scenarios in 
+`./vis` folder.
+
 ```bash
 # change the data usage and set the data dir in debug.yaml
 
 # First, you have to change working directory
 cd trafficgen
 
-python trafficgen/generate_scenarios.py [--gif] [--num_trajectories 10]
+python trafficgen/generate_scenarios.py [--gif] [--num_scenarios 10]
 ```
 
 Set `--gif` flag to generate GIF files.
+
 

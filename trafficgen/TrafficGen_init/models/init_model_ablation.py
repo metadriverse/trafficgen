@@ -4,12 +4,15 @@ import torch.nn as nn
 from trafficgen.utils.model_utils import MLP_3, CG_stacked
 import copy
 from torch import Tensor
+
 copy_func = copy.deepcopy
 from trafficgen.utils.visual_init import get_heatmap
 from trafficgen.TrafficGen_init.data_process.init_dataset import WaymoAgent
 from random import choices
-from trafficgen.utils.utils import get_agent_pos_from_vec,rotate
+from trafficgen.utils.utils import get_agent_pos_from_vec, rotate
 import numpy as np
+
+
 class initializer(nn.Module):
     """ A transformer model with wider latent space """
 
@@ -29,7 +32,7 @@ class initializer(nn.Module):
         middle_layer_shape = [self.hidden_dim * 2, self.hidden_dim, 256]
 
         self.prob_head = MLP_3([*middle_layer_shape, 1])
-        #self.pos_head = MLP_3([*middle_layer_shape, 10 * (1 + 5)])
+        # self.pos_head = MLP_3([*middle_layer_shape, 10 * (1 + 5)])
         self.pos_head = MLP_3([*middle_layer_shape, 2])
         self.speed_head = MLP_3([*middle_layer_shape, 1])
 
@@ -47,43 +50,43 @@ class initializer(nn.Module):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
 
-    def sample_from_distribution(self, pred,center_lane,repeat_num=10):
+    def sample_from_distribution(self, pred, center_lane, repeat_num=10):
         prob = pred['prob'][0]
-        max_prob=0
+        max_prob = 0
         for i in range(3):
             indx = choices(list(range(prob.shape[-1])), prob)[0]
             vec_logprob_ = prob[indx]
-            if vec_logprob_>max_prob:
+            if vec_logprob_ > max_prob:
                 the_indx = indx
-                max_prob = max(vec_logprob_,max_prob)
+                max_prob = max(vec_logprob_, max_prob)
 
-        #idx_list = []
+        # idx_list = []
         prob_list = []
         agents_list = []
         pos = pred['pos']
         heading = pred['heading'].squeeze(-1)
         speed = torch.clip(pred['speed'], min=0)
         for i in range(repeat_num):
-
-            vel_heading = torch.clip(pred['vel_heading'].sample(),min=-np.pi/2,max=np.pi/2)
+            vel_heading = torch.clip(pred['vel_heading'].sample(), min=-np.pi / 2, max=np.pi / 2)
             vel_heading_logprob = pred['vel_heading'].log_prob(vel_heading)
 
-            bbox = torch.clip(pred['bbox'].sample(),min=1.5)
+            bbox = torch.clip(pred['bbox'].sample(), min=1.5)
             bbox_logprob = pred['bbox'].log_prob(bbox)
 
             agents = get_agent_pos_from_vec(center_lane, pos[0], speed[0], vel_heading[0], heading[0], bbox[0])
             agents.position = pos[0].cpu().numpy()
             agents_list.append(agents)
 
-            vel_heading_logprob_ = vel_heading_logprob[0,the_indx]
-            bbox_logprob_ = bbox_logprob[0,the_indx]
-            #speed_logprob_ = speed_logprob[0,the_indx]
-            all_prob = vel_heading_logprob_+bbox_logprob_
+            vel_heading_logprob_ = vel_heading_logprob[0, the_indx]
+            bbox_logprob_ = bbox_logprob[0, the_indx]
+            # speed_logprob_ = speed_logprob[0,the_indx]
+            all_prob = vel_heading_logprob_ + bbox_logprob_
             prob_list.append(all_prob)
 
         max_indx = np.argmax(prob_list)
         max_agents = agents_list[max_indx]
-        return max_agents,prob,the_indx
+        return max_agents, prob, the_indx
+
     def output_to_dist(self, para, n):
         # if n = 2, dim = 5 = 2 + 3, if n = 1, dim = 2 = 1 + 1
 
@@ -136,7 +139,6 @@ class initializer(nn.Module):
 
         # heading distribution: 1 dimension,range(-pi/2,pi/2
 
-
         # speed distribution: 1 dimension
         # vel heading distribution: 1 dimension,range(-pi/2,pi/2)
         vel_heading_out = self.vel_heading_head(feature).view([*feature.shape[:-1], K, -1])
@@ -146,10 +148,11 @@ class initializer(nn.Module):
         vel_heading_weight = torch.distributions.Categorical(logits=vel_heading_weight)
         vel_heading_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(vel_heading_weight,
                                                                                     vel_heading_distri)
-        return {'prob': prob_pred, 'pos': pos_out, 'bbox': bbox_gmm, 'heading': heading_out, 'speed': speed_out.squeeze(-1),
+        return {'prob': prob_pred, 'pos': pos_out, 'bbox': bbox_gmm, 'heading': heading_out,
+                'speed': speed_out.squeeze(-1),
                 'vel_heading': vel_heading_gmm}
 
-    def agent_feature_extract(self, agent_feat,agent_mask, random_mask):
+    def agent_feature_extract(self, agent_feat, agent_mask, random_mask):
         agent = agent_feat[..., :-2]
         agent_line_type = agent_feat[..., -2].to(int)
         agent_line_traf = agent_feat[..., -1].to(int)
@@ -174,7 +177,7 @@ class initializer(nn.Module):
 
         return context_agent
 
-    def map_feature_extract(self,lane_inp,line_mask,context_agent):
+    def map_feature_extract(self, lane_inp, line_mask, context_agent):
         device = lane_inp.device
 
         polyline = lane_inp[..., :4]
@@ -184,7 +187,7 @@ class initializer(nn.Module):
 
         polyline_type_embed = self.type_embedding(polyline_type)
         polyline_traf_embed = self.traf_embedding(polyline_traf)
-        polyline_traf_embed = torch.zeros_like(polyline_traf_embed,device=device)
+        polyline_traf_embed = torch.zeros_like(polyline_traf_embed, device=device)
 
         # agent features
         line_enc = self.line_encode(polyline) + polyline_traf_embed + polyline_type_embed
@@ -216,7 +219,7 @@ class initializer(nn.Module):
         bbox_loss = -pred_dists['bbox'].log_prob(data['gt_bbox'])
         bbox_loss = (torch.sum(bbox_loss * gt_mask, dim=1) / gt_sum).mean()
 
-        speed_loss = MSE(pred_dists['speed'],data['gt_speed'])
+        speed_loss = MSE(pred_dists['speed'], data['gt_speed'])
         speed_loss = (torch.sum(speed_loss * gt_mask, dim=1) / gt_sum).mean()
 
         vel_heading_loss = -pred_dists['vel_heading'].log_prob(data['gt_vel_heading'])
@@ -236,12 +239,11 @@ class initializer(nn.Module):
 
         gt_dir = vec_dir + data['gt_heading']
 
-        pos_loss = MSE(pred_dists['pos'],coord).mean(-1)
+        pos_loss = MSE(pred_dists['pos'], coord).mean(-1)
         pos_loss = (torch.sum(pos_loss * gt_mask, dim=1) / gt_sum).mean()
 
-        heading_loss = MSE(pred_dists['heading'].squeeze(-1),gt_dir)
+        heading_loss = MSE(pred_dists['heading'].squeeze(-1), gt_dir)
         heading_loss = (torch.sum(heading_loss * gt_mask, dim=1) / gt_sum).mean()
-
 
         losses = {}
 
@@ -267,7 +269,7 @@ class initializer(nn.Module):
         shapes = []
 
         for i in range(context_num):
-            context_agent = data['agent'][0,[i]].cpu().numpy()
+            context_agent = data['agent'][0, [i]].cpu().numpy()
             context_agent = WaymoAgent(context_agent)
             context_poly = context_agent.get_polygon()[0]
             shapes.append(context_poly)
@@ -275,21 +277,20 @@ class initializer(nn.Module):
             vec_indx = data['vec_based_rep'][..., 0]
             idx_list.append(vec_indx[0, i].item())
 
-
         minimum_agent = self.cfg['pad_num']
         center = data['center'][0]
         center_mask = data['center_mask'][0].cpu().numpy()
 
-        for i in range(context_num,max(agent_num,minimum_agent)):
+        for i in range(context_num, max(agent_num, minimum_agent)):
             data['agent_mask'][:, :i] = 1
-            data['agent_mask'][:,i:]=0
+            data['agent_mask'][:, i:] = 0
 
             pred, _, _ = self.forward(data, False, False)
 
-            pred['prob'][:,idx_list]=0
-            cnt=0
-            while cnt<10:
-                agents, prob, indx = self.sample_from_distribution(pred,center)
+            pred['prob'][:, idx_list] = 0
+            cnt = 0
+            while cnt < 10:
+                agents, prob, indx = self.sample_from_distribution(pred, center)
                 the_agent = agents.get_agent(indx)
                 poly = the_agent.get_polygon()[0]
                 intersect = False
@@ -301,14 +302,15 @@ class initializer(nn.Module):
                     shapes.append(poly)
                     break
                 else:
-                    cnt+=1
+                    cnt += 1
                     continue
 
             pred_list.append(the_agent)
-            data['agent_feat'][:,i] = Tensor(the_agent.get_inp())
+            data['agent_feat'][:, i] = Tensor(the_agent.get_inp())
             idx_list.append(indx)
 
-            heat_maps.append(get_heatmap(agents.position[:,0][center_mask], agents.position[:, 1][center_mask],prob[center_mask].cpu().numpy(), 20))
+            heat_maps.append(get_heatmap(agents.position[:, 0][center_mask], agents.position[:, 1][center_mask],
+                                         prob[center_mask].cpu().numpy(), 20))
             prob_list.append(prob)
 
         output = {}
@@ -317,14 +319,15 @@ class initializer(nn.Module):
         output['heat_maps'] = heat_maps
 
         return output
-    def forward(self, data, random_mask=True, eval=False,context_num=1):
-        if eval==True:
-            return self.inference(data,context_num=context_num)
 
-        context_agent = self.agent_feature_extract(data['agent_feat'],data['agent_mask'],random_mask)
-        feature = self.map_feature_extract(data['lane_inp'],data['lane_mask'],context_agent)
+    def forward(self, data, random_mask=True, eval=False, context_num=1):
+        if eval == True:
+            return self.inference(data, context_num=context_num)
+
+        context_agent = self.agent_feature_extract(data['agent_feat'], data['agent_mask'], random_mask)
+        feature = self.map_feature_extract(data['lane_inp'], data['lane_mask'], context_agent)
         center_num = data['center'].shape[1]
-        feature = feature[:,:center_num]
+        feature = feature[:, :center_num]
         # Sample location, bounding box, heading and velocity.
         K = 10
 
@@ -333,6 +336,5 @@ class initializer(nn.Module):
 
         pred = pred_dists
         pred['prob'] = nn.Sigmoid()(pred['prob'])
-
 
         return pred, total_loss, losses

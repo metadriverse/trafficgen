@@ -6,6 +6,7 @@ from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from google.protobuf import reflection as _reflection
 from google.protobuf import symbol_database as _symbol_database
+
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
@@ -1484,7 +1485,7 @@ _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 Map = _reflection.GeneratedProtocolMessageType(
     'Map',
-    (_message.Message, ),
+    (_message.Message,),
     {
         'DESCRIPTOR': _MAP,
         '__module__': 'map_pb2'
@@ -1495,7 +1496,7 @@ _sym_db.RegisterMessage(Map)
 
 DynamicState = _reflection.GeneratedProtocolMessageType(
     'DynamicState',
-    (_message.Message, ),
+    (_message.Message,),
     {
         'DESCRIPTOR': _DYNAMICSTATE,
         '__module__': 'map_pb2'
@@ -1506,7 +1507,7 @@ _sym_db.RegisterMessage(DynamicState)
 
 TrafficSignalLaneState = _reflection.GeneratedProtocolMessageType(
     'TrafficSignalLaneState',
-    (_message.Message, ),
+    (_message.Message,),
     {
         'DESCRIPTOR': _TRAFFICSIGNALLANESTATE,
         '__module__': 'map_pb2'
@@ -1517,7 +1518,7 @@ _sym_db.RegisterMessage(TrafficSignalLaneState)
 
 MapFeature = _reflection.GeneratedProtocolMessageType(
     'MapFeature',
-    (_message.Message, ),
+    (_message.Message,),
     {
         'DESCRIPTOR': _MAPFEATURE,
         '__module__': 'map_pb2'
@@ -1528,7 +1529,7 @@ _sym_db.RegisterMessage(MapFeature)
 
 MapPoint = _reflection.GeneratedProtocolMessageType(
     'MapPoint',
-    (_message.Message, ),
+    (_message.Message,),
     {
         'DESCRIPTOR': _MAPPOINT,
         '__module__': 'map_pb2'
@@ -1539,7 +1540,7 @@ _sym_db.RegisterMessage(MapPoint)
 
 BoundarySegment = _reflection.GeneratedProtocolMessageType(
     'BoundarySegment',
-    (_message.Message, ),
+    (_message.Message,),
     {
         'DESCRIPTOR': _BOUNDARYSEGMENT,
         '__module__': 'map_pb2'
@@ -1550,7 +1551,7 @@ _sym_db.RegisterMessage(BoundarySegment)
 
 LaneNeighbor = _reflection.GeneratedProtocolMessageType(
     'LaneNeighbor',
-    (_message.Message, ),
+    (_message.Message,),
     {
         'DESCRIPTOR': _LANENEIGHBOR,
         '__module__': 'map_pb2'
@@ -1561,7 +1562,7 @@ _sym_db.RegisterMessage(LaneNeighbor)
 
 LaneCenter = _reflection.GeneratedProtocolMessageType(
     'LaneCenter',
-    (_message.Message, ),
+    (_message.Message,),
     {
         'DESCRIPTOR': _LANECENTER,
         '__module__': 'map_pb2'
@@ -1572,7 +1573,7 @@ _sym_db.RegisterMessage(LaneCenter)
 
 RoadEdge = _reflection.GeneratedProtocolMessageType(
     'RoadEdge',
-    (_message.Message, ),
+    (_message.Message,),
     {
         'DESCRIPTOR': _ROADEDGE,
         '__module__': 'map_pb2'
@@ -1583,7 +1584,7 @@ _sym_db.RegisterMessage(RoadEdge)
 
 RoadLine = _reflection.GeneratedProtocolMessageType(
     'RoadLine',
-    (_message.Message, ),
+    (_message.Message,),
     {
         'DESCRIPTOR': _ROADLINE,
         '__module__': 'map_pb2'
@@ -1594,7 +1595,7 @@ _sym_db.RegisterMessage(RoadLine)
 
 StopSign = _reflection.GeneratedProtocolMessageType(
     'StopSign',
-    (_message.Message, ),
+    (_message.Message,),
     {
         'DESCRIPTOR': _STOPSIGN,
         '__module__': 'map_pb2'
@@ -1605,7 +1606,7 @@ _sym_db.RegisterMessage(StopSign)
 
 Crosswalk = _reflection.GeneratedProtocolMessageType(
     'Crosswalk',
-    (_message.Message, ),
+    (_message.Message,),
     {
         'DESCRIPTOR': _CROSSWALK,
         '__module__': 'map_pb2'
@@ -1616,7 +1617,7 @@ _sym_db.RegisterMessage(Crosswalk)
 
 SpeedBump = _reflection.GeneratedProtocolMessageType(
     'SpeedBump',
-    (_message.Message, ),
+    (_message.Message,),
     {
         'DESCRIPTOR': _SPEEDBUMP,
         '__module__': 'map_pb2'

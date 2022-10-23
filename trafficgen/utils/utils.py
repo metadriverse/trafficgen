@@ -4,9 +4,10 @@ import numpy as np
 import copy
 from torch import Tensor
 import torch
-from trafficgen.utils.typedef import RoadLineType,RoadEdgeType
+from trafficgen.utils.typedef import RoadLineType, RoadEdgeType
 from shapely.geometry import Polygon
 from trafficgen.TrafficGen_init.data_process.agent_process import WaymoAgent
+
 
 def time_me(fn):
     def _wrapper(*args, **kwargs):
@@ -16,10 +17,10 @@ def time_me(fn):
 
     return _wrapper
 
-def get_polygon(center, yaw, L, W):
 
+def get_polygon(center, yaw, L, W):
     l, w = L / 2, W / 2
-    yaw+=torch.pi/2
+    yaw += torch.pi / 2
     theta = torch.atan(w / l)
     s1 = torch.sqrt(l ** 2 + w ** 2)
     x1 = abs(torch.cos(theta + yaw) * s1)
@@ -27,90 +28,90 @@ def get_polygon(center, yaw, L, W):
     x2 = abs(torch.cos(theta - yaw) * s1)
     y2 = abs(torch.sin(theta - yaw) * s1)
 
-    p1 = [center[0] + x1, center[1] +y1]
+    p1 = [center[0] + x1, center[1] + y1]
     p2 = [center[0] + x2, center[1] - y2]
     p3 = [center[0] - x1, center[1] - y1]
     p4 = [center[0] - x2, center[1] + y2]
     return Polygon([p1, p3, p2, p4])
 
-def get_agent_pos_from_vec(vec,long_lat,speed,vel_heading,heading,bbox):
 
-    x1,y1,x2,y2 = vec[:,0],vec[:,1],vec[:,2],vec[:,3]
-    x_center,y_center = (x1+x2)/2,(y1+y2)/2
+def get_agent_pos_from_vec(vec, long_lat, speed, vel_heading, heading, bbox):
+    x1, y1, x2, y2 = vec[:, 0], vec[:, 1], vec[:, 2], vec[:, 3]
+    x_center, y_center = (x1 + x2) / 2, (y1 + y2) / 2
 
-
-    vec_len = ((x1-x2)**2+(y1-y2)**2)**0.5
+    vec_len = ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
 
     vec_dir = torch.atan2(y2 - y1, x2 - x1)
 
-    long_pos = vec_len*long_lat[...,0]
-    lat_pos = vec_len*long_lat[...,1]
+    long_pos = vec_len * long_lat[..., 0]
+    lat_pos = vec_len * long_lat[..., 1]
 
-    coord = rotate(lat_pos,long_pos,-np.pi/2+vec_dir)
+    coord = rotate(lat_pos, long_pos, -np.pi / 2 + vec_dir)
 
-    coord[:,0]+=x_center
-    coord[:,1]+=y_center
+    coord[:, 0] += x_center
+    coord[:, 1] += y_center
 
-    agent_dir = vec_dir+heading
-    v_dir=vel_heading+agent_dir
+    agent_dir = vec_dir + heading
+    v_dir = vel_heading + agent_dir
 
-    vel = torch.stack([torch.cos(v_dir)*speed,torch.sin(v_dir)*speed], axis=-1)
-    agent_num,_ = vel.shape
+    vel = torch.stack([torch.cos(v_dir) * speed, torch.sin(v_dir) * speed], axis=-1)
+    agent_num, _ = vel.shape
 
-    type = Tensor([[1]]).repeat(agent_num,1).to(coord.device)
-    agent = torch.cat([coord,vel,agent_dir.unsqueeze(1),bbox,type],dim=-1).detach().cpu().numpy()
+    type = Tensor([[1]]).repeat(agent_num, 1).to(coord.device)
+    agent = torch.cat([coord, vel, agent_dir.unsqueeze(1), bbox, type], dim=-1).detach().cpu().numpy()
 
-    vec_based_rep = torch.cat([long_lat,speed.unsqueeze(-1),vel_heading.unsqueeze(-1),heading.unsqueeze(-1),vec],dim=-1).detach().cpu().numpy()
+    vec_based_rep = torch.cat([long_lat, speed.unsqueeze(-1), vel_heading.unsqueeze(-1), heading.unsqueeze(-1), vec],
+                              dim=-1).detach().cpu().numpy()
 
-    agent = WaymoAgent(agent,vec_based_rep)
+    agent = WaymoAgent(agent, vec_based_rep)
 
     return agent
 
-def process_lane(lane,  max_vec,lane_range,offset = -40):
 
+def process_lane(lane, max_vec, lane_range, offset=-40):
     # dist = lane[..., 0]**2+lane[..., 1]**2
     # idx = np.argsort(dist)
     # lane = lane[idx]
 
     vec_dim = 6
 
-    lane_point_mask = (abs(lane[..., 0]+ offset) < lane_range) * (abs(lane[..., 1]) < lane_range)
+    lane_point_mask = (abs(lane[..., 0] + offset) < lane_range) * (abs(lane[..., 1]) < lane_range)
 
-    lane_id = np.unique(lane[...,-2]).astype(int)
+    lane_id = np.unique(lane[..., -2]).astype(int)
 
     vec_list = []
     vec_mask_list = []
-    b_s, _, lane_dim= lane.shape
+    b_s, _, lane_dim = lane.shape
 
     for id in lane_id:
-        id_set = lane[...,-2]==id
-        points = lane[id_set].reshape(b_s,-1,lane_dim)
-        masks = lane_point_mask[id_set].reshape(b_s,-1)
+        id_set = lane[..., -2] == id
+        points = lane[id_set].reshape(b_s, -1, lane_dim)
+        masks = lane_point_mask[id_set].reshape(b_s, -1)
 
-        vector = np.zeros([b_s,points.shape[1]-1,vec_dim])
-        vector[..., 0:2] = points[:,:-1, :2]
-        vector[..., 2:4] = points[:,1:, :2]
+        vector = np.zeros([b_s, points.shape[1] - 1, vec_dim])
+        vector[..., 0:2] = points[:, :-1, :2]
+        vector[..., 2:4] = points[:, 1:, :2]
         # id
-        #vector[..., 4] = points[:,1:, 3]
+        # vector[..., 4] = points[:,1:, 3]
         # type
-        vector[..., 4] = points[:,1:, 2]
+        vector[..., 4] = points[:, 1:, 2]
         # traffic light
-        vector[..., 5] = points[:,1:, 4]
-        vec_mask = masks[:,:-1]*masks[:,1:]
-        vector[vec_mask==0]=0
+        vector[..., 5] = points[:, 1:, 4]
+        vec_mask = masks[:, :-1] * masks[:, 1:]
+        vector[vec_mask == 0] = 0
         vec_list.append(vector)
         vec_mask_list.append(vec_mask)
 
-    vector = np.concatenate(vec_list,axis=1) if vec_list else np.zeros([b_s,0,vec_dim])
-    vector_mask = np.concatenate(vec_mask_list,axis=1) if vec_mask_list else np.zeros([b_s,0],dtype=bool)
+    vector = np.concatenate(vec_list, axis=1) if vec_list else np.zeros([b_s, 0, vec_dim])
+    vector_mask = np.concatenate(vec_mask_list, axis=1) if vec_mask_list else np.zeros([b_s, 0], dtype=bool)
 
-    all_vec = np.zeros([b_s,max_vec,vec_dim])
-    all_mask = np.zeros([b_s,max_vec])
+    all_vec = np.zeros([b_s, max_vec, vec_dim])
+    all_mask = np.zeros([b_s, max_vec])
     for t in range(b_s):
         mask_t = vector_mask[t]
         vector_t = vector[t][mask_t]
 
-        dist = vector_t[..., 0]**2+vector_t[..., 1]**2
+        dist = vector_t[..., 0] ** 2 + vector_t[..., 1] ** 2
         idx = np.argsort(dist)
         vector_t = vector_t[idx]
         mask_t = np.ones(vector_t.shape[0])
@@ -123,12 +124,10 @@ def process_lane(lane,  max_vec,lane_range,offset = -40):
         all_vec[t] = vector_t
         all_mask[t] = mask_t
 
-    return all_vec,all_mask.astype(bool)
+    return all_vec, all_mask.astype(bool)
 
 
-
-def process_map(lane,traf, center_num=384, edge_num=128, lane_range=60, offest=-40,rest_num=192):
-
+def process_map(lane, traf, center_num=384, edge_num=128, lane_range=60, offest=-40, rest_num=192):
     lane_with_traf = np.zeros([*lane.shape[:-1], 5])
     lane_with_traf[..., :4] = lane
 
@@ -142,11 +141,11 @@ def process_map(lane,traf, center_num=384, edge_num=128, lane_range=60, offest=-
             control_lane_id = a_traf[0]
             state = a_traf[-2]
             lane_idx = np.where(lane_id_t == control_lane_id)
-            lane_with_traf[i,lane_idx, -1] = state
+            lane_with_traf[i, lane_idx, -1] = state
 
-    #lane = np.delete(lane_with_traf,-2,axis=-1)
+    # lane = np.delete(lane_with_traf,-2,axis=-1)
     lane = lane_with_traf
-    lane_type = lane[0,:, 2]
+    lane_type = lane[0, :, 2]
     center_1 = lane_type == 1
     center_2 = lane_type == 2
     center_3 = lane_type == 3
@@ -162,12 +161,12 @@ def process_map(lane,traf, center_num=384, edge_num=128, lane_range=60, offest=-
 
     rest = ~(center_ind + bound_ind + cross_walk + speed_bump + cross_ind)
 
-    cent, cent_mask = process_lane(lane[:,center_ind], center_num, lane_range, offest)
-    bound, bound_mask = process_lane(lane[:,bound_ind], edge_num, lane_range, offest)
-    cross, cross_mask = process_lane(lane[:,cross_ind], 32, lane_range, offest)
-    rest, rest_mask = process_lane(lane[:,rest], rest_num, lane_range, offest)
+    cent, cent_mask = process_lane(lane[:, center_ind], center_num, lane_range, offest)
+    bound, bound_mask = process_lane(lane[:, bound_ind], edge_num, lane_range, offest)
+    cross, cross_mask = process_lane(lane[:, cross_ind], 32, lane_range, offest)
+    rest, rest_mask = process_lane(lane[:, rest], rest_num, lane_range, offest)
 
-    return cent, cent_mask, bound, bound_mask, cross, cross_mask, rest,rest_mask
+    return cent, cent_mask, bound, bound_mask, cross, cross_mask, rest, rest_mask
 
 
 def get_time_str():
@@ -183,23 +182,25 @@ def normalize_angle(angle):
         return angle
 
     else:
-        while not np.all(angle>=0):
-            angle[angle<0]+=np.pi*2
-        while not np.all(angle<np.pi*2):
-            angle[angle>=np.pi*2]-=np.pi*2
+        while not np.all(angle >= 0):
+            angle[angle < 0] += np.pi * 2
+        while not np.all(angle < np.pi * 2):
+            angle[angle >= np.pi * 2] -= np.pi * 2
 
         return angle
 
-def cal_rel_dir(dir1,dir2):
-    dist = dir1-dir2
 
-    while not np.all(dist>=0):
-        dist[dist<0]+=np.pi*2
-    while not np.all(dist<np.pi*2):
-        dist[dist>=np.pi*2]-=np.pi*2
+def cal_rel_dir(dir1, dir2):
+    dist = dir1 - dir2
 
-    dist[dist>np.pi] -= np.pi*2
+    while not np.all(dist >= 0):
+        dist[dist < 0] += np.pi * 2
+    while not np.all(dist < np.pi * 2):
+        dist[dist >= np.pi * 2] -= np.pi * 2
+
+    dist[dist > np.pi] -= np.pi * 2
     return dist
+
 
 def rotate(x, y, angle):
     if isinstance(x, torch.Tensor):
@@ -213,6 +214,7 @@ def rotate(x, y, angle):
         output_coords = np.stack((other_x_trans, other_y_trans), axis=-1)
     return output_coords
 
+
 def from_list_to_batch(inp_list):
     keys = inp_list[0].keys()
 
@@ -223,8 +225,8 @@ def from_list_to_batch(inp_list):
 
     return batch
 
-def transform_to_agent(agent_i,agent,lane):
 
+def transform_to_agent(agent_i, agent, lane):
     all_ = copy.deepcopy(agent)
 
     center = copy.deepcopy(agent_i[:2])
@@ -241,14 +243,15 @@ def transform_to_agent(agent_i,agent,lane):
     lane = copy.deepcopy(lane)
     lane[..., :2] -= center
     output_coords = rotate(lane[..., 0], lane[..., 1], -center_yaw)
-    if isinstance(lane,Tensor):
+    if isinstance(lane, Tensor):
         output_coords = Tensor(output_coords)
     lane[..., :2] = output_coords
 
     return all_, lane
 
+
 def get_type_class(line_type):
-    if line_type in range(1,4):
+    if line_type in range(1, 4):
         return 'center_lane'
     elif line_type == 6:
         return RoadLineType.BROKEN_SINGLE_WHITE

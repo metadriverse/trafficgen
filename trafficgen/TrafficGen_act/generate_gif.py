@@ -2,6 +2,7 @@ import imageio
 import os
 from tqdm import tqdm
 import numpy as np
+
 home_path = '../TrafficFormerV2/heatmap/selected'
 home_path = './gifs'
 all_file = os.listdir(home_path)
@@ -14,7 +15,7 @@ for x in all_file:
 number_list = np.sort(number_list)
 # for i in number_list:
 for i in range(20):
-    path = os.path.join(home_path,f'{i}')
+    path = os.path.join(home_path, f'{i}')
     images = []
     file_list = os.listdir(path)
     gif_list = []
@@ -22,9 +23,9 @@ for i in range(20):
         if not 'DS' in x:
             gif_list.append(x)
     gif_list = np.sort(gif_list)
-    #for j in tqdm(gif_list):
+    # for j in tqdm(gif_list):
     for j in tqdm(range(38)):
-        file_name = os.path.join(path,f'{j}.png')
+        file_name = os.path.join(path, f'{j}.png')
         img = imageio.imread(file_name)
 
         # if j==1:
@@ -36,5 +37,5 @@ for i in range(20):
         #     start_y,endy = int(centery-w_),int(centery+w_)
         #    img = img[start_x:endx,start_y:endy]
         images.append(img)
-    output = os.path.join(home_path,'gif',f'movie_{i}.gif')
-    imageio.mimsave(output, images,duration=0.15)
+    output = os.path.join(home_path, 'gif', f'movie_{i}.gif')
+    imageio.mimsave(output, images, duration=0.15)

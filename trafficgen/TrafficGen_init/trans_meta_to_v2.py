@@ -10,8 +10,9 @@ from drivingforce.TrafficTranformer.utils.train import Trainer
 from drivingforce.TrafficTranformer.utils.arg_parse import get_parsed_args
 import os
 from drivingforce.TrafficTranformer.load_and_draw import draw
-def yaw_to_y(angle):
 
+
+def yaw_to_y(angle):
     angle = trans_angle(angle)
     angle_to_y = angle - np.pi / 2
     angle_to_y = -1 * angle_to_y
@@ -28,9 +29,10 @@ def yaw_to_theta(angle, theta):
     angle -= theta
     for i in range(len(angle)):
         angle[i] = trans_angle(angle[i])
-    angle[angle>=np.pi]-=2 * np.pi
+    angle[angle >= np.pi] -= 2 * np.pi
 
     return angle
+
 
 def trans_angle(angle):
     while angle < 0:
@@ -38,6 +40,7 @@ def trans_angle(angle):
     while angle >= 2 * np.pi:
         angle -= 2 * np.pi
     return angle
+
 
 def extract_boundaries(fb):
     b = []
@@ -65,6 +68,7 @@ def extract_neighbors(fb):
         nbs.append(nb)
     return nbs
 
+
 def transform_coord(coords, angle):
     x = coords[..., 0]
     y = coords[..., 1]
@@ -75,6 +79,7 @@ def transform_coord(coords, angle):
     if coords.shape[1] == 3:
         output_coords = np.concatenate((output_coords, coords[:, 2:]), axis=-1)
     return output_coords
+
 
 class RoadLineType(Enum):
     UNKNOWN = 0
@@ -129,8 +134,6 @@ class AgentType(Enum):
     OTHER = 4
 
 
-
-
 if __name__ == '__main__':
     data_path = '/Users/fenglan/Downloads/waymo/100_training'
 
@@ -138,7 +141,7 @@ if __name__ == '__main__':
         datas = pickle.load(f)
 
     for i in range(100):
-        path = os.path.join(data_path,f'{i}.pkl')
+        path = os.path.join(data_path, f'{i}.pkl')
         with open(path, 'rb+') as f:
             data = pickle.load(f)
 
@@ -163,15 +166,12 @@ if __name__ == '__main__':
             else:
                 agents.append(selected)
 
-        agent_all = np.stack(agents)[:,:190]
+        agent_all = np.stack(agents)[:, :190]
         egos = []
         nbrs = []
         map = []
         map_mask = []
         sdcs = []
-
-
-
 
         for i in range(190):
             agents = agent_all[:, i]
