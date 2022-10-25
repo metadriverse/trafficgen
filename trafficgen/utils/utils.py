@@ -7,7 +7,10 @@ import torch
 from trafficgen.utils.typedef import RoadLineType, RoadEdgeType
 from shapely.geometry import Polygon
 from trafficgen.TrafficGen_init.data_process.agent_process import WaymoAgent
-
+from trafficgen.utils.typedef import AgentType
+import os
+from tqdm import tqdm
+import pickle
 
 def time_me(fn):
     def _wrapper(*args, **kwargs):
@@ -275,3 +278,53 @@ def get_type_class(line_type):
         return RoadEdgeType.MEDIAN
     else:
         return 'other'
+
+def save_as_metadrive_data(pred_i, other, save_path):
+    output_temp = {}
+    output_temp['id'] = 'fake'
+    output_temp['ts'] = [x / 10 for x in range(190)]
+    output_temp['dynamic_map_states'] = [{}]
+    output_temp['sdc_index'] = 0
+    cnt = 0
+
+    center_info = other['center_info']
+    output = copy.deepcopy(output_temp)
+    output['tracks'] = {}
+    output['map'] = {}
+    # extract agents
+    agent = pred_i
+
+    for i in range(agent.shape[1]):
+        track = {}
+        agent_i = agent[:, i]
+        track['type'] = AgentType.VEHICLE
+        state = np.zeros([agent_i.shape[0], 10])
+        state[:, :2] = agent_i[:, :2]
+        state[:, 3] = 5.286
+        state[:, 4] = 2.332
+        state[:, 7:9] = agent_i[:, 2:4]
+        state[:, -1] = 1
+        state[:, 6] = agent_i[:, 4]# + np.pi / 2
+        track['state'] = state
+        output['tracks'][i] = track
+
+    # extract maps
+    lane = other['unsampled_lane']
+    lane_id = np.unique(lane[..., -1]).astype(int)
+    for id in lane_id:
+
+        a_lane = {}
+        id_set = lane[..., -1] == id
+        points = lane[id_set]
+        polyline = np.zeros([points.shape[0], 3])
+        line_type = points[0, -2]
+        polyline[:, :2] = points[:, :2]
+        a_lane['type'] = get_type_class(line_type)
+        a_lane['polyline'] = polyline
+        if id in center_info.keys():
+            a_lane.update(center_info[id])
+        output['map'][id] = a_lane
+
+    with open(save_path, 'wb') as f:
+        pickle.dump(output, f)
+

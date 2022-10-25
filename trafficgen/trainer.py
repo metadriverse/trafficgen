@@ -7,7 +7,7 @@ import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from trafficgen.utils.utils import transform_to_agent, from_list_to_batch, rotate
+from trafficgen.utils.utils import transform_to_agent, from_list_to_batch, rotate,save_as_metadrive_data
 import imageio
 
 from trafficgen.TrafficGen_init.models.init_distribution import initializer
@@ -72,13 +72,13 @@ class Trainer:
             if 'mask' in key:
                 batch[key] = batch[key].to(bool)
 
-    def generate_scenarios(self, snapshot=True, gif=True):
+    def generate_scenarios(self, snapshot=True, gif=True,save_pkl=False):
         # generate temp data in ./cases/initialized, and visualize in ./vis/initialized
         self.place_vehicles(vis=True)
 
         # generate trajectory from temp data, and visualize in ./vis/snapshots.
         # set gif to True to generate gif in ./vis/gif
-        self.generate_traj(snapshot=snapshot, gif=gif)
+        self.generate_traj(snapshot=snapshot, gif=gif, save_pkl=save_pkl)
 
     def place_vehicles(self, vis=True):
         context_num = 1
@@ -92,8 +92,13 @@ class Trainer:
 
         self.model1.eval()
         eval_data = self.eval_init_loader
+        data_path = self.cfg['data_path']
         with torch.no_grad():
             for idx, data in enumerate(tqdm(eval_data)):
+                data_file_path = os.path.join(data_path, f'{idx}.pkl')
+                with open(data_file_path, 'rb+') as f:
+                    original_data = pickle.load(f)
+
                 batch = copy.deepcopy(data)
                 self.wash(batch)
 
@@ -124,6 +129,7 @@ class Trainer:
                 output['traf'] = self.eval_init_loader.dataset[idx]['other']['traf']
                 output['gt_agent'] = batch['other']['gt_agent'][0].cpu().numpy()
                 output['gt_agent_mask'] = batch['other']['gt_agent_mask'][0].cpu().numpy()
+                output['center_info'] = original_data['center_info']
 
                 p = os.path.join(save_path, f'{idx}.pkl')
                 with open(p, 'wb') as f:
@@ -131,7 +137,7 @@ class Trainer:
 
         return
 
-    def generate_traj(self, snapshot=False, gif=False):
+    def generate_traj(self, snapshot=True, gif=False, save_pkl=False):
         if not os.path.exists('./vis/snapshots'):
             os.mkdir('./vis/snapshots')
         if not os.path.exists('./vis/gif'):
@@ -140,15 +146,12 @@ class Trainer:
         self.model2.eval()
 
         with torch.no_grad():
-            pred_list = []
 
             for i in tqdm(range(self.cfg['data_usage'])):
                 with open(f'./cases/initialized/{i}.pkl', 'rb+') as f:
                     data = pickle.load(f)
 
                 pred_i = self.inference_control(data)
-
-                pred_list.append(pred_i)
 
                 if snapshot:
 
@@ -196,7 +199,6 @@ class Trainer:
                         file_name = os.path.join(dir_path, f'{j}.png')
                         img = imageio.imread(file_name)
                         images.append(img)
-
                     output = os.path.join(f'./vis/gif', f'movie_{i}.gif')
                     imageio.mimsave(output, images, duration=0.1)
 
@@ -205,13 +207,22 @@ class Trainer:
                     #     for k in range(1,agent_t.shape[0]):
                     #         heat_path = os.path.join(dir_path, f'{k-1}')
                     #         draw(cent, heat_map[k-1], agent_t[:k], rest, edge=bound, save=True, path=heat_path)
-            # if save_path:
-            #     self.save_as_metadrive_data(pred_list,scene_data,save_path)
+
+                if save_pkl:
+                    if not os.path.exists(f'./generated_scenarios'):
+                        os.makedirs(f'./generated_scenarios')
+                    data_dir =  f'./generated_scenarios/{i}.pkl'
+                    other = {}
+                    other['unsampled_lane'] = data['unsampled_lane']
+                    other['center_info'] = data['center_info']
+                    save_as_metadrive_data(pred_i,other,data_dir)
 
         if gif:
             print("GIF files have been generated to vis/gif folder.")
         if snapshot:
             print("Trajectory visualization has been generated to vis/snapshots folder.")
+        if save_pkl:
+            print('Generated scenarios have been saved to generated_scenarios folder')
 
     def inference_control(self, data, ego_gt=True, length=190, per_time=20):
         # for every x time step, pred then update
