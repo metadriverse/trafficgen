@@ -187,7 +187,16 @@ class initDataset(Dataset):
         y = lane[..., 1]
         ego_heading = ego[:, [4]]
         lane[..., :2] = rotate(x, y, -ego_heading)
-        return lane
+
+        unsampled_lane = data['unsampled_lane'][np.newaxis]
+        unsampled_lane = np.repeat(unsampled_lane, timestep, axis=0)
+        unsampled_lane[..., :2] -= pos
+
+        x = unsampled_lane[..., 0]
+        y = unsampled_lane[..., 1]
+        ego_heading = ego[:, [4]]
+        unsampled_lane[..., :2] = rotate(x, y, -ego_heading)
+        return lane,unsampled_lane[0]
 
     def process_agent(self, agent, sort_agent):
 
@@ -295,11 +304,10 @@ class initDataset(Dataset):
         other = {}
 
         other['traf'] = data['traffic_light']
-        other['unsampled_lane'] = data['unsampled_lane']
 
         agent = copy.deepcopy(data['all_agent'])
         data['all_agent'] = data['all_agent'][0:-1:gap]
-        data['lane'] = self.transform_coordinate_map(data)
+        data['lane'], other['unsampled_lane'] = self.transform_coordinate_map(data)
         data['traffic_light'] = data['traffic_light'][0:-1:gap]
 
         other['lane'] = data['lane'][0]
