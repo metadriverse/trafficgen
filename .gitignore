@@ -5,7 +5,7 @@ git remote add origin git@github.com:metadriverse/trafficgen.git/results/
 
 *.npz
 *.png
-~/.DS_Store
+.DS_Store
 **/debug_data/**
 **TrafficTransformer**
 **wandb**
