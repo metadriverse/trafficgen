@@ -1,7 +1,9 @@
+import os
+
+import yaml
+
 from trafficgen.utils.arg_parse import get_parsed_args
 from trainer import Trainer
-import yaml
-import os
 
 # Must keep this line:
 from trafficgen.utils.typedef import *
@@ -33,4 +35,4 @@ if __name__ == "__main__":
     trainer.load_model(trainer.model1, os.path.join(model_weights_folder_path, 'init'), device)
     trainer.load_model(trainer.model2, os.path.join(model_weights_folder_path, 'act'), device)
 
-    trainer.generate_scenarios(snapshot=False, gif=args.gif,save_pkl=args.save_pkl)
+    trainer.generate_scenarios(snapshot=False, gif=args.gif, save_pkl=args.save_pkl)

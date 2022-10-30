@@ -1,14 +1,12 @@
+import copy
 import os
-from trafficgen.TrafficGen_init.data_process.agent_process import WaymoAgent
 import pickle
+
 import numpy as np
 from torch.utils.data import Dataset
-import torch
-from torch import Tensor
-import copy
+
+from trafficgen.TrafficGen_init.data_process.agent_process import WaymoAgent
 from trafficgen.utils.utils import process_map, rotate, cal_rel_dir
-from shapely.geometry import Polygon
-from trafficgen.utils.typedef import RoadLineType, RoadEdgeType
 
 LANE_SAMPLE = 10
 RANGE = 50
@@ -196,7 +194,7 @@ class initDataset(Dataset):
         y = unsampled_lane[..., 1]
         ego_heading = ego[:, [4]]
         unsampled_lane[..., :2] = rotate(x, y, -ego_heading)
-        return lane,unsampled_lane[0]
+        return lane, unsampled_lane[0]
 
     def process_agent(self, agent, sort_agent):
 

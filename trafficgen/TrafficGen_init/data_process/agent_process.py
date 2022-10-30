@@ -1,7 +1,8 @@
-import numpy as np
 import copy
-from shapely.geometry import Polygon
+
+import numpy as np
 import torch
+from shapely.geometry import Polygon
 
 
 def rotate(x, y, angle):

@@ -1,9 +1,10 @@
+import copy
+
 import torch
 import torch.nn as nn
+from torch import Tensor
 
 from trafficgen.utils.model_utils import MLP_3, CG_stacked
-import copy
-from torch import Tensor
 
 copy_func = copy.deepcopy
 from trafficgen.utils.visual_init import get_heatmap
@@ -94,7 +95,7 @@ class initializer(nn.Module):
             all_prob = heading_logprob_ + bbox_logprob_ + pos_logprob_
             prob_list.append(all_prob)
 
-        max_indx = np.argmax(prob_list)
+        max_indx = torch.argmax(torch.stack(prob_list)).item()
         max_agents = agents_list[max_indx]
         return max_agents, prob, the_indx
 

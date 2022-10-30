@@ -1,9 +1,6 @@
-import os
-
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-
-import matplotlib
 
 matplotlib.rcParams.update({'figure.max_open_warning': 0})
 from l5kit.configs import load_config_data

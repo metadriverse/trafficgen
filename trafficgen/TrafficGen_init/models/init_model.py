@@ -1,9 +1,10 @@
+import copy
+
 import torch
 import torch.nn as nn
+from torch import Tensor
 
 from trafficgen.utils.model_utils import MLP_3, CG_stacked
-import copy
-from torch import Tensor
 
 copy_func = copy.deepcopy
 from trafficgen.utils.visual_init import get_heatmap

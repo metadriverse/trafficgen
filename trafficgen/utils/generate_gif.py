@@ -1,7 +1,8 @@
-import imageio
 import os
-from tqdm import tqdm
+
+import imageio
 import numpy as np
+from tqdm import tqdm
 
 # home_path = '../TrafficFormerV2/heatmap/selected'
 home_path = '/Users/fenglan/Desktop/CUHK/TrafficGen/vis/gif'
