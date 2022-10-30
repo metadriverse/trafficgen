@@ -12,7 +12,7 @@ from tqdm import tqdm
 from TrafficGen_act.data_process.act_dataset import process_case_to_input, process_map
 from TrafficGen_act.models.act_model import Actuator
 from trafficgen.TrafficGen_init.data_process.init_dataset import initDataset, WaymoAgent
-from trafficgen.TrafficGen_init.models.init_distribution import initializer
+from trafficgen.TrafficGen_init.models.init_distribution import Initializer
 from trafficgen.utils.utils import transform_to_agent, from_list_to_batch, rotate, save_as_metadrive_data
 from trafficgen.utils.visual_init import draw, draw_seq
 
@@ -30,7 +30,7 @@ class Trainer:
         self.args = args
         self.cfg = cfg
 
-        model1 = initializer(cfg['init_model'])
+        model1 = Initializer(cfg['init_model'])
         model2 = Actuator()
         model1 = model1.to(self.cfg['device'])
         model2 = model2.to(self.cfg['device'])

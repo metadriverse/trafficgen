@@ -14,7 +14,7 @@ from trafficgen.utils.utils import get_agent_pos_from_vec
 import numpy as np
 
 
-class initializer(nn.Module):
+class Initializer(nn.Module):
     """ A transformer model with wider latent space """
 
     def __init__(self, cfg):
