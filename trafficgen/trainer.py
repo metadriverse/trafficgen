@@ -9,8 +9,8 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from TrafficGen_act.data_process.act_dataset import process_case_to_input, process_map
-from TrafficGen_act.models.act_model import Actuator
+from trafficgen.TrafficGen_act.data_process.act_dataset import process_case_to_input, process_map
+from trafficgen.TrafficGen_act.models.act_model import Actuator
 from trafficgen.TrafficGen_init.data_process.init_dataset import initDataset, WaymoAgent
 from trafficgen.TrafficGen_init.models.init_distribution import Initializer
 from trafficgen.utils.utils import transform_to_agent, from_list_to_batch, rotate, save_as_metadrive_data

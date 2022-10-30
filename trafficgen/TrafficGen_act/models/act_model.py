@@ -3,7 +3,7 @@ import logging
 
 import torch
 import torch.nn as nn
-from TrafficGen_act.models.critertion import loss_v1
+from trafficgen.TrafficGen_act.models.critertion import loss_v1
 
 from trafficgen.utils.model_utils import MLP_3, CG_stacked
 
