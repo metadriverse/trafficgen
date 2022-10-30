@@ -8,3 +8,4 @@ torchmetrics==0.9.3
 tqdm==4.62.3
 pyyaml
 imageio
+numpy

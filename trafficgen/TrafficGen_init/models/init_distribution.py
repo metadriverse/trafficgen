@@ -1,17 +1,17 @@
 import copy
+from random import choices
 
+import numpy as np
 import torch
 import torch.nn as nn
 from torch import Tensor
 
+from trafficgen.TrafficGen_init.data_process.init_dataset import WaymoAgent
 from trafficgen.utils.model_utils import MLP_3, CG_stacked
+from trafficgen.utils.utils import get_agent_pos_from_vec
+from trafficgen.utils.visual_init import get_heatmap
 
 copy_func = copy.deepcopy
-from trafficgen.utils.visual_init import get_heatmap
-from trafficgen.TrafficGen_init.data_process.init_dataset import WaymoAgent
-from random import choices
-from trafficgen.utils.utils import get_agent_pos_from_vec
-import numpy as np
 
 
 class Initializer(nn.Module):
