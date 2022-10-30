@@ -62,8 +62,8 @@ class WaymoAgent:
         agent_mask = agent_mask.astype(bool)
         return agent, agent_mask
 
-    def get_agent(self, indx):
-        return WaymoAgent(self.feature[[indx]], self.vec_based_info[[indx]])
+    def get_agent(self, index):
+        return WaymoAgent(self.feature[[index]], self.vec_based_info[[index]])
 
     def get_list(self):
         bs, agent_num, feature_dim = self.feature.shape

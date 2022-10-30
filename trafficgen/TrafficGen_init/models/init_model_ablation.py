@@ -55,10 +55,10 @@ class initializer(nn.Module):
         prob = pred['prob'][0]
         max_prob = 0
         for i in range(3):
-            indx = choices(list(range(prob.shape[-1])), prob)[0]
-            vec_logprob_ = prob[indx]
+            index = choices(list(range(prob.shape[-1])), prob)[0]
+            vec_logprob_ = prob[index]
             if vec_logprob_ > max_prob:
-                the_indx = indx
+                the_index = index
                 max_prob = max(vec_logprob_, max_prob)
 
         # idx_list = []
@@ -78,15 +78,15 @@ class initializer(nn.Module):
             agents.position = pos[0].cpu().numpy()
             agents_list.append(agents)
 
-            vel_heading_logprob_ = vel_heading_logprob[0, the_indx]
-            bbox_logprob_ = bbox_logprob[0, the_indx]
-            # speed_logprob_ = speed_logprob[0,the_indx]
+            vel_heading_logprob_ = vel_heading_logprob[0, the_index]
+            bbox_logprob_ = bbox_logprob[0, the_index]
+            # speed_logprob_ = speed_logprob[0,the_index]
             all_prob = vel_heading_logprob_ + bbox_logprob_
             prob_list.append(all_prob)
 
-        max_indx = np.argmax(prob_list)
-        max_agents = agents_list[max_indx]
-        return max_agents, prob, the_indx
+        max_index = np.argmax(prob_list)
+        max_agents = agents_list[max_index]
+        return max_agents, prob, the_index
 
     def output_to_dist(self, para, n):
         # if n = 2, dim = 5 = 2 + 3, if n = 1, dim = 2 = 1 + 1
@@ -275,8 +275,8 @@ class initializer(nn.Module):
             context_poly = context_agent.get_polygon()[0]
             shapes.append(context_poly)
             pred_list.append(context_agent)
-            vec_indx = data['vec_based_rep'][..., 0]
-            idx_list.append(vec_indx[0, i].item())
+            vec_index = data['vec_based_rep'][..., 0]
+            idx_list.append(vec_index[0, i].item())
 
         minimum_agent = self.cfg['pad_num']
         center = data['center'][0]
@@ -291,8 +291,8 @@ class initializer(nn.Module):
             pred['prob'][:, idx_list] = 0
             cnt = 0
             while cnt < 10:
-                agents, prob, indx = self.sample_from_distribution(pred, center)
-                the_agent = agents.get_agent(indx)
+                agents, prob, index = self.sample_from_distribution(pred, center)
+                the_agent = agents.get_agent(index)
                 poly = the_agent.get_polygon()[0]
                 intersect = False
                 for shape in shapes:
@@ -308,7 +308,7 @@ class initializer(nn.Module):
 
             pred_list.append(the_agent)
             data['agent_feat'][:, i] = Tensor(the_agent.get_inp())
-            idx_list.append(indx)
+            idx_list.append(index)
 
             heat_maps.append(get_heatmap(agents.position[:, 0][center_mask], agents.position[:, 1][center_mask],
                                          prob[center_mask].cpu().numpy(), 20))

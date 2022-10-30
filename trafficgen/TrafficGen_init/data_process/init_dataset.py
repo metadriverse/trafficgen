@@ -161,7 +161,7 @@ class initDataset(Dataset):
         # case_info['v_dir'] = info[..., 5]
 
         case_info['vec_based_rep'] = info_[..., 1:]
-        case_info['agent_vec_indx'] = info_[..., 0].astype(int)
+        case_info['agent_vec_index'] = info_[..., 0].astype(int)
         case_info['agent_mask'] = agent_mask_
         case_info["agent"] = agent_
 
@@ -258,8 +258,8 @@ class initDataset(Dataset):
         # 6-9 lane vector
         # 10-11 lane type and traff state
         center_num = case_info['center'].shape[1]
-        lane_inp, agent_vec_indx, vec_based_rep, bbox = \
-            case_info['lane_inp'][:, :center_num], case_info['agent_vec_indx'], case_info['vec_based_rep'], case_info[
+        lane_inp, agent_vec_index, vec_based_rep, bbox = \
+            case_info['lane_inp'][:, :center_num], case_info['agent_vec_index'], case_info['vec_based_rep'], case_info[
                                                                                                                 'agent'][
                                                                                                             ..., 5:7]
         b, lane_num, _ = lane_inp.shape
@@ -268,10 +268,10 @@ class initDataset(Dataset):
         gt_bbox = np.zeros([b, lane_num, 2])
         for i in range(b):
             mask = case_info['agent_mask'][i].sum()
-            indx = agent_vec_indx[i].astype(int)
-            gt_distribution[i][indx[:mask]] = 1
-            gt_vec_based_coord[i, indx] = vec_based_rep[i, :, :5]
-            gt_bbox[i, indx] = bbox[i]
+            index = agent_vec_index[i].astype(int)
+            gt_distribution[i][index[:mask]] = 1
+            gt_vec_based_coord[i, index] = vec_based_rep[i, :, :5]
+            gt_bbox[i, index] = bbox[i]
         case_info['gt_bbox'] = gt_bbox
         case_info['gt_distribution'] = gt_distribution
         case_info['gt_long_lat'] = gt_vec_based_coord[..., :2]
