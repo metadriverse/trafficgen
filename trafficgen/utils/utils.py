@@ -1,16 +1,17 @@
-import datetime
-import time
-import numpy as np
 import copy
-from torch import Tensor
+import datetime
+import pickle
+import time
+
+import numpy as np
 import torch
-from trafficgen.utils.typedef import RoadLineType, RoadEdgeType
 from shapely.geometry import Polygon
+from torch import Tensor
+
 from trafficgen.TrafficGen_init.data_process.agent_process import WaymoAgent
 from trafficgen.utils.typedef import AgentType
-import os
-from tqdm import tqdm
-import pickle
+from trafficgen.utils.typedef import RoadLineType, RoadEdgeType
+
 
 def time_me(fn):
     def _wrapper(*args, **kwargs):
@@ -279,6 +280,7 @@ def get_type_class(line_type):
     else:
         return 'other'
 
+
 def save_as_metadrive_data(pred_i, other, save_path):
     output_temp = {}
     output_temp['id'] = 'fake'
@@ -304,7 +306,7 @@ def save_as_metadrive_data(pred_i, other, save_path):
         state[:, 4] = 2.332
         state[:, 7:9] = agent_i[:, 2:4]
         state[:, -1] = 1
-        state[:, 6] = agent_i[:, 4]# + np.pi / 2
+        state[:, 6] = agent_i[:, 4]  # + np.pi / 2
         track['state'] = state
         output['tracks'][i] = track
 
@@ -327,4 +329,3 @@ def save_as_metadrive_data(pred_i, other, save_path):
 
     with open(save_path, 'wb') as f:
         pickle.dump(output, f)
-

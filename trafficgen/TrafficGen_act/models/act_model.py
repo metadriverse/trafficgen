@@ -1,20 +1,18 @@
-import numpy as np
+import copy
 import logging
+
 import torch
 import torch.nn as nn
-import math
+from trafficgen.TrafficGen_act.models.critertion import loss_v1
 
 from trafficgen.utils.model_utils import MLP_3, CG_stacked
-from TrafficGen_act.models.critertion import loss_v1
-import copy
 
 logger = logging.getLogger(__name__)
 copy_func = copy.deepcopy
 version = 0
-from torch.distributions.multivariate_normal import MultivariateNormal
 
 
-class actuator(nn.Module):
+class Actuator(nn.Module):
     """ A transformer model with wider latent space """
 
     def __init__(self):

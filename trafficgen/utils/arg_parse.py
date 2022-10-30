@@ -11,7 +11,8 @@ def get_parsed_args():
     parser.add_argument('--exp_name', default="none", type=str)
     parser.add_argument('--num_scenarios', default=None, type=int, help="How many scenarios you want to use.")
     parser.add_argument('--gif', action="store_true", help="How many scenarios you want to use.")
-    parser.add_argument('--save_pkl', action="store_true", help="If you want to save the generated scenarios as pkl file")
+    parser.add_argument('--save_pkl', action="store_true",
+                        help="If you want to save the generated scenarios as pkl file")
     args = parser.parse_args()
     if args.exp_name.lower() == "none":
         args.exp_name = None

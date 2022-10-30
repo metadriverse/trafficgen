@@ -1,19 +1,20 @@
+import copy
+from random import choices
+
+import numpy as np
 import torch
 import torch.nn as nn
-
-from trafficgen.utils.model_utils import MLP_3, CG_stacked
-import copy
 from torch import Tensor
 
-copy_func = copy.deepcopy
-from trafficgen.utils.visual_init import get_heatmap
 from trafficgen.TrafficGen_init.data_process.init_dataset import WaymoAgent
-from random import choices
+from trafficgen.utils.model_utils import MLP_3, CG_stacked
 from trafficgen.utils.utils import get_agent_pos_from_vec
-import numpy as np
+from trafficgen.utils.visual_init import get_heatmap
+
+copy_func = copy.deepcopy
 
 
-class initializer(nn.Module):
+class Initializer(nn.Module):
     """ A transformer model with wider latent space """
 
     def __init__(self, cfg):
@@ -56,10 +57,10 @@ class initializer(nn.Module):
         max_prob = 0
 
         for i in range(2):
-            indx = choices(list(range(prob.shape[-1])), prob)[0]
-            vec_logprob_ = prob[indx]
+            index = choices(list(range(prob.shape[-1])), prob)[0]
+            vec_logprob_ = prob[index]
             if vec_logprob_ > max_prob:
-                the_indx = indx
+                the_index = index
                 max_prob = max(vec_logprob_, max_prob)
 
         # idx_list = []
@@ -86,17 +87,17 @@ class initializer(nn.Module):
 
             agents = get_agent_pos_from_vec(center_lane, pos[0], speed[0], vel_heading[0], heading[0], bbox[0])
             agents_list.append(agents)
-            pos_logprob_ = pos_logprob[0, the_indx]
-            heading_logprob_ = heading_logprob[0, the_indx]
-            # vel_heading_logprob_ = vel_heading_logprob[0,the_indx]
-            bbox_logprob_ = bbox_logprob[0, the_indx]
-            # speed_logprob_ = speed_logprob[0,the_indx]
+            pos_logprob_ = pos_logprob[0, the_index]
+            heading_logprob_ = heading_logprob[0, the_index]
+            # vel_heading_logprob_ = vel_heading_logprob[0,the_index]
+            bbox_logprob_ = bbox_logprob[0, the_index]
+            # speed_logprob_ = speed_logprob[0,the_index]
             all_prob = heading_logprob_ + bbox_logprob_ + pos_logprob_
             prob_list.append(all_prob)
 
-        max_indx = np.argmax(prob_list)
-        max_agents = agents_list[max_indx]
-        return max_agents, prob, the_indx
+        max_index = torch.argmax(torch.stack(prob_list)).item()
+        max_agents = agents_list[max_index]
+        return max_agents, prob, the_index
 
     def output_to_dist(self, para, n):
         # if n = 2, dim = 5 = 2 + 3, if n = 1, dim = 2 = 1 + 1
@@ -242,8 +243,8 @@ class initializer(nn.Module):
             context_poly = context_agent.get_polygon()[0]
             shapes.append(context_poly)
             pred_list.append(context_agent)
-            vec_indx = data['agent_vec_indx'].to(int)
-            idx_list.append(vec_indx[0, i].item())
+            vec_index = data['agent_vec_index'].to(int)
+            idx_list.append(vec_index[0, i].item())
 
         max_agent = self.cfg['max_num']
         center = data['center'][0]
@@ -267,8 +268,8 @@ class initializer(nn.Module):
             cnt = 0
             # sample many times to get most possible one
             while cnt < samples:
-                agents, prob, indx = self.sample_from_distribution(pred, center)
-                the_agent = agents.get_agent(indx)
+                agents, prob, index = self.sample_from_distribution(pred, center)
+                the_agent = agents.get_agent(index)
                 poly = the_agent.get_polygon()[0]
                 intersect = False
                 for shape in shapes:
@@ -284,7 +285,7 @@ class initializer(nn.Module):
 
             pred_list.append(the_agent)
             data['agent_feat'][:, i] = Tensor(the_agent.get_inp())
-            idx_list.append(indx)
+            idx_list.append(index)
 
             heat_maps.append(get_heatmap(agents.position[:, 0][center_mask], agents.position[:, 1][center_mask],
                                          prob[center_mask].cpu().numpy(), 20))

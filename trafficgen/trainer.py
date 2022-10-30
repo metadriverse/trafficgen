@@ -1,24 +1,20 @@
 import copy
-import numpy as np
+import os
 import pickle
 
-from tqdm import tqdm
+import imageio
+import numpy as np
 import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
-from trafficgen.utils.utils import transform_to_agent, from_list_to_batch, rotate,save_as_metadrive_data
-import imageio
-
-from trafficgen.TrafficGen_init.models.init_distribution import initializer
+from trafficgen.TrafficGen_act.data_process.act_dataset import process_case_to_input, process_map
+from trafficgen.TrafficGen_act.models.act_model import Actuator
 from trafficgen.TrafficGen_init.data_process.init_dataset import initDataset, WaymoAgent
-
+from trafficgen.TrafficGen_init.models.init_distribution import Initializer
+from trafficgen.utils.utils import transform_to_agent, from_list_to_batch, rotate, save_as_metadrive_data
 from trafficgen.utils.visual_init import draw, draw_seq
-
-from TrafficGen_act.models.act_model import actuator
-from TrafficGen_act.data_process.act_dataset import process_case_to_input, process_map
-
-import os
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -34,17 +30,18 @@ class Trainer:
         self.args = args
         self.cfg = cfg
 
-        model1 = initializer(cfg['init_model'])
-        model2 = actuator()
+        model1 = Initializer(cfg['init_model'])
+        model2 = Actuator()
+        model1 = model1.to(self.cfg['device'])
+        model2 = model2.to(self.cfg['device'])
+        devices = [0]
+        model1 = torch.nn.DataParallel(model1, device_ids=devices)
+        model2 = torch.nn.DataParallel(model2, device_ids=devices)
 
-        model1 = torch.nn.DataParallel(model1, list(range(1)))
-        model1 = model1.to(cfg['device'])
-        model2 = torch.nn.DataParallel(model2, list(range(1)))
-        model2 = model2.to(cfg['device'])
         self.model1 = model1
         self.model2 = model2
 
-        test_init_dataset = initDataset(cfg)
+        test_init_dataset = initDataset(self.cfg)
         self.eval_init_loader = DataLoader(test_init_dataset, shuffle=False, batch_size=1, num_workers=0)
 
     def load_model(self, model, model_path, device):
@@ -62,6 +59,7 @@ class Trainer:
             self.print(key, ": ", value)
 
     def wash(self, batch):
+        """Transform the loaded raw data to pretty pytorch tensor."""
         for key in batch.keys():
             if isinstance(batch[key], np.ndarray):
                 batch[key] = Tensor(batch[key])
@@ -72,7 +70,7 @@ class Trainer:
             if 'mask' in key:
                 batch[key] = batch[key].to(bool)
 
-    def generate_scenarios(self, snapshot=True, gif=True,save_pkl=False):
+    def generate_scenarios(self, snapshot=True, gif=True, save_pkl=False):
         # generate temp data in ./cases/initialized, and visualize in ./vis/initialized
         self.place_vehicles(vis=True)
 
@@ -102,6 +100,8 @@ class Trainer:
                 batch = copy.deepcopy(data)
                 self.wash(batch)
 
+                # Call the initialization model
+                # The output is a dict with these keys: center, rest, bound, agent
                 output = self.model1(batch, context_num=context_num)
 
                 center = batch['center'][0].cpu().numpy()
@@ -211,11 +211,11 @@ class Trainer:
                 if save_pkl:
                     if not os.path.exists(f'./generated_scenarios'):
                         os.makedirs(f'./generated_scenarios')
-                    data_dir =  f'./generated_scenarios/{i}.pkl'
+                    data_dir = f'./generated_scenarios/{i}.pkl'
                     other = {}
                     other['unsampled_lane'] = data['unsampled_lane']
                     other['center_info'] = data['center_info']
-                    save_as_metadrive_data(pred_i,other,data_dir)
+                    save_as_metadrive_data(pred_i, other, data_dir)
 
         if gif:
             print("GIF files have been generated to vis/gif folder.")

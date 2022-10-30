@@ -1,7 +1,6 @@
-from drivingforce.TrafficTranformer.utils.arg_parse import get_parsed_args
+from trafficgen.utils.arg_parse import get_parsed_args
 from l5kit.configs import load_config_data
 from trafficgen.utils.train import Trainer
-from drivingforce.TrafficFormerDynamic.load_for_metadrive import AgentType, RoadEdgeType, RoadLineType
 
 # ============================== Main =======================================
 if __name__ == "__main__":

@@ -1,15 +1,8 @@
-import copy
+import os
+import pickle
+from enum import Enum
 
 import numpy as np
-from enum import Enum
-import torch
-from l5kit.configs import load_config_data
-from tqdm import tqdm
-import pickle
-from drivingforce.TrafficTranformer.utils.train import Trainer
-from drivingforce.TrafficTranformer.utils.arg_parse import get_parsed_args
-import os
-from drivingforce.TrafficTranformer.load_and_draw import draw
 
 
 def yaw_to_y(angle):
