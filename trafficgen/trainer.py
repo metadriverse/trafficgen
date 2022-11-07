@@ -5,14 +5,16 @@ import pickle
 import imageio
 import numpy as np
 import torch
+import wandb
 from torch import Tensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from kmeans_pytorch import kmeans
 
 from trafficgen.TrafficGen_act.data_process.act_dataset import process_case_to_input, process_map
 from trafficgen.TrafficGen_act.models.act_model import Actuator
 from trafficgen.TrafficGen_init.data_process.init_dataset import initDataset, WaymoAgent
-from trafficgen.TrafficGen_init.models.init_distribution import Initializer
+from trafficgen.TrafficGen_init.models.init_cluster import Initializer
 from trafficgen.utils.utils import transform_to_agent, from_list_to_batch, rotate, save_as_metadrive_data
 from trafficgen.utils.visual_init import draw, draw_seq
 
@@ -29,7 +31,7 @@ class Trainer:
                  ):
         self.args = args
         self.cfg = cfg
-
+        wandb.init(project="cluster")
         model1 = Initializer(cfg['init_model'])
         model2 = Actuator()
         model1 = model1.to(self.cfg['device'])
@@ -78,6 +80,42 @@ class Trainer:
         # set gif to True to generate gif in ./vis/gif
         self.generate_traj(snapshot=snapshot, gif=gif, save_pkl=save_pkl)
 
+    def cluster(self):
+        self.model1.eval()
+        eval_data = self.eval_init_loader
+        datasize = len(eval_data)
+        num_clusters = 10
+
+        features = torch.zeros([datasize,1024],device=self.cfg['device'])
+        with torch.no_grad():
+            for idx, data in enumerate(tqdm(eval_data)):
+
+                batch = copy.deepcopy(data)
+                self.wash(batch)
+                features[idx]=self.model1(batch, context_num=0)
+
+        cluster_ids_x, cluster_centers = kmeans(
+            X=features, num_clusters=num_clusters, distance='euclidean', device=self.cfg['device'])
+
+        # group = {}
+        # for i in range(num_clusters):
+        #     idx = torch.where(cluster_ids_x==i)
+        #     group[i] = features[idx]
+        idxs = torch.where(cluster_ids_x == 0)[0]
+        ret = {}
+        for i in range(10):
+            idxs_i = idxs[i].item()
+            data = eval_data.dataset[idxs_i]
+
+            agent = data['agent']
+            agent_list = []
+            agent_num = agent.shape[0]
+            for a in range(agent_num):
+                agent_list.append(WaymoAgent(agent[[a]]))
+
+            ret[f'{i}']=wandb.Image(draw(data['center'], agent_list, other=data['rest'], edge=data['bound']))
+
+        wandb.log(ret)
     def place_vehicles(self, vis=True):
         context_num = 1
 
