@@ -84,7 +84,7 @@ class Trainer:
         self.model1.eval()
         eval_data = self.eval_init_loader
         datasize = len(eval_data)
-        num_clusters = 10
+        num_clusters = 20
 
         features = torch.zeros([datasize,1024],device=self.cfg['device'])
         with torch.no_grad():
@@ -102,9 +102,13 @@ class Trainer:
         #     idx = torch.where(cluster_ids_x==i)
         #     group[i] = features[idx]
         idxs = torch.where(cluster_ids_x == 0)[0]
+        features = features[idxs]
+        dist_to_first = torch.nn.MSELoss(reduction='none')(features[[0]],features).mean(-1)
+        dist_indx = torch.argsort(dist_to_first)
         ret = {}
         for i in range(10):
-            idxs_i = idxs[i].item()
+            dist_indx_i = dist_indx[i]
+            idxs_i = idxs[dist_indx_i].item()
             data = eval_data.dataset[idxs_i]
 
             agent = data['agent']
