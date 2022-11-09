@@ -101,12 +101,13 @@ class Trainer:
         # for i in range(num_clusters):
         #     idx = torch.where(cluster_ids_x==i)
         #     group[i] = features[idx]
+        ret = {}
         for k in range(5):
             idxs = torch.where(cluster_ids_x == k)[0]
             features_ = features[idxs]
             dist_to_first = torch.nn.MSELoss(reduction='none')(features_[[0]],features_).mean(-1)
             dist_indx = torch.argsort(dist_to_first)
-            ret = {}
+
             for i in range(10):
                 dist_indx_i = dist_indx[i]
                 idxs_i = idxs[dist_indx_i].item()
