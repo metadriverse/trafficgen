@@ -101,23 +101,25 @@ class Trainer:
         # for i in range(num_clusters):
         #     idx = torch.where(cluster_ids_x==i)
         #     group[i] = features[idx]
-        idxs = torch.where(cluster_ids_x == 0)[0]
-        features = features[idxs]
-        dist_to_first = torch.nn.MSELoss(reduction='none')(features[[0]],features).mean(-1)
-        dist_indx = torch.argsort(dist_to_first)
-        ret = {}
-        for i in range(10):
-            dist_indx_i = dist_indx[i]
-            idxs_i = idxs[dist_indx_i].item()
-            data = eval_data.dataset[idxs_i]
+        for k in range(5):
+            idxs = torch.where(cluster_ids_x == k)[0]
+            features_ = features[idxs]
+            dist_to_first = torch.nn.MSELoss(reduction='none')(features_[[0]],features_).mean(-1)
+            dist_indx = torch.argsort(dist_to_first)
+            ret = {}
+            for i in range(10):
+                dist_indx_i = dist_indx[i]
+                idxs_i = idxs[dist_indx_i].item()
+                data = eval_data.dataset[idxs_i]
 
-            agent = data['agent']
-            agent_list = []
-            agent_num = agent.shape[0]
-            for a in range(agent_num):
-                agent_list.append(WaymoAgent(agent[[a]]))
+                agent = data['agent']
+                agent_list = []
+                agent_num = agent.shape[0]
+                for a in range(agent_num):
+                    agent_list.append(WaymoAgent(agent[[a]]))
 
-            ret[f'{i}']=wandb.Image(draw(data['center'], agent_list, other=data['rest'], edge=data['bound']))
+                ret[f'{i+k*10}']=wandb.Image(draw(data['center'], agent_list, other=data['rest'], edge=data['bound']))
+
 
         wandb.log(ret)
     def place_vehicles(self, vis=True):
