@@ -10,6 +10,7 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from kmeans_pytorch import kmeans
+from sklearn import manifold
 
 from trafficgen.TrafficGen_act.data_process.act_dataset import process_case_to_input, process_map
 from trafficgen.TrafficGen_act.models.act_model import Actuator
@@ -17,6 +18,11 @@ from trafficgen.TrafficGen_init.data_process.init_dataset import initDataset, Wa
 from trafficgen.TrafficGen_init.models.init_cluster import Initializer
 from trafficgen.utils.utils import transform_to_agent, from_list_to_batch, rotate, save_as_metadrive_data
 from trafficgen.utils.visual_init import draw, draw_seq
+
+from utils.tsne import visualize_tsne_points,visualize_tsne_images
+
+import matplotlib as plt
+#from trafficgen.utils.tsne import tsne
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -80,11 +86,64 @@ class Trainer:
         # set gif to True to generate gif in ./vis/gif
         self.generate_traj(snapshot=snapshot, gif=gif, save_pkl=save_pkl)
 
+    def tsne(self):
+        vis_num = 100
+
+        self.model1.eval()
+        eval_data = self.eval_init_loader
+        datasize = len(eval_data)
+
+        features = torch.zeros([datasize,1024],device=self.cfg['device'])
+
+        ret = {}
+        with torch.no_grad():
+            for idx, data in enumerate(tqdm(eval_data)):
+
+                batch = copy.deepcopy(data)
+                self.wash(batch)
+                features[idx]=self.model1(batch, context_num=0)
+
+            tsne = manifold.TSNE(
+                n_components=2,
+                init='pca',
+                learning_rate='auto',
+                n_jobs=-1
+            )
+
+            Y = tsne.fit_transform(features.numpy())
+
+            rand_indx = list(range(datasize))
+            np.random.shuffle(rand_indx)
+
+            Y = Y[rand_indx]
+            sampled_indx = rand_indx[:vis_num]
+            ret['tsne_points'] = wandb.Image(visualize_tsne_points(Y))
+
+
+            img_path = './img'
+            if not os.path.exists(img_path):
+                os.makedirs(img_path)
+            for i in range(vis_num):
+
+                data = eval_data.dataset[sampled_indx[i]]
+                agent = data['agent']
+                agent_list = []
+                agent_num = agent.shape[0]
+                for a in range(agent_num):
+                    agent_list.append(WaymoAgent(agent[[a]]))
+
+                draw(data['center'], agent_list, other=data['rest'], edge=data['bound'],path=f'./img/{i}.jpg',save=True)
+
+            image_path = [f'./img/{i}.jpg' for i in range(vis_num)]
+            ret['tsne_image'] = visualize_tsne_images(Y[:vis_num,0],Y[:vis_num,1],image_path)
+
+        wandb.log(ret)
+
     def cluster(self):
         self.model1.eval()
         eval_data = self.eval_init_loader
         datasize = len(eval_data)
-        num_clusters = 20
+        num_clusters = 40
 
         features = torch.zeros([datasize,1024],device=self.cfg['device'])
         with torch.no_grad():

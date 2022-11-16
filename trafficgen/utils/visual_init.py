@@ -171,6 +171,7 @@ def draw_metrics(losses):
 
 
 def draw(center, agents, other, heat_map=None, save=False, edge=None, path='../vis', abn_idx=None, vis_range=60):
+    plt.clf()
     fig, ax = plt.subplots(figsize=(10, 10))
     plt.axis('equal')
 
@@ -239,7 +240,7 @@ def draw(center, agents, other, heat_map=None, save=False, edge=None, path='../v
 
     plt.autoscale()
     if save:
-        fig.savefig(path, dpi=100, bbox_inches='tight', pad_inches=0)
+        fig.savefig(path, dpi=30, bbox_inches='tight', pad_inches=0)
 
     return plt
 

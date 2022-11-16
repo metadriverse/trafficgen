@@ -35,6 +35,7 @@ if __name__ == "__main__":
     trainer.load_model(trainer.model1, os.path.join(model_weights_folder_path, 'init'), device)
     trainer.load_model(trainer.model2, os.path.join(model_weights_folder_path, 'act'), device)
 
-    trainer.cluster()
+    trainer.tsne()
+    #trainer.cluster()
 
     #trainer.generate_scenarios(snapshot=False, gif=args.gif, save_pkl=args.save_pkl)
