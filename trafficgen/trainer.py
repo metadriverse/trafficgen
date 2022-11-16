@@ -87,7 +87,7 @@ class Trainer:
         self.generate_traj(snapshot=snapshot, gif=gif, save_pkl=save_pkl)
 
     def tsne(self):
-        vis_num = 100
+        vis_num = 50
 
         self.model1.eval()
         eval_data = self.eval_init_loader

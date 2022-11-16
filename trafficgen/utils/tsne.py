@@ -159,7 +159,7 @@ def visualize_tsne_points(Y):
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    ax.scatter(tx,ty)
+    ax.scatter(tx,ty,s=0.2)
     # finally, show the plot
     return plt
 
