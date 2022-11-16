@@ -87,7 +87,7 @@ class Trainer:
         self.generate_traj(snapshot=snapshot, gif=gif, save_pkl=save_pkl)
 
     def tsne(self):
-        vis_num = 50
+        vis_num = 100
 
         self.model1.eval()
         eval_data = self.eval_init_loader
@@ -117,7 +117,7 @@ class Trainer:
 
             Y = Y[rand_indx]
             sampled_indx = rand_indx[:vis_num]
-            ret['tsne_points'] = wandb.Image(visualize_tsne_points(Y))
+            ret['tsne_points'] = wandb.Image(visualize_tsne_points(Y[:1000]))
 
 
             img_path = './img'
