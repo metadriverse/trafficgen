@@ -87,7 +87,7 @@ class Trainer:
         self.generate_traj(snapshot=snapshot, gif=gif, save_pkl=save_pkl)
 
     def tsne(self):
-        vis_num = 100
+        vis_num = 300
 
         self.model1.eval()
         eval_data = self.eval_init_loader
@@ -135,7 +135,7 @@ class Trainer:
                 draw(data['center'], agent_list, other=data['rest'], edge=data['bound'],path=f'./img/{i}.jpg',save=True)
 
             image_path = [f'./img/{i}.jpg' for i in range(vis_num)]
-            ret['tsne_image'] = visualize_tsne_images(Y[:vis_num,0],Y[:vis_num,1],image_path)
+            ret['tsne_image'] = wandb.Image(visualize_tsne_images(Y[:vis_num,0],Y[:vis_num,1],image_path))
 
         wandb.log(ret)
 

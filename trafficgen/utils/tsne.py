@@ -112,10 +112,14 @@ def compute_plot_coordinates(image, x, y, image_centers_area_size, offset):
     return tl_x, tl_y, br_x, br_y
 
 
-def visualize_tsne_images(tx, ty, images, plot_size=1000, max_image_size=100):
+def visualize_tsne_images(tx, ty, images, plot_size=3000, max_image_size=100):
     # we'll put the image centers in the central area of the plot
     # and use offsets to make sure the images fit the plot
     plt.clf()
+    #plt.rcParams["figure.figsize"] = [10, 10]
+    fig = plt.figure(dpi=1000)
+    ax = fig.add_subplot()
+    ax.axis('off')
     tx = scale_to_01_range(tx)
     ty = scale_to_01_range(ty)
     offset = max_image_size // 2
@@ -143,7 +147,8 @@ def visualize_tsne_images(tx, ty, images, plot_size=1000, max_image_size=100):
         # put the image to its TSNE coordinates using numpy subarray indices
         tsne_plot[tl_y:br_y, tl_x:br_x, :] = image
 
-    plt.imshow(tsne_plot[:, :, ::-1])
+    ax.imshow(tsne_plot[:, :, ::-1])
+
     return plt
 
 
