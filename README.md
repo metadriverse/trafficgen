@@ -37,7 +37,7 @@ Note: You can download multiple files from above link and put them
 ### Step 3: Transform raw data in TF files to python objects
 
 ```bash
-python trafficgen/scripts/trans20.py ./raw_data ./processed_data None
+python trafficgen/scripts/trans20.py raw_data processed_data None
 ```
 
 The processed data has the following attributes:
