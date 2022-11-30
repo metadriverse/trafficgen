@@ -43,7 +43,7 @@ python trafficgen/scripts/trans20.py raw_data processed_data None
 The processed data has the following attributes:
 - `id`: scenario id
 - `all_agent`: A `[190, n, 9]` array which contains 190 frames, n agents, 9 features `[coord, velocity, heading, length, width, type, validity]`
-- `traffic_light`: TODO-What the fuck is this?
+- `traffic_light`: A list containing information about the traffic light
 - `lane`: A `[n,4]` array which contains n points and `[coord, type, id(which lane this point belongs to)]` features.
 
 ### Step 4: Download and retrieve pretrained TrafficGen model
