@@ -40,6 +40,7 @@ class Initializer(nn.Module):
         self.bbox_head = MLP_3([*middle_layer_shape, self.K * (1 + 5)])
         self.heading_head = MLP_3([*middle_layer_shape, self.K * (1 + 2)])
         self.apply(self._init_weights)
+        self.context = cfg['context_num']
         # self.vel_heading_head = MLP_3([*middle_layer_shape, self.K * (1 + 2)])
         # self.speed_head = MLP_3([*middle_layer_shape, 10 * (1 + 2)])
 
@@ -234,9 +235,9 @@ class Initializer(nn.Module):
         heat_maps = []
         prob_list = []
         shapes = []
-
+        valid_agent = data['agent_mask'].sum().item()
         # using "context_num" of existing agents
-        for i in range(context_num):
+        for i in range(min(self.cfg['context_num'],valid_agent)):
             context_agent = data['agent_feat'][0, [i], :8].cpu().numpy()
             context_feat = data['agent_feat'][0, [i], 8:].cpu().numpy()
             context_agent = WaymoAgent(context_agent, context_feat, from_inp=True)
@@ -249,7 +250,8 @@ class Initializer(nn.Module):
         max_agent = self.cfg['max_num']
         center = data['center'][0]
         center_mask = data['center_mask'][0].cpu().numpy()
-        for i in range(context_num, max_agent):
+
+        for i in range(self.cfg['context_num'], max_agent):
             data['agent_mask'][:, :i] = 1
             data['agent_mask'][:, i:] = 0
 

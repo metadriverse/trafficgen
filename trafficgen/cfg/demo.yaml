@@ -7,8 +7,9 @@ data_usage: 10
 
 init_model:
   hidden_dim: 1024
-  max_num: 13
+  max_num: 32
   gaussian_comp: 5
+  context_num: 32
 
 
 

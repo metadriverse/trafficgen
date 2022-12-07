@@ -21,6 +21,72 @@ def time_me(fn):
 
     return _wrapper
 
+def MDdata_to_initdata(MDdata):
+    ret = {}
+    tracks = MDdata['tracks']
+
+    ret['context_num']=1
+    all_agent= np.zeros([128,7])
+    agent_mask = np.zeros(128)
+
+    sdc = tracks[MDdata['sdc_index']]['state']
+    all_agent[0,:2] = sdc[0,:2]
+    all_agent[0,2:4] =sdc[0,7:9]
+    all_agent[0,4] = sdc[0,6]
+    all_agent[0,5:7] = sdc[0,3:5]
+
+    cnt=1
+    for id, track in tracks.items():
+        if id == MDdata['sdc_index']:continue
+        if not track['type'] == AgentType.VEHICLE: continue
+        if track['state'][0,-1]==0:continue
+        state = track['state']
+        all_agent[cnt, :2] = state[0, :2]
+        all_agent[cnt, 2:4] = state[0, 7:9]
+        all_agent[cnt, 4] = state[0, 6]
+        all_agent[cnt, 5:7] = state[0, 3:5]
+        cnt+=1
+
+    all_agent = all_agent[:32]
+    agent_num = min(32,cnt)
+    agent_mask[:agent_num]=1
+    agent_mask=agent_mask.astype(bool)
+
+    lanes = []
+    for k, lane in input['map'].items():
+        a_lane = np.zeros([20, 4])
+        tp = 0
+        try:
+            lane_type = lane['type']
+        except:
+            lane_type = lane['sign']
+            poly_line = lane['polygon']
+            if lane_type == 'cross_walk':
+                tp = 18
+            elif lane_type == 'speed_bump':
+                tp = 19
+
+        if lane_type == 'center_lane':
+            poly_line = lane['polyline']
+            tp = 1
+
+        elif lane_type == RoadEdgeType.BOUNDARY or lane_type == RoadEdgeType.MEDIAN:
+            tp = 15 if lane_type == RoadEdgeType.BOUNDARY else 16
+            poly_line = lane['polyline']
+        elif 'polyline' in lane:
+            tp = 7
+            poly_line = lane['polyline']
+        if tp == 0:
+            continue
+
+        a_lane[:, 2] = tp
+        a_lane[:, :2] = poly_line
+
+        lanes.append(a_lane)
+    lanes = np.stack(lanes)
+
+
+    return
 
 def get_polygon(center, yaw, L, W):
     l, w = L / 2, W / 2
