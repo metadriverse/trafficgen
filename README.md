@@ -22,6 +22,10 @@ conda activate trafficgen
 
 # Install basic dependency
 pip install -e .
+
+# You should probably install pytorch and tensorflow by yourself to make them compatible with your GPU
+...
+
 ```
 
 ### Step 2: Download dataset for road and traffic
