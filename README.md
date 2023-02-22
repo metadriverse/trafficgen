@@ -28,7 +28,7 @@ pip install -e .
 
 ```
 
-If you find error message related to `geos` when installing `Shapely`, checkout [this post](https://stackoverflow.com/questions/19742406/could-not-find-library-geos-c-or-load-any-of-its-variants).
+If you find error messages related to `geos` when installing `Shapely`, checkout [this post](https://stackoverflow.com/questions/19742406/could-not-find-library-geos-c-or-load-any-of-its-variants).
 
 ### Step 2: Download dataset for road and traffic
 
