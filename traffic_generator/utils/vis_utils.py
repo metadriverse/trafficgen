@@ -9,6 +9,7 @@ from scipy.ndimage.filters import gaussian_filter
 import matplotlib.colors as mcolors
 import matplotlib.cm as cm
 
+
 def draw(center, agents, other, heat_map=None, save=False, edge=None, path='../vis', abn_idx=None, vis_range=60):
     fig, ax = plt.subplots(figsize=(10, 10))
     plt.axis('equal')
@@ -81,6 +82,7 @@ def draw(center, agents, other, heat_map=None, save=False, edge=None, path='../v
         fig.savefig(path, dpi=100, bbox_inches='tight', pad_inches=0)
 
     return plt
+
 
 def draw_seq(center, agents, traj=None, other=None, heat_map=False, save=False, edge=None, path='../vis', abn_idx=None):
     fig, ax = plt.subplots(figsize=(10, 10))

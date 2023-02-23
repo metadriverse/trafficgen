@@ -18,6 +18,7 @@ def unify_name(inut_path):
 
 if __name__ == "__main__":
     import sys
+
     raw_data_path = sys.argv[1]
     # raw_data_path = ".\\debug_data"
     unify_name(raw_data_path)

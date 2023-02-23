@@ -4,6 +4,7 @@ import torch.nn as nn
 from init.utils.model_utils import MLP_3, CG_stacked
 import copy
 from torch import Tensor
+
 copy_func = copy.deepcopy
 from init.utils.data_utils import WaymoAgent
 from random import choices
@@ -35,22 +36,22 @@ class initializer(pl.LightningModule):
         self.K = cfg['gaussian_comp']
         self.prob_head = MLP_3([*middle_layer_shape, 1])
 
-        #self.pos_head = MLP_3([*middle_layer_shape, 2])
+        # self.pos_head = MLP_3([*middle_layer_shape, 2])
         self.speed_head = MLP_3([*middle_layer_shape, 1])
         self.vel_heading_head = MLP_3([*middle_layer_shape, 1])
         self.pos_head = MLP_3([*middle_layer_shape, self.K * (1 + 5)])
         self.bbox_head = MLP_3([*middle_layer_shape, self.K * (1 + 5)])
         self.heading_head = MLP_3([*middle_layer_shape, self.K * (1 + 2)])
 
-        #self._kaiming_init()
-        #self.vel_heading_head = MLP_3([*middle_layer_shape, self.K * (1 + 2)])
+        # self._kaiming_init()
+        # self.vel_heading_head = MLP_3([*middle_layer_shape, self.K * (1 + 2)])
         # self.speed_head = MLP_3([*middle_layer_shape, 10 * (1 + 2)])
 
     def training_step(self, batch, batch_idx):
-        context_agent = self.agent_feature_extract(batch['agent_feat'],batch['agent_mask'],True)
-        feature = self.map_feature_extract(batch['lane_inp'],batch['lane_mask'],context_agent)
+        context_agent = self.agent_feature_extract(batch['agent_feat'], batch['agent_mask'], True)
+        feature = self.map_feature_extract(batch['lane_inp'], batch['lane_mask'], context_agent)
         center_num = batch['center'].shape[1]
-        feature = feature[:,:center_num]
+        feature = feature[:, :center_num]
 
         # Sample location, bounding box, heading and velocity.
         pred_dists = self.feature_to_dists(feature)
@@ -62,10 +63,10 @@ class initializer(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         # this is the validation loop
-        context_agent = self.agent_feature_extract(batch['agent_feat'],batch['agent_mask'],True)
-        feature = self.map_feature_extract(batch['lane_inp'],batch['lane_mask'],context_agent)
+        context_agent = self.agent_feature_extract(batch['agent_feat'], batch['agent_mask'], True)
+        feature = self.map_feature_extract(batch['lane_inp'], batch['lane_mask'], context_agent)
         center_num = batch['center'].shape[1]
-        feature = feature[:,:center_num]
+        feature = feature[:, :center_num]
         # Sample location, bounding box, heading and velocity.
 
         pred_dists = self.feature_to_dists(feature)
@@ -77,7 +78,7 @@ class initializer(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=3e-4)
-        scheduler = MultiStepLR(optimizer, milestones=[10, 20], gamma=0.1,verbose=True)
+        scheduler = MultiStepLR(optimizer, milestones=[10, 20], gamma=0.1, verbose=True)
         return [optimizer], [scheduler]
 
     # def _init_weights(self, module):
@@ -98,34 +99,34 @@ class initializer(pl.LightningModule):
     #         else:
     #             param.data.normal_(0, math.sqrt(2) / math.sqrt(param.shape[1]))
 
-    def sample_from_distribution(self, pred,center_lane,repeat_num=5):
+    def sample_from_distribution(self, pred, center_lane, repeat_num=5):
         prob = pred['prob'][0]
-        max_prob=0
+        max_prob = 0
 
         for i in range(2):
             indx = choices(list(range(prob.shape[-1])), prob)[0]
             vec_logprob_ = prob[indx]
-            if vec_logprob_>max_prob:
+            if vec_logprob_ > max_prob:
                 the_indx = indx
-                max_prob = max(vec_logprob_,max_prob)
+                max_prob = max(vec_logprob_, max_prob)
 
-        #idx_list = []
+        # idx_list = []
         prob_list = []
         agents_list = []
-        #pos = torch.clip(pred['pos'], min=-0.5, max=0.5)
+        # pos = torch.clip(pred['pos'], min=-0.5, max=0.5)
         speed = torch.clip(pred['speed'], min=0)
         vel_heading = pred['vel_heading']
         for i in range(repeat_num):
-            pos = torch.clip(pred['pos'].sample(),min=-0.5,max=0.5)
+            pos = torch.clip(pred['pos'].sample(), min=-0.5, max=0.5)
             pos_logprob = pred['pos'].log_prob(pos)
 
-            heading = torch.clip(pred['heading'].sample(),min=-np.pi/2,max=np.pi/2)
+            heading = torch.clip(pred['heading'].sample(), min=-np.pi / 2, max=np.pi / 2)
             heading_logprob = pred['heading'].log_prob(heading)
 
             # vel_heading = torch.clip(pred['vel_heading'].sample(),min=-np.pi/2,max=np.pi/2)
             # vel_heading_logprob = pred['vel_heading'].log_prob(vel_heading)
 
-            bbox = torch.clip(pred['bbox'].sample(),min=1.5)
+            bbox = torch.clip(pred['bbox'].sample(), min=1.5)
             bbox_logprob = pred['bbox'].log_prob(bbox)
 
             # speed = torch.clip(pred['speed'].sample(),min=0)
@@ -133,18 +134,17 @@ class initializer(pl.LightningModule):
 
             agents = get_agent_pos_from_vec(center_lane, pos[0], speed[0], vel_heading[0], heading[0], bbox[0])
             agents_list.append(agents)
-            pos_logprob_ = pos_logprob[0,the_indx]
-            heading_logprob_ = heading_logprob[0,the_indx]
-            #vel_heading_logprob_ = vel_heading_logprob[0,the_indx]
-            bbox_logprob_ = bbox_logprob[0,the_indx]
-            #speed_logprob_ = speed_logprob[0,the_indx]
-            all_prob = heading_logprob_+bbox_logprob_+pos_logprob_
+            pos_logprob_ = pos_logprob[0, the_indx]
+            heading_logprob_ = heading_logprob[0, the_indx]
+            # vel_heading_logprob_ = vel_heading_logprob[0,the_indx]
+            bbox_logprob_ = bbox_logprob[0, the_indx]
+            # speed_logprob_ = speed_logprob[0,the_indx]
+            all_prob = heading_logprob_ + bbox_logprob_ + pos_logprob_
             prob_list.append(all_prob)
 
         max_indx = np.argmax(prob_list)
         max_agents = agents_list[max_indx]
-        return max_agents,prob,the_indx
-
+        return max_agents, prob, the_indx
 
     def output_to_dist(self, para, n):
         # if n = 2, dim = 5 = 2 + 3, if n = 1, dim = 2 = 1 + 1
@@ -185,7 +185,7 @@ class initializer(pl.LightningModule):
         # 0: mixture weight
         # 1-2: mean
         # 3-5: variance and covariance
-        #pos_out = self.pos_head(feature)
+        # pos_out = self.pos_head(feature)
         speed_out = nn.ReLU()(self.speed_head(feature))
         vel_heading_out = self.vel_heading_head(feature)
 
@@ -221,10 +221,11 @@ class initializer(pl.LightningModule):
         # vel_heading_weight = torch.distributions.Categorical(logits=vel_heading_weight)
         # vel_heading_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(vel_heading_weight,
         #                                                                             vel_heading_distri)
-        return {'prob': prob_pred, 'pos': pos_gmm, 'bbox': bbox_gmm, 'heading': heading_gmm, 'speed': speed_out.squeeze(-1),
+        return {'prob': prob_pred, 'pos': pos_gmm, 'bbox': bbox_gmm, 'heading': heading_gmm,
+                'speed': speed_out.squeeze(-1),
                 'vel_heading': vel_heading_out.squeeze(-1)}
 
-    def agent_feature_extract(self, agent_feat,agent_mask, random_mask):
+    def agent_feature_extract(self, agent_feat, agent_mask, random_mask):
         agent = agent_feat[..., :-2]
         agent_line_type = agent_feat[..., -2].to(int)
         agent_line_traf = agent_feat[..., -1].to(int)
@@ -249,7 +250,7 @@ class initializer(pl.LightningModule):
 
         return context_agent
 
-    def map_feature_extract(self,lane_inp,line_mask,context_agent):
+    def map_feature_extract(self, lane_inp, line_mask, context_agent):
 
         polyline = lane_inp[..., :4]
         polyline_type = lane_inp[..., 4].to(int)
@@ -258,7 +259,7 @@ class initializer(pl.LightningModule):
 
         polyline_type_embed = self.type_embedding(polyline_type)
         polyline_traf_embed = self.traf_embedding(polyline_traf)
-        #polyline_traf_embed = torch.zeros_like(polyline_traf_embed,device=device)
+        # polyline_traf_embed = torch.zeros_like(polyline_traf_embed,device=device)
 
         # agent features
         line_enc = self.line_encode(polyline) + polyline_traf_embed + polyline_type_embed
@@ -288,7 +289,7 @@ class initializer(pl.LightningModule):
         # pos_loss = MSE(pred_dists['pos'],data['gt_long_lat']).mean(-1)
         # pos_loss = (torch.sum(pos_loss * gt_mask, dim=1) / gt_sum).mean()
 
-        speed_loss = MSE(pred_dists['speed'],data['gt_speed'])
+        speed_loss = MSE(pred_dists['speed'], data['gt_speed'])
         speed_loss = (torch.sum(speed_loss * gt_mask, dim=1) / gt_sum).mean()
 
         # speed_loss = -pred_dists['speed'].log_prob(data['gt_speed'])
@@ -297,12 +298,10 @@ class initializer(pl.LightningModule):
         bbox_loss = -pred_dists['bbox'].log_prob(data['gt_bbox'])
         bbox_loss = (torch.sum(bbox_loss * gt_mask, dim=1) / gt_sum).mean()
 
-
         # vel_heading_loss = -pred_dists['vel_heading'].log_prob(data['gt_vel_heading'])
         # vel_heading_loss = (torch.sum(vel_heading_loss * gt_mask, dim=1) / gt_sum).mean()
-        vel_heading_loss = L1(pred_dists['vel_heading'],data['gt_vel_heading'])
+        vel_heading_loss = L1(pred_dists['vel_heading'], data['gt_vel_heading'])
         vel_heading_loss = (torch.sum(vel_heading_loss * gt_mask, dim=1) / gt_sum).mean()
-
 
         heading_loss = -pred_dists['heading'].log_prob(data['gt_heading'])
         heading_loss = (torch.sum(heading_loss * gt_mask, dim=1) / gt_sum).mean()
@@ -320,7 +319,6 @@ class initializer(pl.LightningModule):
 
         return losses, total_loss
 
-
     def inference(self, data, context_num=1):
 
         agent_num = data['agent_mask'].sum().item()
@@ -331,7 +329,7 @@ class initializer(pl.LightningModule):
         shapes = []
 
         for i in range(context_num):
-            context_agent = data['agent'][0,[i]].cpu().numpy()
+            context_agent = data['agent'][0, [i]].cpu().numpy()
             context_agent = WaymoAgent(context_agent)
             context_poly = context_agent.get_polygon()[0]
             shapes.append(context_poly)
@@ -339,21 +337,20 @@ class initializer(pl.LightningModule):
             vec_indx = data['vec_based_rep'][..., 0]
             idx_list.append(vec_indx[0, i].item())
 
-
         minimum_agent = self.cfg['pad_num']
         center = data['center'][0]
         center_mask = data['center_mask'][0].cpu().numpy()
 
-        for i in range(context_num,max(agent_num,minimum_agent)):
+        for i in range(context_num, max(agent_num, minimum_agent)):
             data['agent_mask'][:, :i] = 1
-            data['agent_mask'][:,i:]=0
+            data['agent_mask'][:, i:] = 0
 
-            pred= self.forward(data, False)
+            pred = self.forward(data, False)
 
-            pred['prob'][:,idx_list]=0
-            cnt=0
-            while cnt<3:
-                agents, prob, indx = self.sample_from_distribution(pred,center)
+            pred['prob'][:, idx_list] = 0
+            cnt = 0
+            while cnt < 3:
+                agents, prob, indx = self.sample_from_distribution(pred, center)
                 the_agent = agents.get_agent(indx)
                 poly = the_agent.get_polygon()[0]
                 intersect = False
@@ -365,29 +362,29 @@ class initializer(pl.LightningModule):
                     shapes.append(poly)
                     break
                 else:
-                    cnt+=1
+                    cnt += 1
                     continue
 
             pred_list.append(the_agent)
-            data['agent_feat'][:,i] = Tensor(the_agent.get_inp())
+            data['agent_feat'][:, i] = Tensor(the_agent.get_inp())
             idx_list.append(indx)
 
-            #heat_maps.append(get_heatmap(agents.position[:,0][center_mask], agents.position[:, 1][center_mask],prob[center_mask].cpu().numpy(), 20))
+            # heat_maps.append(get_heatmap(agents.position[:,0][center_mask], agents.position[:, 1][center_mask],prob[center_mask].cpu().numpy(), 20))
             prob_list.append(prob)
 
         output = {}
         output['agent'] = pred_list
         output['prob'] = prob_list
-        #output['heat_maps'] = heat_maps
+        # output['heat_maps'] = heat_maps
 
         return output
 
     def forward(self, data, random_mask=True):
 
-        context_agent = self.agent_feature_extract(data['agent_feat'],data['agent_mask'],random_mask)
-        feature = self.map_feature_extract(data['lane_inp'],data['lane_mask'],context_agent)
+        context_agent = self.agent_feature_extract(data['agent_feat'], data['agent_mask'], random_mask)
+        feature = self.map_feature_extract(data['lane_inp'], data['lane_mask'], context_agent)
         center_num = data['center'].shape[1]
-        feature = feature[:,:center_num]
+        feature = feature[:, :center_num]
         # Sample location, bounding box, heading and velocity.
 
         pred_dists = self.feature_to_dists(feature)

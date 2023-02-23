@@ -4,71 +4,73 @@ import numpy as np
 import torch
 from shapely.geometry import Polygon
 
-def cal_rel_dir(dir1,dir2):
-    dist = dir1-dir2
 
-    while not np.all(dist>=0):
-        dist[dist<0]+=np.pi*2
-    while not np.all(dist<np.pi*2):
-        dist[dist>=np.pi*2]-=np.pi*2
+def cal_rel_dir(dir1, dir2):
+    dist = dir1 - dir2
 
-    dist[dist>np.pi] -= np.pi*2
+    while not np.all(dist >= 0):
+        dist[dist < 0] += np.pi * 2
+    while not np.all(dist < np.pi * 2):
+        dist[dist >= np.pi * 2] -= np.pi * 2
+
+    dist[dist > np.pi] -= np.pi * 2
     return dist
+
 
 def wash(batch):
     for key in batch.keys():
-        if batch[key].dtype==np.float64:
+        if batch[key].dtype == np.float64:
             batch[key] = batch[key].astype(np.float32)
         if 'mask' in key:
             batch[key] = batch[key].astype(bool)
         if isinstance(batch[key], torch.DoubleTensor):
             batch[key] = batch[key].float()
 
-def process_lane(lane,  max_vec,lane_range,offset = -40):
 
+def process_lane(lane, max_vec, lane_range, offset=-40):
     # dist = lane[..., 0]**2+lane[..., 1]**2
     # idx = np.argsort(dist)
     # lane = lane[idx]
 
     vec_dim = 6
 
-    lane_point_mask = (abs(lane[..., 0]+ offset) < lane_range) * (abs(lane[..., 1]) < lane_range)
+    lane_point_mask = (abs(lane[..., 0] + offset) < lane_range) * (abs(lane[..., 1]) < lane_range)
 
-    lane_id = np.unique(lane[...,-2]).astype(int)
+    lane_id = np.unique(lane[..., -2]).astype(int)
 
     vec_list = []
     vec_mask_list = []
-    b_s, _, lane_dim= lane.shape
+    b_s, _, lane_dim = lane.shape
 
     for id in lane_id:
-        id_set = lane[...,-2]==id
-        points = lane[id_set].reshape(b_s,-1,lane_dim)
-        masks = lane_point_mask[id_set].reshape(b_s,-1)
+        id_set = lane[..., -2] == id
+        points = lane[id_set].reshape(b_s, -1, lane_dim)
+        masks = lane_point_mask[id_set].reshape(b_s, -1)
 
-        vector = np.zeros([b_s,points.shape[1]-1,vec_dim])
-        vector[..., 0:2] = points[:,:-1, :2]
-        vector[..., 2:4] = points[:,1:, :2]
+        vector = np.zeros([b_s, points.shape[1] - 1, vec_dim])
+        vector[..., 0:2] = points[:, :-1, :2]
+        vector[..., 2:4] = points[:, 1:, :2]
         # id
-        #vector[..., 4] = points[:,1:, 3]
+        # vector[..., 4] = points[:,1:, 3]
         # type
-        vector[..., 4] = points[:,1:, 2]
+        vector[..., 4] = points[:, 1:, 2]
         # traffic light
-        vector[..., 5] = points[:,1:, 4]
-        vec_mask = masks[:,:-1]*masks[:,1:]
-        vector[vec_mask==0]=0
+        vector[..., 5] = points[:, 1:, 4]
+        vec_mask = masks[:, :-1] * masks[:, 1:]
+        vector[vec_mask == 0] = 0
         vec_list.append(vector)
         vec_mask_list.append(vec_mask)
 
-    vector = np.concatenate(vec_list,axis=1) if vec_list else np.zeros([b_s,0,vec_dim])
-    vector_mask = np.concatenate(vec_mask_list,axis=1) if vec_mask_list else np.zeros([b_s,0],dtype=bool)
+    vector = np.concatenate(vec_list, axis=1) if vec_list else np.zeros([b_s, 0, vec_dim])
+    vector_mask = np.concatenate(vec_mask_list, axis=1) if vec_mask_list else np.zeros([b_s, 0], dtype=bool)
 
-    all_vec = np.zeros([b_s,max_vec,vec_dim])
-    all_mask = np.zeros([b_s,max_vec])
+    all_vec = np.zeros([b_s, max_vec, vec_dim])
+    all_mask = np.zeros([b_s, max_vec])
     for t in range(b_s):
         mask_t = vector_mask[t]
         vector_t = vector[t][mask_t]
 
-        dist = vector_t[..., 0]**2+vector_t[..., 1]**2
+        dist = vector_t[..., 0] ** 2 + vector_t[..., 1] ** 2
         idx = np.argsort(dist)
         vector_t = vector_t[idx]
         mask_t = np.ones(vector_t.shape[0])
@@ -81,10 +83,10 @@ def process_lane(lane,  max_vec,lane_range,offset = -40):
         all_vec[t] = vector_t
         all_mask[t] = mask_t
 
-    return all_vec,all_mask.astype(bool)
+    return all_vec, all_mask.astype(bool)
 
-def process_map(lane,traf, center_num=384, edge_num=128, lane_range=60, offest=-40):
 
+def process_map(lane, traf, center_num=384, edge_num=128, lane_range=60, offest=-40):
     lane_with_traf = np.zeros([*lane.shape[:-1], 5])
     lane_with_traf[..., :4] = lane
 
@@ -98,11 +100,11 @@ def process_map(lane,traf, center_num=384, edge_num=128, lane_range=60, offest=-
             control_lane_id = a_traf[0]
             state = a_traf[-2]
             lane_idx = np.where(lane_id_t == control_lane_id)
-            lane_with_traf[i,lane_idx, -1] = state
+            lane_with_traf[i, lane_idx, -1] = state
 
-    #lane = np.delete(lane_with_traf,-2,axis=-1)
+    # lane = np.delete(lane_with_traf,-2,axis=-1)
     lane = lane_with_traf
-    lane_type = lane[0,:, 2]
+    lane_type = lane[0, :, 2]
     center_1 = lane_type == 1
     center_2 = lane_type == 2
     center_3 = lane_type == 3
@@ -118,12 +120,13 @@ def process_map(lane,traf, center_num=384, edge_num=128, lane_range=60, offest=-
 
     rest = ~(center_ind + bound_ind + cross_walk + speed_bump + cross_ind)
 
-    cent, cent_mask = process_lane(lane[:,center_ind], center_num, lane_range, offest)
-    bound, bound_mask = process_lane(lane[:,bound_ind], edge_num, lane_range, offest)
-    cross, cross_mask = process_lane(lane[:,cross_ind], 32, lane_range, offest)
-    rest, rest_mask = process_lane(lane[:,rest], 192, lane_range, offest)
+    cent, cent_mask = process_lane(lane[:, center_ind], center_num, lane_range, offest)
+    bound, bound_mask = process_lane(lane[:, bound_ind], edge_num, lane_range, offest)
+    cross, cross_mask = process_lane(lane[:, cross_ind], 32, lane_range, offest)
+    rest, rest_mask = process_lane(lane[:, rest], 192, lane_range, offest)
 
-    return cent, cent_mask, bound, bound_mask, cross, cross_mask, rest,rest_mask
+    return cent, cent_mask, bound, bound_mask, cross, cross_mask, rest, rest_mask
+
 
 def rotate(x, y, angle):
     if isinstance(x, torch.Tensor):

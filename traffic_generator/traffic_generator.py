@@ -8,16 +8,17 @@ import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from traffic_generator.utils.data_utils import initDataset,save_as_metadrive_data,from_list_to_batch,transform_to_agent,process_case_to_input
-from traffic_generator.utils.vis_utils import draw,draw_seq
+from traffic_generator.utils.data_utils import initDataset, save_as_metadrive_data, from_list_to_batch, \
+    transform_to_agent, process_case_to_input
+from traffic_generator.utils.vis_utils import draw, draw_seq
 from init.model.tg_init import initializer
 from init.utils.data_utils import WaymoAgent
 from act.model.tg_act import actuator
-from utils.utils import process_map,rotate
+from utils.utils import process_map, rotate
 
 
 class trafficgen:
-    def __init__(self,cfg):
+    def __init__(self, cfg):
         self.cfg = cfg
         self.init_model = initializer.load_from_checkpoint('traffic_generator/ckpt/init.ckpt')
         # act = actuator()
@@ -28,7 +29,6 @@ class trafficgen:
         self.act_model = actuator.load_from_checkpoint('traffic_generator/ckpt/act.ckpt')
         init_dataset = initDataset(cfg)
         self.data_loader = DataLoader(init_dataset, shuffle=False, batch_size=1, num_workers=0)
-
 
     def wash(self, batch):
         """Transform the loaded raw data to pretty pytorch tensor."""
@@ -144,12 +144,12 @@ class trafficgen:
                                                                                     [data['traf'][0]],
                                                                                     center_num=1000, edge_num=500,
                                                                                     offest=0, lane_range=60)
-                    img_path = os.path.join(snapshot_path,f'{i}')
+                    img_path = os.path.join(snapshot_path, f'{i}')
                     draw_seq(cent[0], agent0_list, agent[..., :2], edge=bound[0], other=rest[0], path=img_path,
                              save=True)
 
                 if gif:
-                    dir_path = os.path.join(gif_path,f'{i}')
+                    dir_path = os.path.join(gif_path, f'{i}')
                     if not os.path.exists(dir_path):
                         os.mkdir(dir_path)
 
@@ -186,7 +186,7 @@ class trafficgen:
                     other = {}
                     other['unsampled_lane'] = data['unsampled_lane']
                     other['center_info'] = data['center_info']
-                    data_dir = os.path.join(pkl_path,f'{i}.pkl')
+                    data_dir = os.path.join(pkl_path, f'{i}.pkl')
                     save_as_metadrive_data(pred_i, other, data_dir)
 
         if gif:

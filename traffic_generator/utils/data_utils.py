@@ -6,10 +6,12 @@ import numpy as np
 from torch.utils.data import Dataset
 
 from utils.utils import process_map, rotate, cal_rel_dir, WaymoAgent
-from utils.typedef import AgentType,RoadLineType,RoadEdgeType
+from utils.typedef import AgentType, RoadLineType, RoadEdgeType
 from torch import Tensor
+
 LANE_SAMPLE = 10
 RANGE = 50
+
 
 def process_case_to_input(case, agent_range=60):
     inp = {}
@@ -40,6 +42,7 @@ def process_case_to_input(case, agent_range=60):
     inp['rest_mask'] = inp['rest_mask'][0]
     return inp
 
+
 def get_type_class(line_type):
     if line_type in range(1, 4):
         return 'center_lane'
@@ -66,6 +69,7 @@ def get_type_class(line_type):
     else:
         return 'other'
 
+
 def from_list_to_batch(inp_list):
     keys = inp_list[0].keys()
 
@@ -75,6 +79,7 @@ def from_list_to_batch(inp_list):
         batch[key] = Tensor(np.stack(one_item))
 
     return batch
+
 
 def transform_to_agent(agent_i, agent, lane):
     all_ = copy.deepcopy(agent)
@@ -98,6 +103,7 @@ def transform_to_agent(agent_i, agent, lane):
     lane[..., :2] = output_coords
 
     return all_, lane
+
 
 def save_as_metadrive_data(pred_i, other, save_path):
     output_temp = {}
@@ -146,6 +152,7 @@ def save_as_metadrive_data(pred_i, other, save_path):
 
     with open(save_path, 'wb') as f:
         pickle.dump(output, f)
+
 
 class initDataset(Dataset):
     """
@@ -390,8 +397,8 @@ class initDataset(Dataset):
         center_num = case_info['center'].shape[1]
         lane_inp, agent_vec_index, vec_based_rep, bbox = \
             case_info['lane_inp'][:, :center_num], case_info['agent_vec_index'], case_info['vec_based_rep'], case_info[
-                                                                                                                'agent'][
-                                                                                                            ..., 5:7]
+                                                                                                                 'agent'][
+                                                                                                             ..., 5:7]
         b, lane_num, _ = lane_inp.shape
         gt_distribution = np.zeros([b, lane_num])
         gt_vec_based_coord = np.zeros([b, lane_num, 5])

@@ -6,7 +6,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-
 class EncoderDecoder(nn.Module):
     """
     A standard Encoder-Decoder architecture. Base for this and many
@@ -71,10 +70,12 @@ class EncoderLayer(nn.Module):
         x = self.sublayer[0](x, lambda x: self.self_attn(x, x, x, mask))
         return self.sublayer[1](x, self.feed_forward)
 
+
 class PE():
     """
     Implement the PE function.
     """
+
     def __init__(self, d_model, dropout, max_len=5000):
         self.dropout = nn.Dropout(p=dropout)
         # Compute the positional encodings once in log space.
@@ -205,7 +206,7 @@ class PointerwiseFeedforward(nn.Module):
 
 
 class MCG_block(nn.Module):
-    def __init__(self,hidden_dim):
+    def __init__(self, hidden_dim):
         super(MCG_block, self).__init__()
         self.MLP = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
@@ -213,18 +214,19 @@ class MCG_block(nn.Module):
             nn.ReLU()
         )
 
-    def forward(self, inp, context,mask):
+    def forward(self, inp, context, mask):
         context = context.unsqueeze(1)
         mask = mask.unsqueeze(-1)
 
         inp = self.MLP(inp)
-        inp=inp * context
-        inp = inp.masked_fill(mask==0,torch.tensor(-1e9))
-        context = torch.max(inp,dim=1)[0]
-        return inp,context
+        inp = inp * context
+        inp = inp.masked_fill(mask == 0, torch.tensor(-1e9))
+        context = torch.max(inp, dim=1)[0]
+        return inp, context
+
 
 class CG_stacked(nn.Module):
-    def __init__(self,stack_num,hidden_dim):
+    def __init__(self, stack_num, hidden_dim):
         super(CG_stacked, self).__init__()
         self.CGs = nn.ModuleList()
         self.stack_num = stack_num
@@ -233,13 +235,12 @@ class CG_stacked(nn.Module):
 
     def forward(self, inp, context, mask):
 
-        inp_,context_ = self.CGs[0](inp,context,mask)
-        for i in range(1,self.stack_num):
-            inp,context = self.CGs[i](inp_,context_,mask)
-            inp_ = (inp_*i+inp)/(i+1)
-            context_ = (context_*i+context)/(i+1)
-        return inp_,context_
-
+        inp_, context_ = self.CGs[0](inp, context, mask)
+        for i in range(1, self.stack_num):
+            inp, context = self.CGs[i](inp_, context_, mask)
+            inp_ = (inp_ * i + inp) / (i + 1)
+            context_ = (context_ * i + context) / (i + 1)
+        return inp_, context_
 
 
 class SublayerConnection(nn.Module):
@@ -311,6 +312,7 @@ class MLP(nn.Module):
         x = self.mlp(x)
         return x
 
+
 class MLP_FFN(nn.Module):
     """ Very simple multi-layer perceptron (also called FFN)"""
 
@@ -331,6 +333,7 @@ class MLP_FFN(nn.Module):
             x = F.relu(layer(x)) if i < self.num_layers - 1 else layer(x)
         return x
 
+
 class LocalSubGraphLayer(nn.Module):
     def __init__(self, dim_in: int, dim_out: int) -> None:
         """Local subgraph layer
@@ -341,7 +344,7 @@ class LocalSubGraphLayer(nn.Module):
         :type dim_out: int
         """
         super(LocalSubGraphLayer, self).__init__()
-        self.mlp = MLP(dim_in,dim_in)
+        self.mlp = MLP(dim_in, dim_in)
         self.linear_remap = nn.Linear(dim_in * 2, dim_out)
 
     def forward(self, x: torch.Tensor, invalid_mask: torch.Tensor) -> torch.Tensor:
@@ -367,6 +370,7 @@ class LocalSubGraphLayer(nn.Module):
         x = torch.cat([x, x_agg], dim=-1)
         x = self.linear_remap(x)  # remap to a possibly different feature length
         return x
+
 
 class LocalSubGraph(nn.Module):
     def __init__(self, num_layers: int, dim_in: int) -> None:
@@ -424,6 +428,7 @@ class LocalSubGraph(nn.Module):
         x = x.view(batch_size, polys_num, self.dim_in)
         return x
 
+
 class MLP_3(nn.Module):
     def __init__(self, dims):
         super(MLP_3, self).__init__()
@@ -436,6 +441,7 @@ class MLP_3(nn.Module):
             nn.ReLU(),
             nn.Linear(dims[2], dims[3])
         )
+
     def forward(self, x):
         x = self.mlp(x)
         return x
@@ -448,7 +454,7 @@ class LaneNet(nn.Module):
         self.layer_seq = nn.Sequential()
         for i in range(num_subgraph_layers):
             self.layer_seq.add_module(f'lmlp_{i}', MLP(in_channels, in_channels))
-            #in_channels = hidden_unit * 2
+            # in_channels = hidden_unit * 2
 
     def forward(self, lane):
         x = lane
@@ -459,7 +465,6 @@ class LaneNet(nn.Module):
                 x_max = torch.max(x, -2)[0]
                 x_max = x_max.unsqueeze(2).repeat(1, 1, x.shape[2], 1)
                 x = torch.cat([x, x_max], dim=-1)
-
 
         x_max = torch.max(x, -2)[0]
         return x_max
