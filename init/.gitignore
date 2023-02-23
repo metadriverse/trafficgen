@@ -1,11 +1,11 @@
-git remote add origin git@github.com:metadriverse/trafficgen.git/results/
+/results/
 *.pyc
 
-.idea
+../.idea
 
 *.npz
 *.png
-.DS_Store
+
 **/debug_data/**
 **TrafficTransformer**
 **wandb**
@@ -17,4 +17,3 @@ git remote add origin git@github.com:metadriverse/trafficgen.git/results/
 /TrafficFormerV2/vis/
 /TrafficFormerV2/heatmap/
 /TrafficFormerDynamic/gifs/
-/traffic_generator/ckpt/

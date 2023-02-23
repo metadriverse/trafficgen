@@ -75,3 +75,17 @@ python trafficgen/generate_scenarios.py [--gif] [--num_scenarios 10]
 Set `--gif` flag to generate GIF files.
 
 
+
+## Training
+### Vehicle Placement Model
+````
+python train_init.py -c local
+````
+### Trajectory Generator
+````
+python train_act.py -c local 
+````
+
+
+
+

@@ -1,0 +1,25 @@
+# Config format schema number
+format_version: 4
+map_size: 50
+device: 'gpu'
+
+debug: False
+data_path: '/data/lanfeng/waymo_data/init_data'
+sample_gap: 20
+
+max_epoch: 50
+num_workers: 10
+batch_size: 64
+lr: 0.0003
+weight_decay: 0.0004
+data_usage: 10000
+hidden_dim: 1024
+gaussian_comp: 5
+
+pad_num: 0
+min_agent: 8
+draw: True
+
+strategy: ddp
+
+

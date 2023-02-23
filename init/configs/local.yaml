@@ -1,0 +1,25 @@
+# Config format schema number
+format_version: 4
+device_num: 1
+map_size: 50
+device: 'cpu'
+
+use_cache: False
+debug: True
+data_path: 'init/train_data'
+sample_gap: 20
+
+max_epoch: 50
+num_workers: 0
+batch_size: 4
+lr: 0.0003
+weight_decay: 0.0004
+data_usage: 4
+hidden_dim: 1024
+gaussian_comp: 5
+
+pad_num: 0
+min_agent: 8
+draw: True
+
+

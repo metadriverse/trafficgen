@@ -1,0 +1,18 @@
+# Config format schema number
+format_version: 4
+
+debug: False
+data_path: '/data/lanfeng/waymo/init_data'
+use_cache: True
+
+max_epoch: 50
+num_workers: 10
+batch_size: 128
+lr: 0.0003
+weight_decay: 0.0004
+device: 'gpu'
+data_usage: 70000
+pred_len: 90
+strategy: ddp
+
+
