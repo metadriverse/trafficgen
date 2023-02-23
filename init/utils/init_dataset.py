@@ -9,6 +9,7 @@ from utils.typedef import RoadLineType, RoadEdgeType
 from shapely.geometry import Polygon
 from utils.utils import cal_rel_dir, rotate, process_map, wash
 from tqdm import tqdm
+from utils.config import load_config_init, get_parsed_args
 
 
 def get_agent_pos_from_vec(vec, long_lat, speed, vel_heading, heading, bbox):
@@ -499,3 +500,9 @@ class initDataset(Dataset):
             case_list.append(dic)
 
         return case_list
+
+if __name__ == "__main__":
+    args = get_parsed_args()
+    cfg = load_config_init(args.config)
+    cfg['use_cache'] = False
+    initDataset(cfg)

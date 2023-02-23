@@ -1,14 +1,11 @@
 import pytorch_lightning as pl
-from init.utils.data_utils import initDataset
+from init.utils.init_dataset import initDataset
 import torch.utils.data as data
 from torch.utils.data import DataLoader
-
-import argparse
 from utils.config import load_config_init, get_parsed_args
 from init.model.tg_init import initializer
 import torch
 from utils.typedef import AgentType, RoadEdgeType, RoadLineType
-# General config
 from pytorch_lightning.loggers import WandbLogger
 
 if __name__ == '__main__':
