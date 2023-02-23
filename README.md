@@ -17,15 +17,14 @@ git clone https://github.com/metadriverse/trafficgen.git
 cd trafficgen
 
 # Create virtual environment
-conda create -n trafficgen python=3.7
+conda create -n trafficgen python=3.8
 conda activate trafficgen
 
+# You should install pytorch by yourself to make them compatible with your GPU
+# For cuda 11.0:
+pip install torch==1.7.1+cu110 torchvision==0.8.2+cu110 torchaudio==0.7.2 -f https://download.pytorch.org/whl/torch_stable.html
 # Install basic dependency
 pip install -e .
-
-# You should probably install pytorch and tensorflow by yourself to make them compatible with your GPU
-...
-
 ```
 
 If you find error messages related to `geos` when installing `Shapely`, checkout [this post](https://stackoverflow.com/questions/19742406/could-not-find-library-geos-c-or-load-any-of-its-variants).
@@ -77,11 +76,12 @@ Set `--gif` flag to generate GIF files.
 
 
 ## Training
+
 ### Vehicle Placement Model
 ````
 python train_init.py -c local
 ````
-### Trajectory Generator
+### Trajectory Generator Model
 ````
 python train_act.py -c local 
 ````
