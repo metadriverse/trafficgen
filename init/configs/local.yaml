@@ -6,7 +6,7 @@ device: 'cpu'
 
 use_cache: False
 debug: True
-data_path: 'init/train_data'
+data_path: 'init/sample_data'
 sample_gap: 20
 
 max_epoch: 50

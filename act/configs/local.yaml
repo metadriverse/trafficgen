@@ -2,7 +2,7 @@
 format_version: 4
 
 debug: True
-data_path: 'act/train_data'
+data_path: 'act/sample_data'
 use_cache: True
 
 num_workers: 0

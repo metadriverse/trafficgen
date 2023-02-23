@@ -6,8 +6,6 @@
 [**Paper**](https://arxiv.org/pdf/2210.06609.pdf)
 
 
-## Generating traffic flow with TrafficGen
-
 
 ### Step 1: Setup python environment
 
@@ -17,15 +15,14 @@ git clone https://github.com/metadriverse/trafficgen.git
 cd trafficgen
 
 # Create virtual environment
-conda create -n trafficgen python=3.7
+conda create -n trafficgen python=3.8
 conda activate trafficgen
 
+# You should install pytorch by yourself to make them compatible with your GPU
+# For cuda 11.0:
+pip install torch==1.7.1+cu110 torchvision==0.8.2+cu110 torchaudio==0.7.2 -f https://download.pytorch.org/whl/torch_stable.html
 # Install basic dependency
 pip install -e .
-
-# You should probably install pytorch and tensorflow by yourself to make them compatible with your GPU
-...
-
 ```
 
 If you find error messages related to `geos` when installing `Shapely`, checkout [this post](https://stackoverflow.com/questions/19742406/could-not-find-library-geos-c-or-load-any-of-its-variants).
@@ -40,36 +37,42 @@ Download from Waymo Dataset
 
 Note: You can download multiple files from above link and put them
 
-### Step 3: Transform raw data in TF files to python objects
+### Step 3: Data Preprocess
 
 ```bash
-python trafficgen/scripts/trans20.py raw_data processed_data None
+sh utils/data_trans.sh raw_data/dir processed_data/dir
 ```
 
-The processed data has the following attributes:
-- `id`: scenario id
-- `all_agent`: A `[190, n, 9]` array which contains 190 frames, n agents, 9 features `[coord, velocity, heading, length, width, type, validity]`
-- `traffic_light`: A list containing information about the traffic light
-- `lane`: A `[n,4]` array which contains n points and `[coord, type, id(which lane this point belongs to)]` features.
+[//]: # (The processed data has the following attributes:)
+
+[//]: # (- `id`: scenario id)
+
+[//]: # (- `all_agent`: A `[190, n, 9]` array which contains 190 frames, n agents, 9 features `[coord, velocity, heading, length, width, type, validity]`)
+
+[//]: # (- `traffic_light`: A list containing information about the traffic light)
+
+[//]: # (- `lane`: A `[n,4]` array which contains n points and `[coord, type, id&#40;which lane this point belongs to&#41;]` features.)
+
+[//]: # ()
 
 ### Step 4: Download and retrieve pretrained TrafficGen model
 
 Please download two models from this link: https://drive.google.com/drive/folders/1TbCV6y-vssvG3YsuA6bAtD9lUX39DH9C?usp=sharing
 
-And then put them into `./trafficgen/model_weights` folder.
+And then put them into `traffic_generator/ckpt` folder.
 
 ### Step 5: Generate new traffic scenarios based on existing traffic scenarios
 
 Running following scripts will generate images and GIFs (if with `--gif`) visualizing the new traffic scenarios in 
-`./vis` folder.
+`traffic_generator/output/vis` folder.
 
 ```bash
 # change the data usage and set the data dir in debug.yaml
 
 # First, you have to change working directory
-cd trafficgen
+cd TrafficGen
 
-python trafficgen/generate_scenarios.py [--gif] [--num_scenarios 10]
+python generate.py [--gif] 
 ```
 
 Set `--gif` flag to generate GIF files.
@@ -77,14 +80,25 @@ Set `--gif` flag to generate GIF files.
 
 
 ## Training
-### Vehicle Placement Model
+
+### Local debug
+Use the sample data packed in the code repo directly
+#### Vehicle Placement Model
 ````
 python train_init.py -c local
 ````
-### Trajectory Generator
+#### Trajectory Generator Model
 ````
 python train_act.py -c local 
 ````
+### Train TrafficGen in the cluster
+Modify cluster.yaml. Change the data path, data_usage.
+````
+python train_act.py -c cluster -d 0 1 2 3 -e test
+````
+
+-d denotes which GPU to use
+
 
 
 

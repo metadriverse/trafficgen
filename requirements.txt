@@ -1,11 +1,11 @@
+pytorch-lightning
 matplotlib
 protobuf==3.20.*
 scipy
 Shapely==1.8.0
 tensorflow
-torch
 torchmetrics
 tqdm==4.62.3
 pyyaml
 imageio
-numpy
+wandb
