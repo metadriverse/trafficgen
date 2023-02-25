@@ -1,10 +1,7 @@
 import pytorch_lightning as pl
-from act.utils.data_utils import actDataset
-# from act.utils.temp_dataset import actDataset
+from act.utils.act_dataset import actDataset
 import torch.utils.data as data
 from torch.utils.data import DataLoader
-
-import argparse
 from utils.config import load_config_act
 from act.model.tg_act import actuator
 from utils.typedef import AgentType, RoadEdgeType, RoadLineType

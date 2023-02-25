@@ -12,7 +12,7 @@ from traffic_generator.utils.data_utils import initDataset, save_as_metadrive_da
     transform_to_agent, process_case_to_input
 from traffic_generator.utils.vis_utils import draw, draw_seq
 from init.model.tg_init import initializer
-from init.utils.data_utils import WaymoAgent
+from init.utils.init_dataset import WaymoAgent
 from act.model.tg_act import actuator
 from utils.utils import process_map, rotate
 

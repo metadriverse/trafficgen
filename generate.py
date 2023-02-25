@@ -1,3 +1,5 @@
+import numpy as np
+
 from traffic_generator.traffic_generator import trafficgen
 from traffic_generator.utils.utils import get_parsed_args
 from utils.config import load_config_init

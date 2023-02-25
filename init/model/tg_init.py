@@ -6,9 +6,8 @@ import copy
 from torch import Tensor
 
 copy_func = copy.deepcopy
-from init.utils.data_utils import WaymoAgent
+from init.utils.init_dataset import WaymoAgent,get_agent_pos_from_vec
 from random import choices
-from init.utils.data_utils import get_agent_pos_from_vec
 from torch.optim.lr_scheduler import MultiStepLR
 import numpy as np
 import pytorch_lightning as pl
