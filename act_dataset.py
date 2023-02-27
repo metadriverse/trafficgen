@@ -45,8 +45,7 @@ class WaymoAgent:
     def get_inp(self, act=False, act_inp=False):
 
         if act:
-            return np.concatenate(
-                [self.position, self.velocity, self.heading, self.length_width], axis=-1)
+            return np.concatenate([self.position, self.velocity, self.heading, self.length_width], axis=-1)
 
         pos = self.position / self.RANGE
         velo = self.velocity / self.MAX_SPEED
@@ -54,16 +53,12 @@ class WaymoAgent:
         sin_head = np.sin(self.heading)
 
         if act_inp:
-            return np.concatenate(
-                [pos, velo, cos_head, sin_head, self.length_width], axis=-1)
+            return np.concatenate([pos, velo, cos_head, sin_head, self.length_width], axis=-1)
 
         vec_based_rep = copy.deepcopy(self.vec_based_info)
         vec_based_rep[..., 5:9] /= self.RANGE
         vec_based_rep[..., 2] /= self.MAX_SPEED
-        agent_feat = np.concatenate(
-            [pos, velo, cos_head, sin_head, self.length_width,
-             vec_based_rep],
-            axis=-1)
+        agent_feat = np.concatenate([pos, velo, cos_head, sin_head, self.length_width, vec_based_rep], axis=-1)
         return agent_feat
 
     def get_rect(self, pad=0):
@@ -179,7 +174,7 @@ def process_lane(lane, max_vec, lane_range, offset=-40):
         mask_t = vector_mask[t]
         vector_t = vector[t][mask_t]
 
-        dist = vector_t[..., 0] ** 2 + vector_t[..., 1] ** 2
+        dist = vector_t[..., 0]**2 + vector_t[..., 1]**2
         idx = np.argsort(dist)
         vector_t = vector_t[idx]
         mask_t = np.ones(vector_t.shape[0])
@@ -271,7 +266,6 @@ class actDataset(Dataset):
     """
     If in debug, it will load debug dataset
     """
-
     def __init__(self, cfg, args=None, eval=False):
         self.total_data_usage = cfg["data_usage"]
         self.data_path = cfg['data_path']

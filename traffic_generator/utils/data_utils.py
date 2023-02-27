@@ -158,7 +158,6 @@ class initDataset(Dataset):
     """
     If in debug, it will load debug dataset
     """
-
     def __init__(self, cfg):
         self.total_data_usage = cfg["data_usage"]
         self.data_path = cfg['data_path']
@@ -213,7 +212,7 @@ class initDataset(Dataset):
         agent_x = np.repeat(agent_x[:, :, np.newaxis], axis=-1, repeats=vec_num)
         agent_y = np.repeat(agent_y[:, :, np.newaxis], axis=-1, repeats=vec_num)
 
-        dist = np.sqrt((vec_x - agent_x) ** 2 + (vec_y - agent_y) ** 2)
+        dist = np.sqrt((vec_x - agent_x)**2 + (vec_y - agent_y)**2)
 
         cent_mask = np.repeat(case_info['center_mask'][:, np.newaxis], axis=1, repeats=agent_num)
         dist[cent_mask == 0] = 10e5
@@ -224,7 +223,7 @@ class initDataset(Dataset):
         selected_vec = np.take_along_axis(vectors, vec_index[..., np.newaxis], axis=1)
 
         vx, vy = agent[..., 2], agent[..., 3]
-        v_value = np.sqrt(vx ** 2 + vy ** 2)
+        v_value = np.sqrt(vx**2 + vy**2)
         low_vel = v_value < 0.1
 
         dir_v = np.arctan2(vy, vx)
@@ -270,8 +269,11 @@ class initDataset(Dataset):
         # 6-9 lane vector
         # 10-11 lane type and traff state
         info = np.concatenate(
-            [vec_index[..., np.newaxis], long_perc[..., np.newaxis], lat_perc[..., np.newaxis],
-             v_value[..., np.newaxis], v_relative_dir[..., np.newaxis], relative_dir[..., np.newaxis], the_vec], -1)
+            [
+                vec_index[..., np.newaxis], long_perc[..., np.newaxis], lat_perc[..., np.newaxis],
+                v_value[..., np.newaxis], v_relative_dir[..., np.newaxis], relative_dir[..., np.newaxis], the_vec
+            ], -1
+        )
 
         info_ = np.zeros([b_s, max_agent_num, info.shape[-1]])
 
@@ -429,7 +431,8 @@ class initDataset(Dataset):
         case_info['lane_inp'] = np.concatenate([center, edge, cross, rest], axis=1)
         case_info['lane_mask'] = np.concatenate(
             [case_info['center_mask'], case_info['bound_mask'], case_info['cross_mask'], case_info['rest_mask']],
-            axis=1)
+            axis=1
+        )
         return
 
     def process(self, data):
