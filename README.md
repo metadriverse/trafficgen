@@ -7,7 +7,7 @@
 
 
 
-### Step 1: Setup python environment
+## Setup environment
 
 ```bash
 # Clone the code to local
@@ -27,7 +27,25 @@ pip install -e .
 
 If you find error messages related to `geos` when installing `Shapely`, checkout [this post](https://stackoverflow.com/questions/19742406/could-not-find-library-geos-c-or-load-any-of-its-variants).
 
-### Step 2: Download dataset for road and traffic
+
+## Quick Start
+
+You can run the following scripts to test whether the setup is correct. These scripts do not require
+downloading data.
+
+#### Vehicle Placement Model
+````
+python train_init.py -c local
+````
+#### Trajectory Generator Model
+````
+python train_act.py -c local 
+````
+
+
+## Download and Process Dataset and Pre-trained Model
+
+### Download dataset for road and traffic
 
 Download from Waymo Dataset
 - Register your Google account in: https://waymo.com/open/
@@ -37,7 +55,7 @@ Download from Waymo Dataset
 
 Note: You can download multiple files from above link and put them
 
-### Step 3: Data Preprocess
+### Data Preprocess
 
 ```bash
 sh utils/data_trans.sh raw_data/dir processed_data/dir
@@ -55,13 +73,13 @@ sh utils/data_trans.sh raw_data/dir processed_data/dir
 
 [//]: # ()
 
-### Step 4: Download and retrieve pretrained TrafficGen model
+### Download and retrieve pretrained TrafficGen model
 
 Please download two models from this link: https://drive.google.com/drive/folders/1TbCV6y-vssvG3YsuA6bAtD9lUX39DH9C?usp=sharing
 
 And then put them into `traffic_generator/ckpt` folder.
 
-### Step 5: Generate new traffic scenarios based on existing traffic scenarios
+### Generate new traffic scenarios based on existing traffic scenarios
 
 Running following scripts will generate images and GIFs (if with `--gif`) visualizing the new traffic scenarios in 
 `traffic_generator/output/vis` folder.
@@ -81,16 +99,6 @@ Set `--gif` flag to generate GIF files.
 
 ## Training
 
-### Local debug
-Use the sample data packed in the code repo directly
-#### Vehicle Placement Model
-````
-python train_init.py -c local
-````
-#### Trajectory Generator Model
-````
-python train_act.py -c local 
-````
 ### Train TrafficGen in the cluster
 Modify cluster.yaml. Change the data path, data_usage.
 ````
