@@ -6,6 +6,7 @@ device: 'gpu'
 debug: False
 data_path: '/data/lanfeng/waymo_data/init_data'
 sample_gap: 20
+use_cache: True
 
 max_epoch: 50
 num_workers: 10
