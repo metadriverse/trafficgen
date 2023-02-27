@@ -6,7 +6,7 @@ import copy
 from torch import Tensor
 
 copy_func = copy.deepcopy
-from init.utils.init_dataset import WaymoAgent,get_agent_pos_from_vec
+from init.utils.init_dataset import WaymoAgent, get_agent_pos_from_vec
 from random import choices
 from torch.optim.lr_scheduler import MultiStepLR
 import numpy as np
@@ -16,7 +16,6 @@ import math
 
 class initializer(pl.LightningModule):
     """ A transformer model with wider latent space """
-
     def __init__(self, cfg):
         super().__init__()
         self.save_hyperparameters()
@@ -155,10 +154,8 @@ class initializer(pl.LightningModule):
             sigma_2 = torch.exp(diag[..., 1])
             rho = torch.tanh(tril)
 
-            cov = torch.stack([
-                sigma_1 ** 2, rho * sigma_1 * sigma_2,
-                rho * sigma_1 * sigma_2, sigma_2 ** 2
-            ], dim=-1).view(*loc.shape[:-1], 2, 2)
+            cov = torch.stack([sigma_1**2, rho * sigma_1 * sigma_2, rho * sigma_1 * sigma_2, sigma_2**2],
+                              dim=-1).view(*loc.shape[:-1], 2, 2)
 
             distri = torch.distributions.multivariate_normal.MultivariateNormal(loc=loc, covariance_matrix=cov)
 
@@ -220,9 +217,14 @@ class initializer(pl.LightningModule):
         # vel_heading_weight = torch.distributions.Categorical(logits=vel_heading_weight)
         # vel_heading_gmm = torch.distributions.mixture_same_family.MixtureSameFamily(vel_heading_weight,
         #                                                                             vel_heading_distri)
-        return {'prob': prob_pred, 'pos': pos_gmm, 'bbox': bbox_gmm, 'heading': heading_gmm,
-                'speed': speed_out.squeeze(-1),
-                'vel_heading': vel_heading_out.squeeze(-1)}
+        return {
+            'prob': prob_pred,
+            'pos': pos_gmm,
+            'bbox': bbox_gmm,
+            'heading': heading_gmm,
+            'speed': speed_out.squeeze(-1),
+            'vel_heading': vel_heading_out.squeeze(-1)
+        }
 
     def agent_feature_extract(self, agent_feat, agent_mask, random_mask):
         agent = agent_feat[..., :-2]

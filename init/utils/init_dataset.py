@@ -16,7 +16,7 @@ def get_agent_pos_from_vec(vec, long_lat, speed, vel_heading, heading, bbox):
     x1, y1, x2, y2 = vec[:, 0], vec[:, 1], vec[:, 2], vec[:, 3]
     x_center, y_center = (x1 + x2) / 2, (y1 + y2) / 2
 
-    vec_len = ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
+    vec_len = ((x1 - x2)**2 + (y1 - y2)**2)**0.5
 
     vec_dir = torch.atan2(y2 - y1, x2 - x1)
 
@@ -37,8 +37,11 @@ def get_agent_pos_from_vec(vec, long_lat, speed, vel_heading, heading, bbox):
     type = Tensor([[1]]).repeat(agent_num, 1).to(coord.device)
     agent = torch.cat([coord, vel, agent_dir.unsqueeze(1), bbox, type], dim=-1).detach().cpu().numpy()
 
-    vec_based_rep = torch.cat([long_lat, speed.unsqueeze(-1), vel_heading.unsqueeze(-1), heading.unsqueeze(-1), vec],
-                              dim=-1).detach().cpu().numpy()
+    vec_based_rep = torch.cat(
+        [long_lat, speed.unsqueeze(-1),
+         vel_heading.unsqueeze(-1),
+         heading.unsqueeze(-1), vec], dim=-1
+    ).detach().cpu().numpy()
 
     agent = WaymoAgent(agent, vec_based_rep)
 
@@ -117,7 +120,7 @@ def get_vec_rep(case_info):
     agent_x = np.repeat(agent_x[:, :, np.newaxis], axis=-1, repeats=vec_num)
     agent_y = np.repeat(agent_y[:, :, np.newaxis], axis=-1, repeats=vec_num)
 
-    dist = np.sqrt((vec_x - agent_x) ** 2 + (vec_y - agent_y) ** 2)
+    dist = np.sqrt((vec_x - agent_x)**2 + (vec_y - agent_y)**2)
 
     cent_mask = np.repeat(case_info['center_mask'][:, np.newaxis], axis=1, repeats=agent_num)
     dist[cent_mask == 0] = 10e5
@@ -128,7 +131,7 @@ def get_vec_rep(case_info):
     selected_vec = np.take_along_axis(vectors, vec_index[..., np.newaxis], axis=1)
 
     vx, vy = agent[..., 2], agent[..., 3]
-    v_value = np.sqrt(vx ** 2 + vy ** 2)
+    v_value = np.sqrt(vx**2 + vy**2)
     low_vel = v_value < 0.1
 
     dir_v = np.arctan2(vy, vx)
@@ -174,8 +177,11 @@ def get_vec_rep(case_info):
     # 6-9 lane vector
     # 10-11 lane type and traff state
     info = np.concatenate(
-        [vec_index[..., np.newaxis], long_perc[..., np.newaxis], lat_perc[..., np.newaxis],
-         v_value[..., np.newaxis], v_relative_dir[..., np.newaxis], relative_dir[..., np.newaxis], the_vec], -1)
+        [
+            vec_index[..., np.newaxis], long_perc[..., np.newaxis], lat_perc[..., np.newaxis], v_value[..., np.newaxis],
+            v_relative_dir[..., np.newaxis], relative_dir[..., np.newaxis], the_vec
+        ], -1
+    )
 
     info_ = np.zeros([b_s, max_agent_num, info.shape[-1]])
 
@@ -276,7 +282,8 @@ def process_map_inp(case_info, map_size=50):
 
     case_info['lane_inp'] = np.concatenate([center, edge, cross, rest], axis=1)
     case_info['lane_mask'] = np.concatenate(
-        [case_info['center_mask'], case_info['bound_mask'], case_info['cross_mask'], case_info['rest_mask']], axis=1)
+        [case_info['center_mask'], case_info['bound_mask'], case_info['cross_mask'], case_info['rest_mask']], axis=1
+    )
     return
 
 
@@ -295,7 +302,8 @@ class WaymoAgent:
             self.length_width = feature[..., 6:8]
             type = np.ones_like(self.heading)
             self.feature = np.concatenate(
-                [self.position, self.velocity, self.heading, self.length_width, type], axis=-1)
+                [self.position, self.velocity, self.heading, self.length_width, type], axis=-1
+            )
             if vec_based_info is not None:
                 vec_based_rep = copy.deepcopy(vec_based_info)
                 vec_based_rep[..., 5:9] *= self.RANGE
@@ -341,8 +349,7 @@ class WaymoAgent:
     def get_inp(self, act=False, act_inp=False):
 
         if act:
-            return np.concatenate(
-                [self.position, self.velocity, self.heading, self.length_width], axis=-1)
+            return np.concatenate([self.position, self.velocity, self.heading, self.length_width], axis=-1)
 
         pos = self.position / self.RANGE
         velo = self.velocity / self.MAX_SPEED
@@ -350,16 +357,12 @@ class WaymoAgent:
         sin_head = np.sin(self.heading)
 
         if act_inp:
-            return np.concatenate(
-                [pos, velo, cos_head, sin_head, self.length_width], axis=-1)
+            return np.concatenate([pos, velo, cos_head, sin_head, self.length_width], axis=-1)
 
         vec_based_rep = copy.deepcopy(self.vec_based_info)
         vec_based_rep[..., 5:9] /= self.RANGE
         vec_based_rep[..., 2] /= self.MAX_SPEED
-        agent_feat = np.concatenate(
-            [pos, velo, cos_head, sin_head, self.length_width,
-             vec_based_rep],
-            axis=-1)
+        agent_feat = np.concatenate([pos, velo, cos_head, sin_head, self.length_width, vec_based_rep], axis=-1)
         return agent_feat
 
     def get_rect(self, pad=0):
@@ -414,7 +417,6 @@ class initDataset(Dataset):
     """
     If in debug, it will load debug dataset
     """
-
     def __init__(self, cfg):
         self.data_path = cfg['data_path']
         self.cfg = cfg
@@ -500,6 +502,7 @@ class initDataset(Dataset):
             case_list.append(dic)
 
         return case_list
+
 
 if __name__ == "__main__":
     args = get_parsed_args()

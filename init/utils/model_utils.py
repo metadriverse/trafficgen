@@ -11,7 +11,6 @@ class EncoderDecoder(nn.Module):
     A standard Encoder-Decoder architecture. Base for this and many
     other models.
     """
-
     def __init__(self, encoder, decoder, src_embed):
         super(EncoderDecoder, self).__init__()
         self.encoder = encoder
@@ -36,7 +35,6 @@ class Encoder(nn.Module):
     """
     Core encoder is a stack of N layers
     """
-
     def __init__(self, layer, n):
         super(Encoder, self).__init__()
         self.layers = clones(layer, n)
@@ -55,7 +53,6 @@ class EncoderLayer(nn.Module):
     """
     Encoder is made up of self-attn and feed forward (defined below)
     """
-
     def __init__(self, size, self_attn, feed_forward, dropout):
         super(EncoderLayer, self).__init__()
         self.self_attn = self_attn
@@ -75,7 +72,6 @@ class PE():
     """
     Implement the PE function.
     """
-
     def __init__(self, d_model, dropout, max_len=5000):
         self.dropout = nn.Dropout(p=dropout)
         # Compute the positional encodings once in log space.
@@ -91,7 +87,6 @@ class Decoder(nn.Module):
     """
     Generic N layer decoder with masking.
     """
-
     def __init__(self, layer, n, return_intermediate=False):
         super(Decoder, self).__init__()
         self.layers = clones(layer, n)
@@ -124,7 +119,6 @@ class DecoderLayer(nn.Module):
     """
     Decoder is made of self-attn, src-attn, and feed forward (defined below)
     """
-
     def __init__(self, size, self_attn, src_attn, feed_forward, dropout):
         super(DecoderLayer, self).__init__()
         self.size = size
@@ -172,15 +166,17 @@ class MultiHeadAttention(nn.Module):
             batch = query.shape[:batch_dim]
             mask_dim = batch_dim
         else:
-            batch = (query.shape[0],)
+            batch = (query.shape[0], )
             mask_dim = 1
         if mask is not None:
             # Same mask applied to all h heads.
             mask = mask.unsqueeze(dim=mask_dim)
 
         # 1) Do all the linear projections in batch from d_model => h x d_k
-        query, key, value = [l(x).view(*batch, -1, self.h, self.d_k).transpose(-3, -2) for l, x in
-                             zip(self.linears, (query, key, value))]
+        query, key, value = [
+            l(x).view(*batch, -1, self.h, self.d_k).transpose(-3, -2)
+            for l, x in zip(self.linears, (query, key, value))
+        ]
 
         # 2) Apply attention on all the projected vectors in batch.
         x, self.attn = attention(query, key, value, mask=mask, dropout=self.dropout)
@@ -193,7 +189,6 @@ class PointerwiseFeedforward(nn.Module):
     """
     Implements FFN equation.
     """
-
     def __init__(self, d_model, d_ff, dropout=0.1):
         super(PointerwiseFeedforward, self).__init__()
         self.w_1 = nn.Linear(d_model, d_ff, bias=True)
@@ -208,11 +203,7 @@ class PointerwiseFeedforward(nn.Module):
 class MCG_block(nn.Module):
     def __init__(self, hidden_dim):
         super(MCG_block, self).__init__()
-        self.MLP = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.LayerNorm(hidden_dim),
-            nn.ReLU()
-        )
+        self.MLP = nn.Sequential(nn.Linear(hidden_dim, hidden_dim), nn.LayerNorm(hidden_dim), nn.ReLU())
 
     def forward(self, inp, context, mask):
         context = context.unsqueeze(1)
@@ -248,7 +239,6 @@ class SublayerConnection(nn.Module):
     A residual connection followed by a layer norm.
     Note for code simplicity the norm is first as opposed to last.
     """
-
     def __init__(self, size, dropout):
         super(SublayerConnection, self).__init__()
         self.norm = nn.LayerNorm(size)
@@ -302,11 +292,7 @@ class LinearEmbedding(nn.Module):
 class MLP(nn.Module):
     def __init__(self, in_channels, hidden_unit):
         super(MLP, self).__init__()
-        self.mlp = nn.Sequential(
-            nn.Linear(in_channels, hidden_unit),
-            nn.LayerNorm(hidden_unit),
-            nn.ReLU()
-        )
+        self.mlp = nn.Sequential(nn.Linear(in_channels, hidden_unit), nn.LayerNorm(hidden_unit), nn.ReLU())
 
     def forward(self, x):
         x = self.mlp(x)
@@ -315,7 +301,6 @@ class MLP(nn.Module):
 
 class MLP_FFN(nn.Module):
     """ Very simple multi-layer perceptron (also called FFN)"""
-
     def __init__(self, input_dim: int, hidden_dim: int, output_dim: int, num_layers: int):
         super().__init__()
         self.num_layers = num_layers
@@ -433,13 +418,8 @@ class MLP_3(nn.Module):
     def __init__(self, dims):
         super(MLP_3, self).__init__()
         self.mlp = nn.Sequential(
-            nn.Linear(dims[0], dims[1]),
-            nn.LayerNorm(dims[1]),
-            nn.ReLU(),
-            nn.Linear(dims[1], dims[2]),
-            nn.LayerNorm(dims[2]),
-            nn.ReLU(),
-            nn.Linear(dims[2], dims[3])
+            nn.Linear(dims[0], dims[1]), nn.LayerNorm(dims[1]), nn.ReLU(), nn.Linear(dims[1], dims[2]),
+            nn.LayerNorm(dims[2]), nn.ReLU(), nn.Linear(dims[2], dims[3])
         )
 
     def forward(self, x):

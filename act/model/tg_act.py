@@ -53,7 +53,6 @@ def loss_v1(pred, gt):
 
 class actuator(pl.LightningModule):
     """ A transformer model with wider latent space """
-
     def __init__(self, cfg=None):
         super().__init__()
         self.save_hyperparameters()

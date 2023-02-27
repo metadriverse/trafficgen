@@ -45,13 +45,11 @@ class trafficgen:
     def generate_scenarios(self, gif=True):
         print('Initializing traffic scenarios...')
         self.place_vehicles(vis=True)
-        print('Complete.\n'
-              'Visualization results are saved in traffic_generator/output/vis/scene_initialized\n')
+        print('Complete.\n' 'Visualization results are saved in traffic_generator/output/vis/scene_initialized\n')
 
         print('Generating trajectories...')
         self.generate_traj(snapshot=True, gif=gif)
-        print('Complete.\n'
-              'Visualization results are saved in traffic_generator/output/vis/scene_static\n')
+        print('Complete.\n' 'Visualization results are saved in traffic_generator/output/vis/scene_static\n')
 
     def place_vehicles(self, vis=True):
         context_num = 1
@@ -86,8 +84,7 @@ class trafficgen:
                 # visualize generated traffic snapshots
                 if vis:
                     output_path = os.path.join(init_vis_dir, f'{idx}')
-                    draw(center, output['agent'], other=rest, edge=bound, save=True,
-                         path=output_path)
+                    draw(center, output['agent'], other=rest, edge=bound, save=True, path=output_path)
 
                 agent, agent_mask = WaymoAgent.from_list_to_array(output['agent'])
 
@@ -140,13 +137,17 @@ class trafficgen:
                     for a in range(agent_num):
                         agent0_list.append(WaymoAgent(agent_0[[a]]))
 
-                    cent, cent_mask, bound, bound_mask, _, _, rest, _ = process_map(data['lane'][np.newaxis],
-                                                                                    [data['traf'][0]],
-                                                                                    center_num=1000, edge_num=500,
-                                                                                    offest=0, lane_range=60)
+                    cent, cent_mask, bound, bound_mask, _, _, rest, _ = process_map(
+                        data['lane'][np.newaxis], [data['traf'][0]],
+                        center_num=1000,
+                        edge_num=500,
+                        offest=0,
+                        lane_range=60
+                    )
                     img_path = os.path.join(snapshot_path, f'{i}')
-                    draw_seq(cent[0], agent0_list, agent[..., :2], edge=bound[0], other=rest[0], path=img_path,
-                             save=True)
+                    draw_seq(
+                        cent[0], agent0_list, agent[..., :2], edge=bound[0], other=rest[0], path=img_path, save=True
+                    )
 
                 if gif:
                     dir_path = os.path.join(gif_path, f'{i}')
@@ -163,10 +164,13 @@ class trafficgen:
                             agent_list.append(WaymoAgent(agent_t[[a]]))
 
                         path = os.path.join(dir_path, f'{t}')
-                        cent, cent_mask, bound, bound_mask, _, _, rest, _ = process_map(data['lane'][np.newaxis],
-                                                                                        [data['traf'][int(t * 5)]],
-                                                                                        center_num=2000, edge_num=1000,
-                                                                                        offest=0, lane_range=80)
+                        cent, cent_mask, bound, bound_mask, _, _, rest, _ = process_map(
+                            data['lane'][np.newaxis], [data['traf'][int(t * 5)]],
+                            center_num=2000,
+                            edge_num=1000,
+                            offest=0,
+                            lane_range=80
+                        )
                         draw(cent[0], agent_list, edge=bound[0], other=rest[0], path=path, save=True, vis_range=80)
 
                     images = []

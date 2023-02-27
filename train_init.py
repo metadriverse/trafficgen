@@ -14,13 +14,20 @@ if __name__ == '__main__':
     cfg = load_config_init(args.config)
 
     if cfg['debug']:
-        trainer = pl.Trainer(devices=cfg['device_num'], gradient_clip_val=0.5, accelerator=cfg['device'],
-                             profiler="simple")
+        trainer = pl.Trainer(
+            devices=cfg['device_num'], gradient_clip_val=0.5, accelerator=cfg['device'], profiler="simple"
+        )
     else:
         wandb_logger = WandbLogger(project="trafficGen_ptl", name=args.exp_name)
-        trainer = pl.Trainer(max_epochs=100, logger=wandb_logger, devices=cfg['device_num'],
-                             gradient_clip_val=0.5, accelerator=cfg['device'], profiler="simple",
-                             strategy=cfg['strategy'])
+        trainer = pl.Trainer(
+            max_epochs=100,
+            logger=wandb_logger,
+            devices=cfg['device_num'],
+            gradient_clip_val=0.5,
+            accelerator=cfg['device'],
+            profiler="simple",
+            strategy=cfg['strategy']
+        )
 
     train_set = initDataset(cfg)
 
@@ -33,14 +40,12 @@ if __name__ == '__main__':
     train_set, val_set = data.random_split(train_set, [train_set_size, valid_set_size])
 
     train_loader = DataLoader(
-        train_set, batch_size=cfg['batch_size'],
-        num_workers=cfg['num_workers'],
-        shuffle=True, drop_last=True)
+        train_set, batch_size=cfg['batch_size'], num_workers=cfg['num_workers'], shuffle=True, drop_last=True
+    )
 
     val_loader = DataLoader(
-        val_set, batch_size=cfg['batch_size'],
-        num_workers=cfg['num_workers'],
-        shuffle=False, drop_last=True)
+        val_set, batch_size=cfg['batch_size'], num_workers=cfg['num_workers'], shuffle=False, drop_last=True
+    )
 
     model = initializer(cfg)
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)

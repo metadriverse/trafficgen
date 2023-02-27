@@ -32,7 +32,8 @@ def draw(center, agents, other, heat_map=None, save=False, edge=None, path='../v
 
         x0, y0, x1, y1, = center[j, :4]
 
-        if x0 == 0: break
+        if x0 == 0:
+            break
         ax.plot((x0, x1), (y0, y1), '--', color=lane_color, linewidth=1, alpha=0.2)
 
         if traf_state == 1:
@@ -50,7 +51,8 @@ def draw(center, agents, other, heat_map=None, save=False, edge=None, path='../v
 
             # if lane[j, k, -1] == 0: continue
             x0, y0, x1, y1, = edge[j, :4]
-            if x0 == 0: break
+            if x0 == 0:
+                break
             ax.plot((x0, x1), (y0, y1), lane_color, linewidth=1)
             # ax.arrow(x0, y0, x1-x0, y1-y0,head_width=1.5,head_length=0.75,width = 0.1)
     if other is not None:
@@ -58,7 +60,8 @@ def draw(center, agents, other, heat_map=None, save=False, edge=None, path='../v
 
             # if lane[j, k, -1] == 0: continue
             x0, y0, x1, y1, = other[j, :4]
-            if x0 == 0: break
+            if x0 == 0:
+                break
             ax.plot((x0, x1), (y0, y1), lane_color, linewidth=0.7)
 
     for i in range(len(agents)):
@@ -67,14 +70,20 @@ def draw(center, agents, other, heat_map=None, save=False, edge=None, path='../v
         col = colors[ind]
         agent = agents[i]
         center = agent.position[0]
-        if abs(center[0]) > (vis_range - 7) or abs(center[1]) > (vis_range - 7): continue
+        if abs(center[0]) > (vis_range - 7) or abs(center[1]) > (vis_range - 7):
+            continue
         vel = agent.velocity[0]
         rect = agent.get_rect()[0]
-        rect = plt.Polygon(rect, edgecolor=lane_color,
-                           facecolor=col, linewidth=0.5, zorder=10000)
+        rect = plt.Polygon(rect, edgecolor=lane_color, facecolor=col, linewidth=0.5, zorder=10000)
         if abs(vel[0] + center[0]) < (vis_range - 2) and abs(vel[1] + center[1]) < (vis_range - 2):
-            ax.plot([center[0], vel[0] + center[0]], [center[1], vel[1] + center[1]], '.-', color='lime', linewidth=1,
-                    markersize=2, zorder=10000)
+            ax.plot(
+                [center[0], vel[0] + center[0]], [center[1], vel[1] + center[1]],
+                '.-',
+                color='lime',
+                linewidth=1,
+                markersize=2,
+                zorder=10000
+            )
         ax.add_patch(rect)
 
     plt.autoscale()
@@ -119,7 +128,8 @@ def draw_seq(center, agents, traj=None, other=None, heat_map=False, save=False, 
 
         x0, y0, x1, y1, = center[j, :4]
 
-        if x0 == 0: break
+        if x0 == 0:
+            break
         ax.plot((x0, x1), (y0, y1), '--', color=lane_color, linewidth=1, alpha=0.2)
 
         if traf_state == 1:
@@ -137,7 +147,8 @@ def draw_seq(center, agents, traj=None, other=None, heat_map=False, save=False, 
 
             # if lane[j, k, -1] == 0: continue
             x0, y0, x1, y1, = edge[j, :4]
-            if x0 == 0: break
+            if x0 == 0:
+                break
             ax.plot((x0, x1), (y0, y1), lane_color, linewidth=1.5)
             # ax.arrow(x0, y0, x1-x0, y1-y0,head_width=1.5,head_length=0.75,width = 0.1)
     if other is not None:
@@ -145,10 +156,12 @@ def draw_seq(center, agents, traj=None, other=None, heat_map=False, save=False, 
 
             # if lane[j, k, -1] == 0: continue
             x0, y0, x1, y1, = other[j, :4]
-            if x0 == 0: break
+            if x0 == 0:
+                break
             ax.plot((x0, x1), (y0, y1), lane_color, linewidth=0.7, alpha=0.9)
     for i in range(len(agents)):
-        if i in collide: continue
+        if i in collide:
+            continue
 
         # if i<3:
         #     color = 'red'
@@ -180,8 +193,7 @@ def draw_seq(center, agents, traj=None, other=None, heat_map=False, save=False, 
 
         agent = agents[i]
         rect = agent.get_rect()[0]
-        rect = plt.Polygon(rect, edgecolor='black',
-                           facecolor=col, linewidth=0.5, zorder=10000)
+        rect = plt.Polygon(rect, edgecolor='black', facecolor=col, linewidth=0.5, zorder=10000)
         ax.add_patch(rect)
 
     # ax.set_facecolor('black')

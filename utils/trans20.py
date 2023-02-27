@@ -325,8 +325,7 @@ def transform_coordinate_map(map, sdc):
     ret = np.zeros(shape=(BATCH_SIZE, *map.shape))
     for i in range(BATCH_SIZE):
         ret[i] = map
-        ret[i][..., :2] = transform_coord(ret[i][..., :2] - pos[i],
-                                          np.expand_dims(sdc_theta[i], -1))
+        ret[i][..., :2] = transform_coord(ret[i][..., :2] - pos[i], np.expand_dims(sdc_theta[i], -1))
 
     # ret[abs(ret[:, :, :, 1]) > 80,-1] =0
     # ret[abs(ret[:, :, :, 2]) > 80, -1] = 0
