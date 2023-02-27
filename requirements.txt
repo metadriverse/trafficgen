@@ -9,3 +9,4 @@ tqdm==4.62.3
 pyyaml
 imageio
 wandb
+yapf==0.30.0
