@@ -33,15 +33,15 @@ Download from Waymo Dataset
 - Register your Google account in: https://waymo.com/open/
 - Open the following link with your Google account logged in: https://console.cloud.google.com/storage/browser/waymo_open_dataset_motion_v_1_1_0
 - Download one or more proto files from `waymo_open_dataset_motion_v_1_1_0/uncompressed/scenario/training_20s`
-- Move download files to `./raw_data/`
+- Move download files to PATH_A
 
 Note: You can download multiple files from above link and put them
 
 ### Step 3: Data Preprocess
-
 ```bash
-sh utils/data_trans.sh raw_data/dir processed_data/dir
+python trafficgen/scripts/trans20.py raw_data processed_data None
 ```
+
 
 [//]: # (The processed data has the following attributes:)
 
@@ -81,6 +81,21 @@ Set `--gif` flag to generate GIF files.
 
 ## Training
 
+### Data process
+PATH_B is the output path
+
+Execute the data_trans.sh:
+```bash
+sh utils/data_trans.sh PATH_A PATH_B
+```
+Note: This will take about 2 hours.
+
+Then modify the 'data_path' in init/configs and act/configs to PATH_B, run:
+```bash
+python init/uitls/init_dataset.py
+python act/uitls/act_dataset.py
+```
+to get a processed cache for the model.
 ### Local debug
 Use the sample data packed in the code repo directly
 #### Vehicle Placement Model

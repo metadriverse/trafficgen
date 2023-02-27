@@ -12,9 +12,7 @@ git remote add origin git@github.com:metadriverse/trafficgen.git/results/
 **out**
 **/exps/**
 *.pt
-/TrafficFormerV2/data/
-/TrafficFormerV2/_debug_data/
-/TrafficFormerV2/vis/
-/TrafficFormerV2/heatmap/
-/TrafficFormerDynamic/gifs/
+
 /traffic_generator/ckpt/
+/trafficgen/lightning_logs/
+/trafficgen/traffic_generator/ckpt/
