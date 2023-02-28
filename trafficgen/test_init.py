@@ -9,6 +9,7 @@ from tqdm import tqdm
 import copy
 import numpy as np
 from torch import Tensor
+from utils.typedef import RoadLineType, RoadEdgeType
 
 
 def wash(batch):
