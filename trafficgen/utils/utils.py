@@ -1,10 +1,23 @@
 import copy
-
 import numpy as np
 import torch
 from shapely.geometry import Polygon
 
+def normalize_angle(angle):
+    if isinstance(angle, torch.Tensor):
+        while not torch.all(angle >= 0):
+            angle[angle < 0] += np.pi * 2
+        while not torch.all(angle < np.pi * 2):
+            angle[angle >= np.pi * 2] -= np.pi * 2
+        return angle
 
+    else:
+        while not np.all(angle>=0):
+            angle[angle<0]+=np.pi*2
+        while not np.all(angle<np.pi*2):
+            angle[angle>=np.pi*2]-=np.pi*2
+
+        return angle
 def cal_rel_dir(dir1, dir2):
     dist = dir1 - dir2
 
@@ -15,8 +28,6 @@ def cal_rel_dir(dir1, dir2):
 
     dist[dist > np.pi] -= np.pi * 2
     return dist
-
-
 def wash(batch):
     for key in batch.keys():
         if batch[key].dtype == np.float64:
@@ -25,8 +36,6 @@ def wash(batch):
             batch[key] = batch[key].astype(bool)
         if isinstance(batch[key], torch.DoubleTensor):
             batch[key] = batch[key].float()
-
-
 def process_lane(lane, max_vec, lane_range, offset=-40):
     # dist = lane[..., 0]**2+lane[..., 1]**2
     # idx = np.argsort(dist)
@@ -84,8 +93,6 @@ def process_lane(lane, max_vec, lane_range, offset=-40):
         all_mask[t] = mask_t
 
     return all_vec, all_mask.astype(bool)
-
-
 def process_map(lane, traf, center_num=384, edge_num=128, lane_range=60, offest=-40):
     lane_with_traf = np.zeros([*lane.shape[:-1], 5])
     lane_with_traf[..., :4] = lane
@@ -126,8 +133,6 @@ def process_map(lane, traf, center_num=384, edge_num=128, lane_range=60, offest=
     rest, rest_mask = process_lane(lane[:, rest], 192, lane_range, offest)
 
     return cent, cent_mask, bound, bound_mask, cross, cross_mask, rest, rest_mask
-
-
 def rotate(x, y, angle):
     if isinstance(x, torch.Tensor):
         other_x_trans = torch.cos(angle) * x - torch.sin(angle) * y
@@ -139,8 +144,6 @@ def rotate(x, y, angle):
         other_y_trans = np.cos(angle) * y + np.sin(angle) * x
         output_coords = np.stack((other_x_trans, other_y_trans), axis=-1)
     return output_coords
-
-
 class WaymoAgent:
     def __init__(self, feature, vec_based_info=None, range=50, max_speed=30, from_inp=False):
         # index of xy,v,lw,yaw,type,valid
