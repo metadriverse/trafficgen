@@ -58,6 +58,8 @@ if __name__ == '__main__':
 
             pred_agent = output['agent']
             agent_num = len(pred_agent)
+            if agent_num==1:
+                continue
             target_agent = batch['agent']
             pred_agent = pred_agent[1:]
             source = {
