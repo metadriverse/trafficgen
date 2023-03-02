@@ -51,14 +51,15 @@ Download from Waymo Dataset
 - Register your Google account in: https://waymo.com/open/
 - Open the following link with your Google account logged in: https://console.cloud.google.com/storage/browser/waymo_open_dataset_motion_v_1_1_0
 - Download one or more proto files from `waymo_open_dataset_motion_v_1_1_0/uncompressed/scenario/training_20s`
-- Move download files to PATH_A
+- Move download files to PATH_A, where you store the raw tf_record files.
 
-Note: You can download multiple files from above link and put them
+Note: it is not necessary to download all the files from Waymo. You can download one of them for a simple test.
 
-### Step 3: Data Preprocess
+Data Preprocess
 ```bash
-python trafficgen/scripts/trans20.py raw_data processed_data None
+python trafficgen/scripts/trans20.py PATH_A PATH_B None
 ```
+Note: PATH_B is where you store the processed data.
 
 
 [//]: # (The processed data has the following attributes:)
@@ -77,9 +78,9 @@ python trafficgen/scripts/trans20.py raw_data processed_data None
 
 Please download two models from this link: https://drive.google.com/drive/folders/1TbCV6y-vssvG3YsuA6bAtD9lUX39DH9C?usp=sharing
 
-And then put them into `traffic_generator/ckpt` folder.
+And then put them into `trafficgen/traffic_generator/ckpt` folder.
 
-### Generate new traffic scenarios based on existing traffic scenarios
+### Generate new traffic scenarios
 
 Running following scripts will generate images and GIFs (if with `--gif`) visualizing the new traffic scenarios in 
 `traffic_generator/output/vis` folder.
@@ -88,7 +89,7 @@ Running following scripts will generate images and GIFs (if with `--gif`) visual
 # change the data usage and set the data dir in debug.yaml
 
 # First, you have to change working directory
-cd TrafficGen
+cd TrafficGen/trafficgen
 
 python generate.py [--gif] 
 ```
@@ -99,8 +100,24 @@ Set `--gif` flag to generate GIF files.
 
 ## Training
 
-### Data process
-PATH_B is the output path
+### Local Debug
+Use the sample data packed in the code repo directly
+#### Vehicle Placement Model
+````
+python train_init.py -c local
+````
+#### Trajectory Generator Model
+````
+python train_act.py -c local
+````
+
+
+### Cluster Training
+For training, we recommend to download all the files from: https://console.cloud.google.com/storage/browser/waymo_open_dataset_motion_v_1_1_0
+
+PATH_A is the raw data path
+
+PATH_B is the processed data path
 
 Execute the data_trans.sh:
 ```bash
@@ -114,23 +131,15 @@ python init/uitls/init_dataset.py
 python act/uitls/act_dataset.py
 ```
 to get a processed cache for the model.
-### Local debug
-Use the sample data packed in the code repo directly
-#### Vehicle Placement Model
+
+Modify cluster.yaml. Change data_path, data_usage, run:
 ````
-python train_init.py -c cluster
-````
-#### Trajectory Generator Model
-````
-python train_act.py -c cluster
-````
-### Train TrafficGen in the cluster
-Modify cluster.yaml. Change the data path, data_usage.
-````
-python train_act.py -c cluster -d 0 1 2 3 -e test
+python train_act.py -c cluster -d 0 1 2 3 -e exp_name
 ````
 
 -d denotes which GPU to use
+
+
 
 
 
