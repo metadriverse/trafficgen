@@ -26,10 +26,8 @@ if __name__ == '__main__':
 
     args = get_parsed_args()
     cfg = load_config_init(args.config)
-    cfg['min_agent']=1
+    #cfg['min_agent']=1
     test_set = initDataset(cfg)
-
-
 
     data_loader = DataLoader(
         test_set, batch_size=1, num_workers=0, shuffle=False, drop_last=True
@@ -73,7 +71,7 @@ if __name__ == '__main__':
                       'size': target_agent[0, 1:agent_num, 5:7],
                       'speed': target_agent[0, 1:agent_num, 2:4],
                       'position': target_agent[0, 1:agent_num, :2]}
-
+            #target = source
             for attr, metri in mmd_metrics.items():
                 # ignore empty scenes
                 if agent_num <= 1:
