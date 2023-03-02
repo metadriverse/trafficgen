@@ -11,7 +11,7 @@ copy_func = copy.deepcopy
 version = 0
 
 
-def loss_v1(pred, gt):
+def act_loss(pred, gt):
     MSE = torch.nn.MSELoss(reduction='none')
     L1 = torch.nn.L1Loss(reduction='none')
     CLS = torch.nn.CrossEntropyLoss()
@@ -33,7 +33,9 @@ def loss_v1(pred, gt):
     cls_loss = CLS(prob_pred, min_index)
 
     pos_loss = MSE(pos_gt, pos_pred).mean(-1).mean(-1)
+    fde = MSE(pos_gt, pos_pred).mean(-1)[...,-1]
     pos_loss = torch.gather(pos_loss, dim=1, index=min_index.unsqueeze(-1)).mean()
+    fde = torch.gather(fde, dim=1, index=min_index.unsqueeze(-1)).mean()
 
     velo_loss = MSE(velo_gt, velo_pred).mean(-1).mean(-1)
     velo_loss = torch.gather(velo_loss, dim=1, index=min_index.unsqueeze(-1)).mean()
@@ -47,6 +49,7 @@ def loss_v1(pred, gt):
     loss_dict['cls_loss'] = cls_loss
     loss_dict['velo_loss'] = velo_loss
     loss_dict['heading_loss'] = heading_loss
+    loss_dict['fde'] = fde
     loss_dict['pos_loss'] = pos_loss
     return loss_sum, loss_dict
 
@@ -94,13 +97,13 @@ class actuator(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         pred = self.forward(batch)
-        loss, loss_dict = loss_v1(pred, batch)
+        loss, loss_dict = act_loss(pred, batch)
         self.log("train/loss", loss_dict)
         return loss
 
     def validation_step(self, batch, batch_idx):
         pred = self.forward(batch)
-        loss, loss_dict = loss_v1(pred, batch)
+        loss, loss_dict = act_loss(pred, batch)
         self.log("valid/loss", loss_dict)
         return loss
 
