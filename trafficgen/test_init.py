@@ -1,6 +1,6 @@
 from init.utils.init_dataset import initDataset
 from torch.utils.data import DataLoader
-from utils.utils import normalize_angle
+from utils.utils import normalize_angle,setup_seed
 from utils.config import load_config_init, get_parsed_args
 from utils.evaluation import MMD
 from init.model.tg_init import initializer
@@ -24,9 +24,10 @@ def wash(batch):
 
 if __name__ == '__main__':
 
+    setup_seed(42)
     args = get_parsed_args()
     cfg = load_config_init(args.config)
-    #cfg['min_agent']=1
+
     test_set = initDataset(cfg)
 
     data_loader = DataLoader(
