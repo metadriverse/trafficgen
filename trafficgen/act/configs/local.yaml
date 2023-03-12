@@ -3,7 +3,7 @@ format_version: 4
 
 debug: True
 data_path: 'act/sample_data'
-use_cache: True
+use_cache: False
 
 num_workers: 0
 batch_size: 4
