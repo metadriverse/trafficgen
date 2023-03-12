@@ -1,6 +1,5 @@
-import pytorch_lightning as pl
 from act.utils.act_dataset import actDataset
-import torch.utils.data as data
+from init.utils.init_dataset import WaymoAgent
 from torch.utils.data import DataLoader
 from utils.config import load_config_act
 from act.model.tg_act import actuator
@@ -23,6 +22,18 @@ def wash(batch):
             batch[key] = batch[key].float()
         if 'mask' in key:
             batch[key] = batch[key].to(bool)
+
+def get_SCR(pred):
+    collide_idx = np.zeros(pred.shape[0])
+    for i in range(pred.shape[0]):
+        agent = WaymoAgent(pred[[i]])
+        polygons = agent.get_polygon()
+        for idx,poly in enumerate(polygons):
+            for ano_idx,another_poly in enumerate(polygons):
+                if poly.intersects(another_poly) and idx != ano_idx:
+                    collide_idx[idx]=1
+
+    return np.mean(collide_idx)
 
 if __name__ == '__main__':
 

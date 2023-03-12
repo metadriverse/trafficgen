@@ -348,7 +348,7 @@ class initDataset(Dataset):
         agent[..., 4] -= ego_heading
 
         agent_mask = agent[..., -1]
-        agent_type_mask = agent[..., -2]
+        agent_type_mask = agent[..., -2] == 1
         agent_range_mask = (abs(agent[..., 0]) < RANGE) * (abs(agent[..., 1]) < RANGE)
         mask = agent_mask * agent_type_mask * agent_range_mask
 
