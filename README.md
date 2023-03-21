@@ -114,13 +114,22 @@ to download the dataset.
 ```bash
 cd trafficgen/
 
-# Run generated dataset:
+# Run generated scenarios:
 python run_metadrive.py --dataset traffic_generator/output/scene_pkl
 
-# Please read `trafficgen/dataset/README.md` to download pre-generated dataset
+# Please read `trafficgen/dataset/README.md` to download pre-generated scenarios
 # Then you can use them to create an RL environment:
 python run_metadrive.py --dataset dataset/validation
+
+# If you want to visualize the generated scenarios, with the ego car also replaying data, use:
+python run_metadrive.py --dataset dataset/validation --replay
+
+# If you want to create RL environment where traffic vehicles are not replaying 
+# but are controlled by interactive IDM policy, use:
+python run_metadrive.py --dataset dataset/validation --no_replay_traffic
 ```
+
+You can then kick off RL training by utilizing the created environment showcased in the script above.
 
 
 ## Training
