@@ -153,6 +153,8 @@ def save_as_metadrive_data(pred_i, other, save_path):
     with open(save_path, 'wb') as f:
         pickle.dump(output, f)
 
+    print("MetaDrive-compatible scenario data is saved at: ", save_path)
+
 
 class initDataset(Dataset):
     """
