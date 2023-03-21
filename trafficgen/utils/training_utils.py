@@ -149,8 +149,8 @@ def train(
         "log_level": "DEBUG" if test_mode else "INFO",
         "callbacks": custom_callback if custom_callback else False,  # Must Have!
     }
-    if custom_callback is False:
-        used_config.pop("callbacks")
+    # if not custom_callback:
+    #     used_config.pop("callbacks")
     if config:
         used_config.update(config)
     config = copy.deepcopy(used_config)
@@ -431,7 +431,7 @@ def setup_logger(debug=False):
     )
 
 
-class MultiAgentDrivingCallbacks(DefaultCallbacks):
+class DrivingCallbacks(DefaultCallbacks):
     def on_episode_start(
             self, *, worker: RolloutWorker, base_env, policies, episode,
             env_index, **kwargs
@@ -450,7 +450,7 @@ class MultiAgentDrivingCallbacks(DefaultCallbacks):
     def on_episode_step(
             self, *, worker: RolloutWorker, base_env: BaseEnv, episode: MultiAgentEpisode, env_index: int, **kwargs
     ):
-        active_keys = list(base_env.envs[env_index].vehicles.keys())
+        active_keys = list(base_env.vector_env.envs[env_index].vehicles.keys())
 
         # The agent_rewards dict contains all agents' reward, not only the active agent!
         # active_keys = [k for k, _ in episode.agent_rewards.keys()]
@@ -458,6 +458,9 @@ class MultiAgentDrivingCallbacks(DefaultCallbacks):
         for agent_id in active_keys:
             k = agent_id
             info = episode.last_info_for(k)
+            if info is None:
+                info = episode.last_info_for()
+
             if info:
                 if "step_reward" not in info:
                     continue
@@ -490,6 +493,9 @@ class MultiAgentDrivingCallbacks(DefaultCallbacks):
 
         for k in keys:
             info = episode.last_info_for(k)
+            if info is None:
+                info = episode.last_info_for()
+
             arrive_dest = info.get("arrive_dest", False)
 
             # Newly introduced metrics

@@ -6,7 +6,8 @@ try:
 finally:
     pass
 from metadrive.envs.real_data_envs.waymo_env import WaymoEnv
-from trafficgen.utils.training_utils import train, get_train_parser
+from trafficgen.utils.training_utils import train, get_train_parser, DrivingCallbacks
+from ray.rllib.agents.ppo import PPOTrainer
 
 import os
 
@@ -29,45 +30,46 @@ if __name__ == '__main__':
                              "to control all traffic vehicles.")
     parser.add_argument("--dataset_train", default="dataset/1385_training", help=HELP)
     parser.add_argument("--dataset_test", default="dataset/validation", help=HELP)
-    parser.add_argument("--case_num", default=1385, type=int,
+    parser.add_argument("--wandb", action="store_true", help="Whether to upload log to wandb.")
+    parser.add_argument("--case_num_train", default=1385, type=int,
+                        help="Number of scenarios you want to load from training dataset.")
+    parser.add_argument("--case_num_test", default=100, type=int,
                         help="Number of scenarios you want to load from training dataset.")
     args = parser.parse_args()
 
     exp_name = args.exp_name or "RL_training"
     stop = int(500_00000)
+    case_num_train = args.case_num_train
+    case_num_test = args.case_num_test
+    replay_traffic = not args.no_replay_traffic
 
-    data_folder = os.path.join(root, args.dataset_train)
-    assert os.path.isdir(data_folder), "Can't find {}. ".format(data_folder) + HELP
+    data_folder_train = os.path.join(root, args.dataset_train)
+    assert os.path.isdir(data_folder_train), "Can't find {}. ".format(data_folder_train) + HELP
 
     data_folder_test = os.path.join(root, args.dataset_test)
     assert os.path.isdir(data_folder_test), (
-            "Can't find " + data_folder + ". It seems that you don't download the validation data. "
+            "Can't find " + data_folder_test + ". It seems that you don't download the validation data. "
                                           "Please refer to 'dataset/README.md' for more information."
     )
 
     config = dict(
         env=WaymoEnv,
         env_config=dict(
-            case_num=tune.grid_search([50, 100]),
-            replay=False,
+            waymo_data_directory=data_folder_train,
 
-            waymo_data_directory="/home/qyli/waymo/all",
-            no_traffic=False,
-            use_waymo_observation=True,
-            use_lateral_reward=False,
-            out_of_route_done=False,
-            crash_vehicle_penalty=1,
-            crash_vehicle_done=False,
-            horizon=None,
-            no_static_traffic_vehicle=True,
+            # MetaDrive will load pickle files with index [start_case_index, start_case_index + case_num)
+            start_case_index=0,
+            case_num=case_num_train,
+
+            replay=replay_traffic,
         ),
 
         # ===== Evaluation =====
-        evaluation_interval=5,
-        evaluation_num_episodes=40,
-        evaluation_config=dict(env_config=dict(case_num=100, waymo_data_directory="/home/qyli/waymo/validation")),
-        evaluation_num_workers=2,
-        metrics_smoothing_episodes=50,
+        # evaluation_interval=5,
+        # evaluation_num_episodes=40,
+        # evaluation_config=dict(env_config=dict(case_num=case_num_test, waymo_data_directory=data_folder_test)),
+        # evaluation_num_workers=2,
+        # metrics_smoothing_episodes=50,
 
         # ===== Training =====
         horizon=2000,
@@ -80,23 +82,26 @@ if __name__ == '__main__':
         num_gpus=0.2 if args.num_gpus != 0 else 0,
         num_cpus_per_worker=0.1,
         num_cpus_for_driver=0.5,
-        num_workers=10,
-        clip_actions=False
+        # num_workers=10,
+        num_workers=1,
+        clip_actions=False,
+        framework="torch"
     )
 
     train(
-        "PPO",
+        PPOTrainer,
         exp_name=exp_name,
         keep_checkpoints_num=5,
         stop=stop,
         config=config,
         num_gpus=args.num_gpus,
         # num_seeds=args.num_seeds,
-        num_seeds=2,
+        num_seeds=1,
+        custom_callback=DrivingCallbacks,
         # test_mode=args.test,
-        # local_mode=True
+        local_mode=True
 
         # Put your wandb API to the following file, or do not call --wandb
-        wandb_key_file="~/wandb_api_key_file.txt",
-        wandb_project="TrafficGen_RL",
+        # wandb_key_file="~/wandb_api_key_file.txt",
+        # wandb_project="TrafficGen_RL",
     )
