@@ -1,14 +1,14 @@
 import pytorch_lightning as pl
-from act.utils.act_dataset import actDataset
-import torch.utils.data as data
-from torch.utils.data import DataLoader
-from utils.config import load_config_act
-from act.model.tg_act import actuator
-from utils.typedef import AgentType, RoadEdgeType, RoadLineType
 import torch
+import torch.utils.data as data
 # General config
 from pytorch_lightning.loggers import WandbLogger
-from utils.config import get_parsed_args
+from torch.utils.data import DataLoader
+
+from trafficgen.act.model.tg_act import actuator
+from trafficgen.act.utils.act_dataset import actDataset
+from trafficgen.utils.config import get_parsed_args
+from trafficgen.utils.config import load_config_act
 
 if __name__ == '__main__':
 

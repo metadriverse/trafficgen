@@ -1,6 +1,7 @@
-import yaml
-import os
 import argparse
+import os
+
+import yaml
 
 
 def load_config_act(path):

@@ -1,10 +1,12 @@
-import torch
+import numpy as np
+import copy
+
 import numpy as np
 import torch
+import wandb
 from torchmetrics import Metric
 from tqdm import tqdm
-import copy
-import wandb
+
 
 class MMD(Metric):
     full_state_update: bool = False
@@ -57,15 +59,18 @@ class MMD(Metric):
     def compute(self):
         return self.mmd_sum / self.count
 
+
 def get_metrics(self):
     self.model.eval()
     device = self.cfg['device']
     eval_data = self.eval_data_loader
     with torch.no_grad():
-        mmd_metrics = {'heading': MMD(device=device, kernel_mul=1.0, kernel_num=1),
-                       'size': MMD(device=device, kernel_mul=1.0, kernel_num=1),
-                       'speed': MMD(device=device, kernel_mul=1.0, kernel_num=1),
-                       'position': MMD(device=device, kernel_mul=1.0, kernel_num=1)}
+        mmd_metrics = {
+            'heading': MMD(device=device, kernel_mul=1.0, kernel_num=1),
+            'size': MMD(device=device, kernel_mul=1.0, kernel_num=1),
+            'speed': MMD(device=device, kernel_mul=1.0, kernel_num=1),
+            'position': MMD(device=device, kernel_mul=1.0, kernel_num=1)
+        }
         cnt = 0
         for batch in tqdm(eval_data):
 
@@ -83,19 +88,23 @@ def get_metrics(self):
             device = batch['center'].device
 
             source = {
-                'heading': torch.tensor(normalize_angle(np.concatenate([x.heading for x in pred_agent], axis=0)),
-                                        device=device),
+                'heading': torch.tensor(
+                    normalize_angle(np.concatenate([x.heading for x in pred_agent], axis=0)), device=device
+                ),
                 'size': torch.tensor(np.concatenate([x.length_width for x in pred_agent], axis=0), device=device),
                 'speed': torch.tensor(np.concatenate([x.velocity for x in pred_agent], axis=0), device=device),
-                'position': torch.tensor(np.concatenate([x.position for x in pred_agent], axis=0), device=device)}
+                'position': torch.tensor(np.concatenate([x.position for x in pred_agent], axis=0), device=device)
+            }
 
             if torch.any(torch.isnan(source['speed'])):
                 print('nan!')
                 continue
-            target = {'heading': normalize_angle(target_agent[0, 1:agent_num, [4]]),
-                      'size': target_agent[0, 1:agent_num, 5:7],
-                      'speed': target_agent[0, 1:agent_num, 2:4],
-                      'position': target_agent[0, 1:agent_num, :2]}
+            target = {
+                'heading': normalize_angle(target_agent[0, 1:agent_num, [4]]),
+                'size': target_agent[0, 1:agent_num, 5:7],
+                'speed': target_agent[0, 1:agent_num, 2:4],
+                'position': target_agent[0, 1:agent_num, :2]
+            }
 
             for attr, metri in mmd_metrics.items():
                 # ignore empty scenes
@@ -111,6 +120,7 @@ def get_metrics(self):
         print(log)
         if not self.in_debug:
             wandb.log(log)
+
 
 if __name__ == "__main__":
     heading_mmd = MMD(kernel_mul=1.0, kernel_num=1)

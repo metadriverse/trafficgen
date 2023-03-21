@@ -1,17 +1,17 @@
+import copy
+
 import torch
 import torch.nn as nn
-
-from init.utils.model_utils import MLP_3, CG_stacked
-import copy
 from torch import Tensor
 
+from trafficgen.init.utils.model_utils import MLP_3, CG_stacked
+
 copy_func = copy.deepcopy
-from init.utils.init_dataset import WaymoAgent, get_agent_pos_from_vec
+from trafficgen.init.utils.init_dataset import WaymoAgent, get_agent_pos_from_vec
 from random import choices
 from torch.optim.lr_scheduler import MultiStepLR
 import numpy as np
 import pytorch_lightning as pl
-import math
 
 
 class initializer(pl.LightningModule):

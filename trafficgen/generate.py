@@ -1,8 +1,6 @@
-import numpy as np
-from traffic_generator.traffic_generator import trafficgen
-from traffic_generator.utils.utils import get_parsed_args
-from utils.config import load_config_init
-from utils.typedef import AgentType, RoadEdgeType, RoadLineType
+from trafficgen.traffic_generator.traffic_generator import trafficgen
+from trafficgen.traffic_generator.utils.utils import get_parsed_args
+from trafficgen.utils.config import load_config_init
 
 if __name__ == "__main__":
     args = get_parsed_args()
