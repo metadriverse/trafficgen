@@ -99,6 +99,8 @@ Set `--gif` flag to generate GIF files.
 
 ## Connect TrafficGen with MetaDrive
 
+### Create single-agent RL environment
+
 After running `python generate.py --save_metadrive`,
 a folder `trafficgen/traffic_generator/output/scene_pkl` will be created, and you will see many
 pickle files. Each `.pkl` file is a scenario created by TrafficGen.
@@ -130,6 +132,14 @@ python run_metadrive.py --dataset dataset/validation --no_replay_traffic
 ```
 
 You can then kick off RL training by utilizing the created environment showcased in the script above.
+
+
+### Train RL agents in TrafficGen-generated single-agent RL environment
+
+```bash
+
+```
+
 
 
 ## Training
