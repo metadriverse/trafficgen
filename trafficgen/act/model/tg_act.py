@@ -35,7 +35,7 @@ def act_loss(pred, gt):
     cls_loss = CLS(prob_pred, min_index)
 
     pos_loss = MSE(pos_gt, pos_pred).mean(-1).mean(-1)
-    fde = MSE(pos_gt, pos_pred).mean(-1)[...,-1]
+    fde = MSE(pos_gt, pos_pred).mean(-1)[..., -1]
     pos_loss = torch.gather(pos_loss, dim=1, index=min_index.unsqueeze(-1)).mean()
     fde = torch.gather(fde, dim=1, index=min_index.unsqueeze(-1)).mean()
 

@@ -23,17 +23,19 @@ def wash(batch):
         if 'mask' in key:
             batch[key] = batch[key].to(bool)
 
+
 def get_SCR(pred):
     collide_idx = np.zeros(pred.shape[0])
     for i in range(pred.shape[0]):
         agent = WaymoAgent(pred[[i]])
         polygons = agent.get_polygon()
-        for idx,poly in enumerate(polygons):
-            for ano_idx,another_poly in enumerate(polygons):
+        for idx, poly in enumerate(polygons):
+            for ano_idx, another_poly in enumerate(polygons):
                 if poly.intersects(another_poly) and idx != ano_idx:
-                    collide_idx[idx]=1
+                    collide_idx[idx] = 1
 
     return np.mean(collide_idx)
+
 
 if __name__ == '__main__':
 
@@ -42,10 +44,7 @@ if __name__ == '__main__':
 
     test_set = actDataset(cfg)
 
-    dataloader = DataLoader(
-        test_set, batch_size=4, num_workers=0, shuffle=True, drop_last=False
-    )
-
+    dataloader = DataLoader(test_set, batch_size=4, num_workers=0, shuffle=True, drop_last=False)
 
     ade = []
     fde = []
@@ -58,7 +57,3 @@ if __name__ == '__main__':
             fde.append(loss_dict['fde'])
     print(np.mean(ade))
     print(np.mean(fde))
-
-
-
-
