@@ -1,15 +1,16 @@
-from init.utils.init_dataset import initDataset
-from torch.utils.data import DataLoader
-from utils.utils import normalize_angle,setup_seed
-from utils.config import load_config_init, get_parsed_args
-from utils.evaluation import MMD
-from init.model.tg_init import initializer
-import torch
-from tqdm import tqdm
 import copy
+
 import numpy as np
+import torch
 from torch import Tensor
-from utils.typedef import RoadLineType, RoadEdgeType
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+from trafficgen.init.model.tg_init import initializer
+from trafficgen.init.utils.init_dataset import initDataset
+from trafficgen.utils.config import load_config_init, get_parsed_args
+from trafficgen.utils.evaluation import MMD
+from trafficgen.utils.utils import normalize_angle, setup_seed
 
 
 def wash(batch):

@@ -8,13 +8,14 @@ import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from traffic_generator.utils.data_utils import initDataset, save_as_metadrive_data, from_list_to_batch, \
+
+from trafficgen.act.model.tg_act import actuator
+from trafficgen.init.model.tg_init import initializer
+from trafficgen.init.utils.init_dataset import WaymoAgent
+from trafficgen.traffic_generator.utils.data_utils import initDataset, save_as_metadrive_data, from_list_to_batch, \
     transform_to_agent, process_case_to_input
-from traffic_generator.utils.vis_utils import draw, draw_seq
-from init.model.tg_init import initializer
-from init.utils.init_dataset import WaymoAgent
-from act.model.tg_act import actuator
-from utils.utils import process_map, rotate
+from trafficgen.traffic_generator.utils.vis_utils import draw, draw_seq
+from trafficgen.utils.utils import process_map, rotate
 
 
 class trafficgen:

@@ -1,10 +1,12 @@
-import torch
+import numpy as np
+import copy
+
 import numpy as np
 import torch
+import wandb
 from torchmetrics import Metric
 from tqdm import tqdm
-import copy
-import wandb
+
 
 class MMD(Metric):
     full_state_update: bool = False

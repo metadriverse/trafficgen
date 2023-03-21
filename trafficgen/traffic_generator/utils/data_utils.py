@@ -3,11 +3,11 @@ import os
 import pickle
 
 import numpy as np
+from torch import Tensor
 from torch.utils.data import Dataset
 
-from utils.utils import process_map, rotate, cal_rel_dir, WaymoAgent
-from utils.typedef import AgentType, RoadLineType, RoadEdgeType
-from torch import Tensor
+from trafficgen.utils.typedef import AgentType, RoadLineType, RoadEdgeType
+from trafficgen.utils.utils import process_map, rotate, cal_rel_dir, WaymoAgent
 
 LANE_SAMPLE = 10
 RANGE = 50

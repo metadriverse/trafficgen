@@ -1,10 +1,12 @@
+import copy
 import logging
+
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-import pytorch_lightning as pl
-from act.utils.model_utils import MLP_3, CG_stacked
-import copy
 from torch.optim.lr_scheduler import MultiStepLR
+
+from trafficgen.act.utils.model_utils import MLP_3, CG_stacked
 
 logger = logging.getLogger(__name__)
 copy_func = copy.deepcopy

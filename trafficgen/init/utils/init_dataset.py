@@ -1,15 +1,16 @@
+import copy
 import os
 import pickle
-from torch.utils.data import Dataset
+
 import numpy as np
-import copy
-from torch import Tensor
 import torch
-from utils.typedef import RoadLineType, RoadEdgeType
 from shapely.geometry import Polygon
-from utils.utils import cal_rel_dir, rotate, process_map, wash
+from torch import Tensor
+from torch.utils.data import Dataset
 from tqdm import tqdm
-from utils.config import load_config_init, get_parsed_args
+
+from trafficgen.utils.config import load_config_init, get_parsed_args
+from trafficgen.utils.utils import cal_rel_dir, rotate, process_map, wash
 
 
 def get_agent_pos_from_vec(vec, long_lat, speed, vel_heading, heading, bbox):

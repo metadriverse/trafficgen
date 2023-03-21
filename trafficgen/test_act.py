@@ -1,17 +1,17 @@
-from act.utils.act_dataset import actDataset
-from init.utils.init_dataset import WaymoAgent
-from torch.utils.data import DataLoader
-from utils.config import load_config_act
-from act.model.tg_act import actuator
-from utils.typedef import AgentType, RoadEdgeType, RoadLineType
-import torch
-from act.model.tg_act import act_loss
-# General config
-from pytorch_lightning.loggers import WandbLogger
-from utils.config import get_parsed_args
-from tqdm import tqdm
 import numpy as np
+import torch
 from torch import Tensor
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+from trafficgen.act.model.tg_act import act_loss
+from trafficgen.act.model.tg_act import actuator
+from trafficgen.act.utils.act_dataset import actDataset
+from trafficgen.init.utils.init_dataset import WaymoAgent
+# General config
+from trafficgen.utils.config import get_parsed_args
+from trafficgen.utils.config import load_config_act
+
 
 def wash(batch):
     """Transform the loaded raw data to pretty pytorch tensor."""

@@ -3,12 +3,12 @@ import os
 import pickle
 
 import numpy as np
-from torch.utils.data import Dataset
-from shapely.geometry import Polygon
-from tqdm import tqdm
 import torch
-from utils.config import load_config_act, get_parsed_args
-from utils.typedef import AgentType, RoadEdgeType, RoadLineType
+from shapely.geometry import Polygon
+from torch.utils.data import Dataset
+from tqdm import tqdm
+
+from trafficgen.utils.config import load_config_act, get_parsed_args
 
 LANE_SAMPLE = 10
 RANGE = 60

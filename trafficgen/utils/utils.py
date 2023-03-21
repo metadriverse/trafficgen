@@ -1,8 +1,11 @@
 import copy
+import os
+import random
+
 import numpy as np
 import torch
 from shapely.geometry import Polygon
-import random,os
+
 
 def setup_seed(seed):
     random.seed(seed)

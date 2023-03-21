@@ -1,11 +1,7 @@
-import pickle
-
 import matplotlib
 import matplotlib.pyplot as plt
-import numpy as np
 
 matplotlib.rcParams.update({'figure.max_open_warning': 0})
-from scipy.ndimage.filters import gaussian_filter
 import matplotlib.colors as mcolors
 import matplotlib.cm as cm
 
