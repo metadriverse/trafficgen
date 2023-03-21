@@ -91,11 +91,45 @@ Running following scripts will generate images and GIFs (if with `--gif`) visual
 # First, you have to change working directory
 cd TrafficGen/trafficgen
 
-python generate.py [--gif] 
+python generate.py [--gif] [--save_metadrive]
 ```
 
 Set `--gif` flag to generate GIF files.
 
+
+## Connect TrafficGen with MetaDrive
+
+After running `python generate.py --save_metadrive`,
+a folder `trafficgen/traffic_generator/output/scene_pkl` will be created, and you will see many
+pickle files. Each `.pkl` file is a scenario created by TrafficGen.
+
+We provide a script to create single-agent RL environment with TrafficGen generated data.
+Please refer to [trafficgen/run_metadrive.py](trafficgen/run_metadrive.py) for details.
+
+We also provide pre-generated scenarios from TrafficGen, so you can kick off RL training
+on TrafficGen-generated scenarios immediately. Please follow
+[trafficgen/dataset/README.md](trafficgen/dataset/README.md)
+to download the dataset.
+
+```bash
+cd trafficgen/
+
+# Run generated scenarios:
+python run_metadrive.py --dataset traffic_generator/output/scene_pkl
+
+# Please read `trafficgen/dataset/README.md` to download pre-generated scenarios
+# Then you can use them to create an RL environment:
+python run_metadrive.py --dataset dataset/validation
+
+# If you want to visualize the generated scenarios, with the ego car also replaying data, use:
+python run_metadrive.py --dataset dataset/validation --replay
+
+# If you want to create RL environment where traffic vehicles are not replaying 
+# but are controlled by interactive IDM policy, use:
+python run_metadrive.py --dataset dataset/validation --no_replay_traffic
+```
+
+You can then kick off RL training by utilizing the created environment showcased in the script above.
 
 
 ## Training

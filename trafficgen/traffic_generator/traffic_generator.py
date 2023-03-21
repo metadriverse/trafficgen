@@ -43,13 +43,13 @@ class trafficgen:
             if 'mask' in key:
                 batch[key] = batch[key].to(bool)
 
-    def generate_scenarios(self, gif=True):
+    def generate_scenarios(self, gif=True, save_metadrive=False):
         print('Initializing traffic scenarios...')
         self.place_vehicles(vis=True)
         print('Complete.\n' 'Visualization results are saved in traffic_generator/output/vis/scene_initialized\n')
 
         print('Generating trajectories...')
-        self.generate_traj(snapshot=True, gif=gif)
+        self.generate_traj(snapshot=True, gif=gif, save_metadrive=save_metadrive)
         print('Complete.\n' 'Visualization results are saved in traffic_generator/output/vis/scene_static\n')
 
     def place_vehicles(self, vis=True):
@@ -110,7 +110,7 @@ class trafficgen:
 
         return
 
-    def generate_traj(self, snapshot=True, gif=False):
+    def generate_traj(self, snapshot=True, gif=False, save_metadrive=False):
         snapshot_path = 'traffic_generator/output/vis/scene_static'
         if not os.path.exists(snapshot_path):
             os.makedirs(snapshot_path)
@@ -157,7 +157,8 @@ class trafficgen:
 
                     ind = list(range(0, 190, 5))
                     agent = pred_i[ind]
-                    agent = np.delete(agent, [2], axis=1)
+                    if agent.shape[1] > 2:  # PZH: I don't know what this means here. Just add this if to avoid error.
+                        agent = np.delete(agent, [2], axis=1)
                     for t in range(agent.shape[0]):
                         agent_t = agent[t]
                         agent_list = []
@@ -188,6 +189,7 @@ class trafficgen:
                     #         heat_path = os.path.join(dir_path, f'{k-1}')
                     #         draw(cent, heat_map[k-1], agent_t[:k], rest, edge=bound, save=True, path=heat_path)
 
+                if save_metadrive:
                     other = {}
                     other['unsampled_lane'] = data['unsampled_lane']
                     other['center_info'] = data['center_info']
