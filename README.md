@@ -91,11 +91,36 @@ Running following scripts will generate images and GIFs (if with `--gif`) visual
 # First, you have to change working directory
 cd TrafficGen/trafficgen
 
-python generate.py [--gif] 
+python generate.py [--gif] [--save_metadrive]
 ```
 
 Set `--gif` flag to generate GIF files.
 
+
+## Connect TrafficGen with MetaDrive
+
+After running `python generate.py --save_metadrive`,
+a folder `trafficgen/traffic_generator/output/scene_pkl` will be created, and you will see many
+pickle files. Each `.pkl` file is a scenario created by TrafficGen.
+
+We provide a script to create single-agent RL environment with TrafficGen generated data.
+Please refer to [trafficgen/run_metadrive.py](trafficgen/run_metadrive.py) for details.
+
+We also provide pre-generated scenarios from TrafficGen, so you can kick off RL training
+on TrafficGen-generated scenarios immediately. Please follow
+[trafficgen/dataset/README.md](trafficgen/dataset/README.md)
+to download the dataset.
+
+```bash
+cd trafficgen/
+
+# Run generated dataset:
+python run_metadrive.py --dataset traffic_generator/output/scene_pkl
+
+# Please read `trafficgen/dataset/README.md` to download pre-generated dataset
+# Then you can use them to create an RL environment:
+python run_metadrive.py --dataset dataset/validation
+```
 
 
 ## Training
