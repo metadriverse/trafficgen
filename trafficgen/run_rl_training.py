@@ -53,6 +53,8 @@ if __name__ == '__main__':
     )
 
     config = dict(
+
+        # ===== Environment =====
         env=WaymoEnv,
         env_config=dict(
             waymo_data_directory=data_folder_train,
@@ -65,27 +67,29 @@ if __name__ == '__main__':
         ),
 
         # ===== Evaluation =====
-        # evaluation_interval=5,
-        # evaluation_num_episodes=40,
-        # evaluation_config=dict(env_config=dict(case_num=case_num_test, waymo_data_directory=data_folder_test)),
-        # evaluation_num_workers=2,
-        # metrics_smoothing_episodes=50,
+        evaluation_interval=5,
+        evaluation_num_episodes=40,
+        evaluation_config=dict(env_config=dict(case_num=case_num_test, waymo_data_directory=data_folder_test)),
+        evaluation_num_workers=2,
+        metrics_smoothing_episodes=50,
 
         # ===== Training =====
         horizon=2000,
         num_sgd_iter=20,
         lr=3e-4,
         grad_clip=10.0,
-        rollout_fragment_length=200,
+        vf_clip_param=100.0,
+        rollout_fragment_length="auto",
         sgd_minibatch_size=256,
         train_batch_size=30000,
+        framework="torch",
+
+        # ===== Resources =====
         num_gpus=0.2 if args.num_gpus != 0 else 0,
         num_cpus_per_worker=0.1,
         num_cpus_for_driver=0.5,
-        # num_workers=10,
-        num_workers=1,
-        clip_actions=False,
-        framework="torch"
+        num_workers=10,  # Number of parallel environments
+
     )
 
     train(
@@ -99,7 +103,7 @@ if __name__ == '__main__':
         num_seeds=1,
         custom_callback=DrivingCallbacks,
         # test_mode=args.test,
-        local_mode=True
+        # local_mode=True
 
         # Put your wandb API to the following file, or do not call --wandb
         # wandb_key_file="~/wandb_api_key_file.txt",

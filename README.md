@@ -138,6 +138,17 @@ You can then kick off RL training by utilizing the created environment showcased
 
 ```bash
 
+# Dependencies:
+pip install ray==2.2.0
+pip install ray[rllib]==2.2.0
+
+# Install pytorch by yourself and make it compatible with your CUDA
+# ...
+
+# Kickoff training
+cd trafficgen
+
+python run_rl_training.py
 ```
 
 

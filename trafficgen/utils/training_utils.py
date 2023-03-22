@@ -499,7 +499,9 @@ class DrivingCallbacks(DefaultCallbacks):
             arrive_dest = info.get("arrive_dest", False)
 
             # Newly introduced metrics
-            route_completion = info.get("route_completion", -1)
+            route_completion = info.get("route_completion", None)
+            assert route_completion is not None
+
             track_length = info.get("track_length", -1)
             current_distance = info.get("current_distance", -1)
 
