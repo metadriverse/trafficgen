@@ -43,8 +43,11 @@ if __name__ == '__main__':
     case_num_test = args.case_num_test
     replay_traffic = not args.no_replay_traffic
 
-    data_folder_train = os.path.join(root, args.dataset_train)
-    assert os.path.isdir(data_folder_train), "Can't find {}. ".format(data_folder_train) + HELP
+    data_folder_train = tune.grid_search([
+        os.path.join(root, "dataset/1385_training"),
+        os.path.join(root, "dataset/no_threshold_data"),
+    ])
+    # assert os.path.isdir(data_folder_train), "Can't find {}. ".format(data_folder_train) + HELP
 
     data_folder_test = os.path.join(root, args.dataset_test)
     assert os.path.isdir(data_folder_test), (
@@ -63,7 +66,7 @@ if __name__ == '__main__':
             start_case_index=0,
             case_num=case_num_train,
 
-            replay=replay_traffic,
+            replay=tune.grid_search([True, False]),
         ),
 
         # ===== Evaluation =====
