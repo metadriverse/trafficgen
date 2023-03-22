@@ -37,7 +37,7 @@ if __name__ == '__main__':
                         help="Number of scenarios you want to load from training dataset.")
     args = parser.parse_args()
 
-    exp_name = args.exp_name or "RL_training"
+    exp_name = args.exp_name or "TrafficGen_RL"
     stop = int(500_00000)
     case_num_train = args.case_num_train
     case_num_test = args.case_num_test
@@ -92,6 +92,13 @@ if __name__ == '__main__':
 
     )
 
+    kwargs = dict()
+    if args.wandb:
+        # Put your own wandb API token into the following file.
+        kwargs["wandb_key_file"] = "~/wandb_api_key_file.txt"
+        kwargs["wandb_project"] = "TrafficGen_RL"
+        kwargs["wandb_team"] = "drivingforce"
+
     train(
         PPOTrainer,
         exp_name=exp_name,
@@ -102,10 +109,9 @@ if __name__ == '__main__':
         # num_seeds=args.num_seeds,
         num_seeds=1,
         custom_callback=DrivingCallbacks,
-        # test_mode=args.test,
+        test_mode=args.test,
         # local_mode=True
 
         # Put your wandb API to the following file, or do not call --wandb
-        # wandb_key_file="~/wandb_api_key_file.txt",
-        # wandb_project="TrafficGen_RL",
+        **kwargs
     )

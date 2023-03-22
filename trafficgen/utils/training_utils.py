@@ -24,6 +24,12 @@ from ray.rllib.evaluation import MultiAgentEpisode, RolloutWorker
 from ray.rllib.policy import Policy
 from ray.tune import CLIReporter
 
+
+from multiprocessing import Queue
+
+from ray.air.integrations.wandb import WandbLoggerCallback, _clean_log
+
+
 root = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 
 
@@ -48,7 +54,6 @@ class OurWandbLogger(WandbLoggerCallback):
 
         # Fill trial ID and name
         trial_id = trial.trial_id if trial else None
-        trial_name = str(trial) if trial else None
 
         # Project name for Wandb
         wandb_project = self.project
@@ -119,7 +124,7 @@ def train(
         # wandb support is removed!
         wandb_key_file=None,
         wandb_project=None,
-        wandb_team="copo",
+        wandb_team=None,
         wandb_log_config=True,
         init_kws=None,
         **kwargs

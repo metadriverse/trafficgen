@@ -148,7 +148,13 @@ pip install ray[rllib]==2.2.0
 # Kickoff training
 cd trafficgen
 
-python run_rl_training.py
+python run_rl_training.py --exp-name EXPERIMENT_NAME --num-gpus 1 
+# You can also specify the path to dataset. Currently we set:
+
+--dataset_train  dataset/1385_training
+--dataset_test  dataset/validation
+
+# by default. Check the file for more details about the arguments. 
 ```
 
 
