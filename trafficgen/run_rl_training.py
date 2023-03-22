@@ -72,9 +72,11 @@ if __name__ == '__main__':
         # ===== Evaluation =====
         evaluation_interval=5,
         evaluation_num_episodes=40,
-        evaluation_config=dict(env_config=dict(case_num=case_num_test, waymo_data_directory=data_folder_test)),
+        evaluation_config=dict(env_config=dict(
+            case_num=case_num_test, waymo_data_directory=data_folder_test, sequential_seed=True
+        )),
         evaluation_num_workers=2,
-        metrics_smoothing_episodes=50,
+        metrics_smoothing_episodes=100,
 
         # ===== Training =====
         horizon=2000,
@@ -91,7 +93,7 @@ if __name__ == '__main__':
         num_gpus=0.2 if args.num_gpus != 0 else 0,
         num_cpus_per_worker=0.1,
         num_cpus_for_driver=0.5,
-        num_workers=10,  # Number of parallel environments
+        num_workers=5,  # Number of parallel environments
 
     )
 
