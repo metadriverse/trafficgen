@@ -9,6 +9,7 @@ from trafficgen.act.model.tg_act import actuator
 from trafficgen.act.utils.act_dataset import actDataset
 from trafficgen.utils.config import get_parsed_args
 from trafficgen.utils.config import load_config_act
+from trafficgen.utils.typedef import AgentType, RoadEdgeType, RoadLineType
 
 if __name__ == '__main__':
 

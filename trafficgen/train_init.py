@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from trafficgen.init.model.tg_init import initializer
 from trafficgen.init.utils.init_dataset import initDataset
 from trafficgen.utils.config import load_config_init, get_parsed_args
-
+from trafficgen.utils.typedef import AgentType, RoadEdgeType, RoadLineType
 if __name__ == '__main__':
 
     args = get_parsed_args()
