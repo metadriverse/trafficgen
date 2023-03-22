@@ -99,6 +99,8 @@ Set `--gif` flag to generate GIF files.
 
 ## Connect TrafficGen with MetaDrive
 
+### Create single-agent RL environment
+
 After running `python generate.py --save_metadrive`,
 a folder `trafficgen/traffic_generator/output/scene_pkl` will be created, and you will see many
 pickle files. Each `.pkl` file is a scenario created by TrafficGen.
@@ -130,6 +132,31 @@ python run_metadrive.py --dataset dataset/validation --no_replay_traffic
 ```
 
 You can then kick off RL training by utilizing the created environment showcased in the script above.
+
+
+### Train RL agents in TrafficGen-generated single-agent RL environment
+
+```bash
+
+# Dependencies:
+pip install ray==2.2.0
+pip install ray[rllib]==2.2.0
+
+# Install pytorch by yourself and make it compatible with your CUDA
+# ...
+
+# Kickoff training
+cd trafficgen
+
+python run_rl_training.py --exp-name EXPERIMENT_NAME --num-gpus 1 
+# You can also specify the path to dataset. Currently we set:
+
+--dataset_train  dataset/1385_training
+--dataset_test  dataset/validation
+
+# by default. Check the file for more details about the arguments. 
+```
+
 
 
 ## Training

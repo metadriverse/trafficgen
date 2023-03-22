@@ -33,11 +33,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--replay", action="store_true", help="Whether to replay ego vehicle actions.")
     parser.add_argument("--no_replay_traffic", action="store_true", help="If True, do not replay traffic vehicles' trajectories but instead use IDM policy to control all traffic vehicles.")
-    parser.add_argument("--dataset", required=True, help=HELP)
+    parser.add_argument("--dataset", default="dataset/validation", help=HELP)
     args = parser.parse_args()
 
     data_folder = os.path.join(root, args.dataset)
-    assert os.path.isdir(data_folder), HELP
+    assert os.path.isdir(data_folder), "Can't find {}. ".format(data_folder) + HELP
 
     config = dict(
         waymo_data_directory=data_folder,
