@@ -74,7 +74,7 @@ if __name__ == '__main__':
         evaluation_num_episodes=40,
         evaluation_config=dict(env_config=dict(
             case_num=case_num_test, waymo_data_directory=data_folder_test, sequential_seed=True,
-            replay=True,
+            replay=True
         )),
         evaluation_num_workers=2,
         metrics_smoothing_episodes=100,
@@ -91,7 +91,7 @@ if __name__ == '__main__':
         framework="torch",
 
         # ===== Resources =====
-        num_gpus=0.2 if args.num_gpus != 0 else 0,
+        num_gpus=0.5 if args.num_gpus != 0 else 0,
         num_cpus_per_worker=0.1,
         num_cpus_for_driver=0.5,
         num_workers=5,  # Number of parallel environments
