@@ -73,7 +73,8 @@ if __name__ == '__main__':
         evaluation_interval=5,
         evaluation_num_episodes=40,
         evaluation_config=dict(env_config=dict(
-            case_num=case_num_test, waymo_data_directory=data_folder_test, sequential_seed=True
+            case_num=case_num_test, waymo_data_directory=data_folder_test, sequential_seed=True,
+            replay=True,
         )),
         evaluation_num_workers=2,
         metrics_smoothing_episodes=100,
