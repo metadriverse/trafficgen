@@ -22,7 +22,7 @@ if __name__ == '__main__':
         trainer = pl.Trainer(
             max_epochs=100,
             logger=wandb_logger,
-            devices=cfg['device_num'],
+            devices=args.devices,
             gradient_clip_val=0.5,
             accelerator=cfg['device'],
             profiler="simple",
