@@ -56,7 +56,7 @@ class initializer(pl.LightningModule):
         losses, total_loss = self.compute_loss(batch, pred_dists)
         # pred = pred_dists
         # pred['prob'] = nn.Sigmoid()(pred['prob'])
-        self.log("train/loss", losses)
+        self.log("train/loss", total_loss)
         return total_loss
 
     def validation_step(self, batch, batch_idx):
@@ -71,7 +71,7 @@ class initializer(pl.LightningModule):
         losses, total_loss = self.compute_loss(batch, pred_dists)
         # pred = pred_dists
         # pred['prob'] = nn.Sigmoid()(pred['prob'])
-        self.log("valid/loss", losses)
+        self.log("valid/loss", total_loss)
         return total_loss
 
     def configure_optimizers(self):
