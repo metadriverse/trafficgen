@@ -38,7 +38,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     exp_name = args.exp_name or "TrafficGen_RL"
-    stop = int(500_00000)
+    stop = int(20_000_000)  # 20 M steps.
     case_num_train = args.case_num_train
     case_num_test = args.case_num_test
     replay_traffic = not args.no_replay_traffic
@@ -66,7 +66,7 @@ if __name__ == '__main__':
             start_case_index=0,
             case_num=case_num_train,
 
-            replay=tune.grid_search([True, False]),
+            replay=False,
         ),
 
         # ===== Evaluation =====
@@ -82,7 +82,7 @@ if __name__ == '__main__':
         # ===== Training =====
         horizon=2000,
         num_sgd_iter=20,
-        lr=3e-4,
+        lr=1e-4,
         grad_clip=10.0,
         vf_clip_param=100.0,
         rollout_fragment_length="auto",
