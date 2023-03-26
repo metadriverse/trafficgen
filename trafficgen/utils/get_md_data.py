@@ -2,6 +2,7 @@ import pickle
 import numpy as np
 import sys
 import os
+from tqdm import tqdm
 #from trafficgen.utils.typedef import AgentType, RoadEdgeType, RoadLineType
 
 ALL_TYPE = {
@@ -127,7 +128,7 @@ if __name__ == '__main__':
 
     processed_data_path = raw_data_path + "_tg"
 
-    for i in range(data_num):
+    for i in tqdm(range(data_num)):
         md_path = raw_data_path + '/{}.pkl'.format(i)
         with open(md_path, 'rb+') as f:
             md_data = pickle.load(f)
