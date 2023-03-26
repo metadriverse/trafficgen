@@ -128,12 +128,16 @@ if __name__ == '__main__':
 
     processed_data_path = raw_data_path + "_tg"
 
+    cnt = 0
     for i in tqdm(range(data_num)):
         md_path = raw_data_path + '/{}.pkl'.format(i)
         with open(md_path, 'rb+') as f:
             md_data = pickle.load(f)
-        init_data = MDdata_to_initdata(md_data)
-
+        try:
+            init_data = MDdata_to_initdata(md_data)
+        except:
+            continue
     # dump init_data in processed_data_path
-        with open(processed_data_path + '/{}.pkl'.format(i), 'wb+') as f:
+        with open(processed_data_path + '/{}.pkl'.format(cnt), 'wb+') as f:
             pickle.dump(init_data, f)
+        cnt += 1
