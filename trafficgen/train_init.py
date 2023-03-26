@@ -19,7 +19,7 @@ if __name__ == '__main__':
         )
     else:
         wandb_logger = WandbLogger(project="trafficGen_ptl", name=args.exp_name)
-        trainer = pl.Trainer(
+        trainer = pl.Trainer(num_sanity_val_steps=0,
             max_epochs=100,
             logger=wandb_logger,
             devices=args.devices,
