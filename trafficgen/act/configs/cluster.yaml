@@ -5,7 +5,7 @@ debug: False
 data_path: '/data/lanfeng/waymo/init_data'
 use_cache: True
 
-max_epoch: 50
+max_epoch: 100
 num_workers: 10
 batch_size: 128
 lr: 0.0003
