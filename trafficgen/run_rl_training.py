@@ -25,9 +25,6 @@ Please refer to 'dataset/README.md' for more information on pre-generated Traffi
 
 if __name__ == '__main__':
     parser = get_train_parser()
-    parser.add_argument("--no_replay_traffic", action="store_true",
-                        help="If True, do not replay traffic vehicles' trajectories but instead use IDM policy "
-                             "to control all traffic vehicles.")
     parser.add_argument("--dataset_train", default="dataset/1385_training", help=HELP)
     parser.add_argument("--dataset_test", default="dataset/validation", help=HELP)
     parser.add_argument("--wandb", action="store_true", help="Whether to upload log to wandb.")
@@ -41,13 +38,9 @@ if __name__ == '__main__':
     stop = int(20_000_000)  # 20 M steps.
     case_num_train = args.case_num_train
     case_num_test = args.case_num_test
-    replay_traffic = not args.no_replay_traffic
 
-    data_folder_train = tune.grid_search([
-        os.path.join(root, "dataset/1385_training"),
-        os.path.join(root, "dataset/no_threshold_data"),
-    ])
-    # assert os.path.isdir(data_folder_train), "Can't find {}. ".format(data_folder_train) + HELP
+    data_folder_train = os.path.join(root, args.dataset_train)
+    assert os.path.isdir(data_folder_train), "Can't find {}. ".format(data_folder_train) + HELP
 
     data_folder_test = os.path.join(root, args.dataset_test)
     assert os.path.isdir(data_folder_test), (

@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from trafficgen.init.model.tg_init import initializer
 from trafficgen.init.utils.init_dataset import initDataset
 from trafficgen.utils.config import load_config_init, get_parsed_args
-
+from trafficgen.utils.typedef import AgentType, RoadEdgeType, RoadLineType
 if __name__ == '__main__':
 
     args = get_parsed_args()
@@ -20,9 +20,9 @@ if __name__ == '__main__':
     else:
         wandb_logger = WandbLogger(project="trafficGen_ptl", name=args.exp_name)
         trainer = pl.Trainer(
-            max_epochs=100,
+            max_epochs=cfg['max_epoch'],
             logger=wandb_logger,
-            devices=cfg['device_num'],
+            devices=args.devices,
             gradient_clip_val=0.5,
             accelerator=cfg['device'],
             profiler="simple",
