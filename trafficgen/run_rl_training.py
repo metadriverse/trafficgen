@@ -25,9 +25,6 @@ Please refer to 'dataset/README.md' for more information on pre-generated Traffi
 
 if __name__ == '__main__':
     parser = get_train_parser()
-    parser.add_argument("--no_replay_traffic", action="store_true",
-                        help="If True, do not replay traffic vehicles' trajectories but instead use IDM policy "
-                             "to control all traffic vehicles.")
     parser.add_argument("--dataset_train", default="dataset/1385_training", help=HELP)
     parser.add_argument("--dataset_test", default="dataset/validation", help=HELP)
     parser.add_argument("--wandb", action="store_true", help="Whether to upload log to wandb.")
@@ -38,10 +35,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     exp_name = args.exp_name or "TrafficGen_RL"
-    stop = int(500_00000)
+    stop = int(20_000_000)  # 20 M steps.
     case_num_train = args.case_num_train
     case_num_test = args.case_num_test
-    replay_traffic = not args.no_replay_traffic
 
     data_folder_train = os.path.join(root, args.dataset_train)
     assert os.path.isdir(data_folder_train), "Can't find {}. ".format(data_folder_train) + HELP
@@ -63,20 +59,23 @@ if __name__ == '__main__':
             start_case_index=0,
             case_num=case_num_train,
 
-            replay=replay_traffic,
+            replay=False,
         ),
 
         # ===== Evaluation =====
         evaluation_interval=5,
         evaluation_num_episodes=40,
-        evaluation_config=dict(env_config=dict(case_num=case_num_test, waymo_data_directory=data_folder_test)),
+        evaluation_config=dict(env_config=dict(
+            case_num=case_num_test, waymo_data_directory=data_folder_test, sequential_seed=True,
+            replay=True
+        )),
         evaluation_num_workers=2,
-        metrics_smoothing_episodes=50,
+        metrics_smoothing_episodes=100,
 
         # ===== Training =====
         horizon=2000,
         num_sgd_iter=20,
-        lr=3e-4,
+        lr=1e-4,
         grad_clip=10.0,
         vf_clip_param=100.0,
         rollout_fragment_length="auto",
@@ -85,10 +84,10 @@ if __name__ == '__main__':
         framework="torch",
 
         # ===== Resources =====
-        num_gpus=0.2 if args.num_gpus != 0 else 0,
+        num_gpus=0.5 if args.num_gpus != 0 else 0,
         num_cpus_per_worker=0.1,
         num_cpus_for_driver=0.5,
-        num_workers=10,  # Number of parallel environments
+        num_workers=5,  # Number of parallel environments
 
     )
 
