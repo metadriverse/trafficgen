@@ -26,24 +26,44 @@ ALL_TYPE = {
     'SPEED_BUMP': 19,
 }
 
-SAMPLE_NUM = 10
 
 
-def down_sampling(line):
+def _down_sampling(line, sample_num):
     # if is center lane
     point_num = line.shape[0]
 
     ret = []
 
-    if point_num < SAMPLE_NUM:
+    if point_num < sample_num:
         for i in range(0, point_num):
             ret.append(line[i])
     else:
-        for i in range(0, point_num, SAMPLE_NUM):
+        for i in range(0, point_num, sample_num):
             ret.append(line[i])
 
     return ret
 
+def _extract_map(map_feat, sample_num):
+    lanes = []
+    for map_feat_id, map_feat in map_feat.items():
+
+        if "polyline" not in map_feat:
+            map_feat['polyline'] = map_feat['position'][np.newaxis]
+
+        poly_unsampled = map_feat['polyline'][:, :2]
+
+        # TODO(PZH): Revisit the down sampling function. It seems quite werid to me.
+        poly = _down_sampling(poly_unsampled, sample_num=sample_num)
+
+        a_lane = np.zeros([len(poly), 4], dtype='float32')
+
+        a_lane[:, :2] = np.array(poly)
+        a_lane[:, 2] = ALL_TYPE[map_feat['type']]
+        a_lane[:, 3] = 1
+
+        lanes.append(a_lane)
+    lanes = np.concatenate(lanes, axis=0)
+    return lanes
 
 def metadrive_scenario_to_init_data(scenario):
     ret = {}
@@ -107,29 +127,27 @@ def metadrive_scenario_to_init_data(scenario):
 
     ret['traffic_light'] = traffic_light_data
 
-    lanes = []
-    for map_feat_id, map_feat in map_feat.items():
-
-        if "polyline" not in map_feat:
-            map_feat['polyline'] = map_feat['position'][np.newaxis]
-
-        poly_unsampled = map_feat['polyline'][:, :2]
-
-        # TODO(PZH): Revisit the down sampling function. It seems quite werid to me.
-        poly = down_sampling(poly_unsampled)
-
-        a_lane = np.zeros([len(poly), 4], dtype='float32')
-
-        a_lane[:, :2] = np.array(poly)
-        a_lane[:, 2] = ALL_TYPE[map_feat['type']]
-        a_lane[:, 3] = 1
-
-        lanes.append(a_lane)
-    lanes = np.concatenate(lanes, axis=0)
-
-    ret['lane'] = lanes
+    ret['lane'] = _extract_map(map_feat, sample_num=10)
+    ret['unsampled_lane'] = _extract_map(map_feat, sample_num=10e9)
 
     return ret
+
+
+def extend_batch_dim(data):
+    new_data = {}
+    for k, tensor in data.items():
+        if k != "other":
+            new_data[k] = np.expand_dims(tensor, 0)
+
+    new_data["other"] = {}
+    for k, tensor in data["other"].items():
+        if k == "traf":  # What the fuck this name is?
+            pass
+        else:
+            tensor = np.expand_dims(tensor, 0)
+        new_data["other"][k] = tensor
+
+    return new_data
 
 
 if __name__ == '__main__':
@@ -155,6 +173,15 @@ if __name__ == '__main__':
 
     cnt = 0
 
+    from trafficgen.traffic_generator.traffic_generator import TrafficGen
+    from trafficgen.traffic_generator.utils.utils import get_parsed_args
+    from trafficgen.utils.config import load_config_init
+    from trafficgen.traffic_generator.utils.data_utils import process_data_to_internal_format
+
+    args = get_parsed_args()
+    cfg = load_config_init(args.config)
+    model = TrafficGen(cfg)
+
     batch = []
 
     for index, pickle_file in enumerate(tqdm(pickle_files)):
@@ -171,10 +198,7 @@ if __name__ == '__main__':
         #     print("File is saved at: ", out_path)
         # cnt += 1
 
-        from trafficgen.traffic_generator.traffic_generator import TrafficGen
-        from trafficgen.traffic_generator.utils.utils import get_parsed_args
-        from trafficgen.utils.config import load_config_init
-        args = get_parsed_args()
-        cfg = load_config_init(args.config)
-        model = TrafficGen(cfg)
-        model.place_vehicles_for_single_scenario(transformed, index=index, vis=True, vis_dir=vis_dir)
+        internal_data = process_data_to_internal_format(transformed)
+        data = internal_data[0]
+        data = extend_batch_dim(data)
+        model.place_vehicles_for_single_scenario(data, index=index, vis=True, vis_dir=vis_dir)

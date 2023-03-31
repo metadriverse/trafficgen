@@ -142,7 +142,8 @@ class initializer(pl.LightningModule):
             all_prob = heading_logprob_ + bbox_logprob_ + pos_logprob_
             prob_list.append(all_prob)
 
-        max_indx = np.argmax(prob_list)
+        # max_indx = np.argmax(prob_list)
+        max_indx = torch.stack(prob_list).argmax().item()
         max_agents = agents_list[max_indx]
         return max_agents, prob, the_indx
 

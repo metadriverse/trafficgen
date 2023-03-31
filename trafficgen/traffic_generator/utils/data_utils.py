@@ -178,7 +178,7 @@ class InitDataset(Dataset):
             data_file_path = os.path.join(data_path, f'{i}.pkl')
             with open(data_file_path, 'rb+') as f:
                 datas = pickle.load(f)
-            data = process(datas)
+            data = process_data_to_internal_format(datas)
             self.data_loaded[i] = data[0]
 
     def __len__(self):
@@ -449,7 +449,7 @@ def _process_map_inp(case_info):
     )
     return
 
-def process(data):
+def process_data_to_internal_format(data):
     case_info = {}
     gap = 20
 
