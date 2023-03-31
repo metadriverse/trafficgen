@@ -18,7 +18,7 @@ from trafficgen.traffic_generator.utils.vis_utils import draw, draw_seq
 from trafficgen.utils.utils import process_map, rotate
 
 
-class trafficgen:
+class TrafficGen:
     def __init__(self, cfg):
         self.cfg = cfg
         self.init_model = initializer.load_from_checkpoint('traffic_generator/ckpt/init.ckpt')
@@ -52,6 +52,26 @@ class trafficgen:
         self.generate_traj(snapshot=True, gif=gif, save_metadrive=save_metadrive)
         print('Complete.\n' 'Visualization results are saved in traffic_generator/output/vis/scene_static\n')
 
+    def place_vehicles_for_single_scenario(self, batch, index=None, vis=False, vis_dir=None, context_num=1):
+        self.wash(batch)
+
+        # Call the initialization model
+        # The output is a dict with these keys: center, rest, bound, agent
+        model_output = self.init_model.inference(batch, context_num=context_num)
+
+        center = batch['center'][0].cpu().numpy()
+        rest = batch['rest'][0].cpu().numpy()
+        bound = batch['bound'][0].cpu().numpy()
+
+        # visualize generated traffic snapshots
+        if vis:
+            assert vis_dir is not None
+            assert index is not None
+            output_path = os.path.join(vis_dir, f'{index}')
+            draw(center, model_output['agent'], other=rest, edge=bound, save=True, path=output_path)
+
+        return model_output
+
     def place_vehicles(self, vis=True):
         context_num = 1
 
@@ -72,22 +92,10 @@ class trafficgen:
                     original_data = pickle.load(f)
 
                 batch = copy.deepcopy(data)
-                self.wash(batch)
 
-                # Call the initialization model
-                # The output is a dict with these keys: center, rest, bound, agent
-                output = self.init_model.inference(batch, context_num=context_num)
+                model_output = self.place_vehicles_for_single_scenario(batch, idx, vis, init_vis_dir, context_num)
 
-                center = batch['center'][0].cpu().numpy()
-                rest = batch['rest'][0].cpu().numpy()
-                bound = batch['bound'][0].cpu().numpy()
-
-                # visualize generated traffic snapshots
-                if vis:
-                    output_path = os.path.join(init_vis_dir, f'{idx}')
-                    draw(center, output['agent'], other=rest, edge=bound, save=True, path=output_path)
-
-                agent, agent_mask = WaymoAgent.from_list_to_array(output['agent'])
+                agent, agent_mask = WaymoAgent.from_list_to_array(model_output['agent'])
 
                 # save temp data for trafficgen to generate trajectory
                 for key in batch.keys():
