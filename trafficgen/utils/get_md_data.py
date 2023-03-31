@@ -154,8 +154,8 @@ def metadrive_scenario_to_init_data(scenario):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", required=True, help="The folder of input data.")
-    parser.add_argument("--output", required=True, help="The folder of output data.")
+    parser.add_argument("--input", default="raw_data", help="The folder of input data.")
+    parser.add_argument("--output", default="test_output", help="The folder of output data.")
     parser.add_argument("--num_scenarios", "-n", default=-1, type=int)  # -1 stands for loading all
     args = parser.parse_args()
 
