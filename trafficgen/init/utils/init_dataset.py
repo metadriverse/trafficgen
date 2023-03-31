@@ -56,10 +56,12 @@ def get_gt(case_info):
     # 6-9 lane vector
     # 10-11 lane type and traff state
     center_num = case_info['center'].shape[1]
-    lane_inp, agent_vec_indx, vec_based_rep, bbox = \
-        case_info['lane_inp'][:, :center_num], case_info['agent_vec_indx'], case_info['vec_based_rep'], case_info[
-                                                                                                            'agent'][
-                                                                                                        ..., 5:7]
+
+    lane_inp = case_info['lane_inp'][:, :center_num]
+    agent_vec_indx = case_info['agent_vec_indx']
+    vec_based_rep = case_info['vec_based_rep']
+    bbox = case_info['agent'][..., 5:7]
+
     b, lane_num, _ = lane_inp.shape
     gt_distribution = np.zeros([b, lane_num])
     gt_vec_based_coord = np.zeros([b, lane_num, 5])
