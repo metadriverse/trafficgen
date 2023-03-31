@@ -82,9 +82,6 @@ def metadrive_scenario_to_init_data(scenario):
 
     traffic_light_data = []
     for step in range(track_len):
-        # t_l_t = []
-        # tls_t = traffic_lights[i]
-
         tl_states_in_one_step = []
 
         for traffic_light_index, traffic_light in traffic_lights.items():
@@ -107,23 +104,6 @@ def metadrive_scenario_to_init_data(scenario):
             tl_states_in_one_step.append(traffic_light_step_data)
 
         traffic_light_data.append(tl_states_in_one_step)
-
-        # for j in range(len(tls_t)):
-        #     t_l_t_j = np.zeros(6, dtype='float32')
-        #     t_l_t_j[0] = tls_t[j]['lane']
-        #     t_l_t_j[1:3] = tls_t[j]['stop_point'][:2]
-        #     state = tls_t[j]['state']
-        #     if 'GO' in state:
-        #         t_l_t_j[4] = 3
-        #     elif 'CAUTION' in state:
-        #         t_l_t_j[4] = 2
-        #     elif 'STOP' in state:
-        #         t_l_t_j[4] = 1
-        #     else:
-        #         t_l_t_j[4] = 0
-        #     t_l_t_j[5] = 1 if t_l_t_j[4] else 0
-        #     t_l_t.append(t_l_t_j)
-        # traffic_light.append(t_l_t)
 
     ret['traffic_light'] = traffic_light_data
 
@@ -170,11 +150,14 @@ if __name__ == '__main__':
     if num_scenarios == -1:
         num_scenarios = len(pickle_files)
 
+    vis_dir = "TMP_IMG"
+    os.makedirs(vis_dir, exist_ok=True)
+
     cnt = 0
 
     batch = []
 
-    for pickle_file in tqdm(pickle_files):
+    for index, pickle_file in enumerate(tqdm(pickle_files)):
         md_path = os.path.join(input_folder, pickle_file)
         scenario = read_waymo_data(md_path)
         transformed = metadrive_scenario_to_init_data(scenario)
@@ -182,8 +165,16 @@ if __name__ == '__main__':
         # TODO(PZH): Temporarily remove post-processing. Decide later!
         batch.append(transformed)
 
-        out_path = os.path.join(output_folder, "{}.pkl".format(cnt))
-        with open(out_path, "wb") as f:
-            pickle.dump(transformed, f)
-            print("File is saved at: ", out_path)
-        cnt += 1
+        # out_path = os.path.join(output_folder, "{}.pkl".format(cnt))
+        # with open(out_path, "wb") as f:
+        #     pickle.dump(transformed, f)
+        #     print("File is saved at: ", out_path)
+        # cnt += 1
+
+        from trafficgen.traffic_generator.traffic_generator import TrafficGen
+        from trafficgen.traffic_generator.utils.utils import get_parsed_args
+        from trafficgen.utils.config import load_config_init
+        args = get_parsed_args()
+        cfg = load_config_init(args.config)
+        model = TrafficGen(cfg)
+        model.place_vehicles_for_single_scenario(transformed, index=index, vis=True, vis_dir=vis_dir)
