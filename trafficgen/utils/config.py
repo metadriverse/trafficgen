@@ -3,6 +3,7 @@ import os
 
 import yaml
 
+TRAFFICGEN_ROOT = os.path.dirname(os.path.dirname(__file__))
 
 def load_config_act(path):
     """ load config file"""
@@ -14,7 +15,7 @@ def load_config_act(path):
 
 def load_config_init(path):
     """ load config file"""
-    path = os.path.join('init/configs', f'{path}.yaml')
+    path = os.path.join(TRAFFICGEN_ROOT, "init", "configs", f'{path}.yaml')
     with open(path, 'r') as f:
         cfg = yaml.load(f, Loader=yaml.FullLoader)
     return cfg

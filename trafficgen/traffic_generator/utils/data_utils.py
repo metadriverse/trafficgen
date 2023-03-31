@@ -9,6 +9,9 @@ from torch.utils.data import Dataset
 from trafficgen.utils.typedef import AgentType, RoadLineType, RoadEdgeType
 from trafficgen.utils.utils import process_map, rotate, cal_rel_dir, WaymoAgent
 
+
+TRAFFICGEN_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+
 LANE_SAMPLE = 10
 RANGE = 50
 
@@ -156,18 +159,17 @@ def save_as_metadrive_data(pred_i, other, save_path):
     print("MetaDrive-compatible scenario data is saved at: ", save_path)
 
 
-class initDataset(Dataset):
+class InitDataset(Dataset):
     """
     If in debug, it will load debug dataset
     """
     def __init__(self, cfg):
         self.total_data_usage = cfg["data_usage"]
-        self.data_path = cfg['data_path']
+        self.data_path = os.path.join(TRAFFICGEN_ROOT, cfg['data_path'])
         self.data_len = None
         self.data_loaded = {}
         self.cfg = cfg
-        self.load_data()
-        super(initDataset, self).__init__()
+        super(InitDataset, self).__init__()
 
     def load_data(self):
 
@@ -180,12 +182,20 @@ class initDataset(Dataset):
             self.data_loaded[i] = data[0]
 
     def __len__(self):
+
+        if not self.data_loaded:
+            self.load_data()
+
         return self.total_data_usage
 
     def __getitem__(self, index):
         """
         Calculate for saving spaces
         """
+
+        if not self.data_loaded:
+            self.load_data()
+
         return self.data_loaded[index]
 
     def get_vec_based_rep(self, case_info):

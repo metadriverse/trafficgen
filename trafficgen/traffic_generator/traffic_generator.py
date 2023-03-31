@@ -12,23 +12,25 @@ from tqdm import tqdm
 from trafficgen.act.model.tg_act import actuator
 from trafficgen.init.model.tg_init import initializer
 from trafficgen.init.utils.init_dataset import WaymoAgent
-from trafficgen.traffic_generator.utils.data_utils import initDataset, save_as_metadrive_data, from_list_to_batch, \
+from trafficgen.traffic_generator.utils.data_utils import InitDataset, save_as_metadrive_data, from_list_to_batch, \
     transform_to_agent, process_case_to_input
 from trafficgen.traffic_generator.utils.vis_utils import draw, draw_seq
 from trafficgen.utils.utils import process_map, rotate
 
 
+TRAFFICGEN_ROOT = os.path.dirname(os.path.dirname(__file__))
+
 class TrafficGen:
     def __init__(self, cfg):
         self.cfg = cfg
-        self.init_model = initializer.load_from_checkpoint('traffic_generator/ckpt/init.ckpt')
+        self.init_model = initializer.load_from_checkpoint(os.path.join(TRAFFICGEN_ROOT, "traffic_generator", "ckpt", "init.ckpt"))
         # act = actuator()
         # state = torch.load('traffic_generator/ckpt/act.ckpt', map_location='cpu')
         # act = torch.nn.DataParallel(act, device_ids=[0])
         # act.load_state_dict(state["state_dict"])
         # self.act_model = act
-        self.act_model = actuator.load_from_checkpoint('traffic_generator/ckpt/act.ckpt')
-        init_dataset = initDataset(cfg)
+        self.act_model = actuator.load_from_checkpoint(os.path.join(TRAFFICGEN_ROOT, "traffic_generator", "ckpt", "act.ckpt"))
+        init_dataset = InitDataset(cfg)
         self.data_loader = DataLoader(init_dataset, shuffle=False, batch_size=1, num_workers=0)
 
     def wash(self, batch):
