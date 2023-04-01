@@ -487,7 +487,7 @@ def process_data_to_internal_format(data):
     case_info['cross'], case_info['cross_mask'], case_info['rest'], case_info['rest_mask'] = process_map(
         data['lane'], data['traffic_light'], lane_range=RANGE, offest=0)
 
-    # get vector-based representatiomn
+    # get vector-based representation
     get_vec_based_rep(case_info)
 
     agent = WaymoAgent(case_info['agent'], case_info['vec_based_rep'])

@@ -59,7 +59,7 @@ def _extract_map(map_feat, sample_num):
 
         a_lane[:, :2] = np.array(poly)
         a_lane[:, 2] = ALL_TYPE[map_feat['type']]
-        a_lane[:, 3] = 1
+        a_lane[:, 3] = str(map_feat_id)
 
         lanes.append(a_lane)
     lanes = np.concatenate(lanes, axis=0)
@@ -109,8 +109,8 @@ def metadrive_scenario_to_init_data(scenario):
 
             traffic_light_step_data = np.zeros(6, dtype='float32')
 
-            # TODO: The range of this data is int [0, 253]. I don't think it's meaningful reading this data.
-            traffic_light_step_data[0] = traffic_light_state["lane"]
+            # The range of this data is int [0, 253]. Will use to filter lanes. It is very useful.
+            traffic_light_step_data[0] = str(traffic_light_state["lane"])
 
             # TODO: The range of this data is float with shape [200, 3] in range [-352, 169].
             traffic_light_step_data[1:3] = traffic_light_state["stop_point"][:2]
