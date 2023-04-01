@@ -166,6 +166,9 @@ class InitDataset(Dataset):
     def __init__(self, cfg):
         self.total_data_usage = cfg["data_usage"]
         self.data_path = os.path.join(TRAFFICGEN_ROOT, cfg['data_path'])
+
+        self.from_metadrive = cfg.get("from_metadrive", False)
+
         self.data_len = None
         self.data_loaded = {}
         self.cfg = cfg
@@ -178,6 +181,11 @@ class InitDataset(Dataset):
             data_file_path = os.path.join(data_path, f'{i}.pkl')
             with open(data_file_path, 'rb+') as f:
                 datas = pickle.load(f)
+
+            if self.from_metadrive:
+                from trafficgen.utils.get_md_data import metadrive_scenario_to_init_data
+                datas = metadrive_scenario_to_init_data(datas)
+
             data = process_data_to_internal_format(datas)
             self.data_loaded[i] = data[0]
 

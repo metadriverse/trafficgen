@@ -1,0 +1,29 @@
+# PZH: Compared to local.yaml, this config file introduces "from_metadrive: True" and change the data path to
+# "init/sample_data_from_metadrive".
+
+# Config format schema number
+format_version: 4
+device_num: 1
+map_size: 50
+device: 'cpu'
+
+use_cache: False
+debug: True
+data_path: 'init/sample_data_from_metadrive'
+sample_gap: 20
+from_metadrive: True
+
+max_epoch: 50
+num_workers: 0
+batch_size: 4
+lr: 0.0003
+weight_decay: 0.0004
+data_usage: 3
+hidden_dim: 1024
+gaussian_comp: 5
+
+pad_num: 0
+min_agent: 8
+draw: True
+
+

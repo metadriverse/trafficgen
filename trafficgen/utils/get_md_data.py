@@ -55,6 +55,9 @@ def _down_sampling(line, sample_num):
 
 def _extract_map(map_feat, sample_num):
     lanes = []
+
+    center_info = []
+
     for map_feat_id, map_feat in map_feat.items():
 
         if "polyline" not in map_feat:
@@ -72,8 +75,11 @@ def _extract_map(map_feat, sample_num):
         a_lane[:, 3] = str(map_feat_id)
 
         lanes.append(a_lane)
+
     lanes = np.concatenate(lanes, axis=0)
     return lanes
+
+
 
 def metadrive_scenario_to_init_data(scenario):
     ret = {}

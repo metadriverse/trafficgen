@@ -112,7 +112,11 @@ class TrafficGen:
                 output['traf'] = self.data_loader.dataset[idx]['other']['traf']
                 output['gt_agent'] = batch['other']['gt_agent'][0].cpu().numpy()
                 output['gt_agent_mask'] = batch['other']['gt_agent_mask'][0].cpu().numpy()
-                output['center_info'] = original_data['center_info']
+
+                if "center_info" in original_data:
+                    output['center_info'] = original_data['center_info']
+                else:
+                    output["center_info"] = {}
 
                 p = os.path.join(tmp_pth, f'{idx}.pkl')
                 with open(p, 'wb') as f:
@@ -226,7 +230,7 @@ class TrafficGen:
 
         if ego_gt == True:
             future_traj = data['gt_agent']
-            pred_agent[:, 0, :7] = future_traj[:, 0]
+            pred_agent[:, 0, :7] = future_traj[:190, 0]
             start_idx = 1
 
         for i in range(0, length - 1, per_time):
