@@ -1,6 +1,16 @@
+"""
+PZH Note:
+
+This file provides a function to read latest MetaDrive Scenario Description (SD)
+to the internal data representation of TrafficGen.
+
+The test script provided below allows you to read the pickle files storing SD
+and directly connect it to TrafficGen placing vehicles functionality.
+
+The output images after placing vehicles in the scenes will be saved to the TMP_IMG folder.
+"""
 import argparse
 import os
-import pickle
 
 import numpy as np
 from metadrive.scenario import ScenarioDescription as SD, MetaDriveType
