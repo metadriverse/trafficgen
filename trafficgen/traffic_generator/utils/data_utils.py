@@ -48,6 +48,7 @@ def process_case_to_input(case, agent_range=60):
 
 def get_type_class(line_type):
     from metadrive.scenario import ScenarioDescription as SD, MetaDriveType
+    from metadrive.constants import LineType
 
     if line_type in range(1, 4):
         return MetaDriveType.LANE_CENTER_LINE
@@ -74,13 +75,13 @@ def get_type_class(line_type):
         # return RoadLineType.SOLID_DOUBLE_YELLOW
     elif line_type == 13:
         # return RoadLineType.PASSING_DOUBLE_YELLOW
-        return MetaDriveType.UNKNOWN_LINE
+        return MetaDriveType.BROKEN_YELLOW_LINE
     elif line_type == 15:
         # return RoadEdgeType.BOUNDARY
-        return MetaDriveType.UNKNOWN_LINE
+        return LineType.SIDE
     elif line_type == 16:
         # return RoadEdgeType.MEDIAN
-        return MetaDriveType.UNKNOWN_LINE
+        return LineType.SIDE
     else:
         return MetaDriveType.UNKNOWN_LINE
         # return 'other'
