@@ -153,7 +153,7 @@ def save_as_metadrive_data(index, pred_i, other, save_path):
 
     scenario[SD.METADATA] = {}
     scenario[SD.METADATA][SD.TIMESTEP] = np.array([x / 10 for x in range(190)], dtype=np.float32)
-    scenario[SD.METADATA][SD.SDC_ID] = 0
+    scenario[SD.METADATA][SD.SDC_ID] = str(0)
     scenario[SD.METADATA][SD.METADRIVE_PROCESSED] = False
     scenario[SD.METADATA][SD.COORDINATE] = MetaDriveType.COORDINATE_WAYMO
 
@@ -168,8 +168,6 @@ def save_as_metadrive_data(index, pred_i, other, save_path):
 
         agent_state[SD.TYPE] = MetaDriveType.VEHICLE
 
-        state = np.zeros([agent_i.shape[0], 10])
-
         agent_state["metadata"] = {
             "object_id": str(i),
             "track_length": track_len,
@@ -178,10 +176,15 @@ def save_as_metadrive_data(index, pred_i, other, save_path):
         agent_state["state"] = {}
         agent_state["state"]["position"] = agent_i[:, :2].astype(np.float32)
         agent_state["state"]["valid"] = np.ones([len(agent_i), ], dtype=np.bool)
-        agent_state["state"]["width"] = np.ones([len(agent_i), ], dtype=np.float32) * 2.332
-        agent_state["state"]["length"] = np.ones([len(agent_i), ], dtype=np.float32) * 5.286
+
+        agent_state["state"]["size"] = np.ones([len(agent_i), 2], dtype=np.float32) * 2.332
+        agent_state["state"]["size"][:, 0] *= 5.286  # length
+        agent_state["state"]["size"][:, 1] *= 2.332  # width
+
         agent_state["state"]["heading"] = agent_i[:, 4].reshape(-1, 1).astype(np.float32)
         agent_state["state"]["velocity"] = agent_i[:, 2:4].astype(np.float32)
+
+        scenario[SD.TRACKS][str(i)] = agent_state
 
         # state[:, :2] = agent_i[:, :2]
         # state[:, 3] = 5.286
@@ -194,8 +197,6 @@ def save_as_metadrive_data(index, pred_i, other, save_path):
 
     # center_info = other['center_info']
 
-    scenario['map'] = {}
-
     # Map features
     scenario[SD.MAP_FEATURES] = {}
     lane = other['unsampled_lane']
@@ -207,6 +208,11 @@ def save_as_metadrive_data(index, pred_i, other, save_path):
         line_type = points[0, -2]
         a_lane['type'] = get_type_class(line_type)
         a_lane['polyline'] = points[:, :2]
+
+        # The original data stored here has been discarded and can not be recovered.
+        # This issue should be addressed in later implementation.
+        a_lane["speed_limit_kmh"] = 1000
+
         scenario[SD.MAP_FEATURES][str(id)] = a_lane
 
     # Dynamics state

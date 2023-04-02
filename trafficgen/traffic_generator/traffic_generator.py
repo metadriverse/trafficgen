@@ -118,8 +118,6 @@ class TrafficGen:
                 else:
                     output["center_info"] = {}
 
-                output["original_metadrive_scenario"] = original_data
-
                 p = os.path.join(tmp_pth, f'{idx}.pkl')
                 with open(p, 'wb') as f:
                     pickle.dump(output, f)
