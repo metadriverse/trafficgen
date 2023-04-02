@@ -118,6 +118,8 @@ class TrafficGen:
                 else:
                     output["center_info"] = {}
 
+                output["original_metadrive_scenario"] = original_data
+
                 p = os.path.join(tmp_pth, f'{idx}.pkl')
                 with open(p, 'wb') as f:
                     pickle.dump(output, f)
@@ -204,11 +206,8 @@ class TrafficGen:
                     #         draw(cent, heat_map[k-1], agent_t[:k], rest, edge=bound, save=True, path=heat_path)
 
                 if save_metadrive:
-                    other = {}
-                    other['unsampled_lane'] = data['unsampled_lane']
-                    other['center_info'] = data['center_info']
                     data_dir = os.path.join(pkl_path, f'{i}.pkl')
-                    save_as_metadrive_data(pred_i, other, data_dir)
+                    save_as_metadrive_data(i, pred_i, data, data_dir)
 
         if gif:
             print("GIF files have been generated to vis/gif folder.")

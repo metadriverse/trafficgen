@@ -146,6 +146,8 @@ def metadrive_scenario_to_init_data(scenario):
     ret['lane'] = _extract_map(map_feat, sample_num=10)
     ret['unsampled_lane'] = _extract_map(map_feat, sample_num=10e9)
 
+    # ret["original_metadrive_scenario"] = scenario
+
     return ret
 
 

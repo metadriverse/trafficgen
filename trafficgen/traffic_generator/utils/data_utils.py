@@ -47,30 +47,43 @@ def process_case_to_input(case, agent_range=60):
 
 
 def get_type_class(line_type):
+    from metadrive.scenario import ScenarioDescription as SD, MetaDriveType
+
     if line_type in range(1, 4):
-        return 'center_lane'
+        return MetaDriveType.LANE_CENTER_LINE
     elif line_type == 6:
-        return RoadLineType.BROKEN_SINGLE_WHITE
+        return MetaDriveType.BROKEN_GREY_LINE
+        # return RoadLineType.BROKEN_SINGLE_WHITE
     elif line_type == 7:
-        return RoadLineType.SOLID_SINGLE_WHITE
+        return MetaDriveType.CONTINUOUS_GREY_LINE
+        # return RoadLineType.SOLID_SINGLE_WHITE
     elif line_type == 8:
-        return RoadLineType.SOLID_DOUBLE_WHITE
+        return MetaDriveType.CONTINUOUS_GREY_LINE
+        # return RoadLineType.SOLID_DOUBLE_WHITE
     elif line_type == 9:
-        return RoadLineType.BROKEN_SINGLE_YELLOW
+        return MetaDriveType.BROKEN_YELLOW_LINE
+        # return RoadLineType.BROKEN_SINGLE_YELLOW
     elif line_type == 10:
-        return RoadLineType.BROKEN_DOUBLE_YELLOW
+        return MetaDriveType.BROKEN_YELLOW_LINE
+        # return RoadLineType.BROKEN_DOUBLE_YELLOW
     elif line_type == 11:
-        return RoadLineType.SOLID_SINGLE_YELLOW
+        return MetaDriveType.CONTINUOUS_YELLOW_LINE
+        # return RoadLineType.SOLID_SINGLE_YELLOW
     elif line_type == 12:
-        return RoadLineType.SOLID_DOUBLE_YELLOW
+        return MetaDriveType.CONTINUOUS_YELLOW_LINE
+        # return RoadLineType.SOLID_DOUBLE_YELLOW
     elif line_type == 13:
-        return RoadLineType.PASSING_DOUBLE_YELLOW
+        # return RoadLineType.PASSING_DOUBLE_YELLOW
+        return MetaDriveType.UNKNOWN_LINE
     elif line_type == 15:
-        return RoadEdgeType.BOUNDARY
+        # return RoadEdgeType.BOUNDARY
+        return MetaDriveType.UNKNOWN_LINE
     elif line_type == 16:
-        return RoadEdgeType.MEDIAN
+        # return RoadEdgeType.MEDIAN
+        return MetaDriveType.UNKNOWN_LINE
     else:
-        return 'other'
+        return MetaDriveType.UNKNOWN_LINE
+        # return 'other'
 
 
 def from_list_to_batch(inp_list):
@@ -107,54 +120,115 @@ def transform_to_agent(agent_i, agent, lane):
 
     return all_, lane
 
+def _traffic_light_state_template(object_id, track_length):
+    """Borrowed from MetaDrive"""
+    from metadrive.scenario import ScenarioDescription as SD, MetaDriveType
+    return dict(
+        type=MetaDriveType.TRAFFIC_LIGHT,
+        state=dict(
+            stop_point=np.zeros([track_length, 3], dtype=np.float32),
+            object_state=np.zeros([
+                track_length,
+            ], dtype=int),
+            lane=np.zeros([
+                track_length,
+            ], dtype=int),
+        ),
+        metadata=dict(
+            track_length=track_length, type=MetaDriveType.TRAFFIC_LIGHT, object_id=object_id, dataset="waymo"
+        )
+    )
 
-def save_as_metadrive_data(pred_i, other, save_path):
-    output_temp = {}
-    output_temp['id'] = 'fake'
-    output_temp['ts'] = [x / 10 for x in range(190)]
-    output_temp['dynamic_map_states'] = [{}]
-    output_temp['sdc_index'] = 0
+def save_as_metadrive_data(index, pred_i, other, save_path):
+    from metadrive.scenario import ScenarioDescription as SD, MetaDriveType
 
-    center_info = other['center_info']
-    output = copy.deepcopy(output_temp)
-    output['tracks'] = {}
-    output['map'] = {}
-    # extract agents
+    scenario = SD()
+
+    scenario[SD.ID] = 'TrafficGen-{}'.format(index)
+    track_len = len(pred_i)
+    scenario[SD.LENGTH] = track_len
+    scenario[SD.VERSION] = "2023-04-01"
+
+    scenario['dynamic_map_states'] = [{}]
+
+    scenario[SD.METADATA] = {}
+    scenario[SD.METADATA][SD.TIMESTEP] = np.array([x / 10 for x in range(190)], dtype=np.float32)
+    scenario[SD.METADATA][SD.SDC_ID] = 0
+    scenario[SD.METADATA][SD.METADRIVE_PROCESSED] = False
+    scenario[SD.METADATA][SD.COORDINATE] = MetaDriveType.COORDINATE_WAYMO
+
+    # Tracks
+    scenario[SD.TRACKS] = {}
+    num_vehicles = pred_i.shape[1]  # pred_i in shape [T, #cars, 8]
     agent = pred_i
+    for i in range(num_vehicles):
 
-    for i in range(agent.shape[1]):
-        track = {}
+        agent_state = {}
         agent_i = agent[:, i]
-        track['type'] = AgentType.VEHICLE
-        state = np.zeros([agent_i.shape[0], 10])
-        state[:, :2] = agent_i[:, :2]
-        state[:, 3] = 5.286
-        state[:, 4] = 2.332
-        state[:, 7:9] = agent_i[:, 2:4]
-        state[:, -1] = 1
-        state[:, 6] = agent_i[:, 4]  # + np.pi / 2
-        track['state'] = state
-        output['tracks'][i] = track
 
-    # extract maps
+        agent_state[SD.TYPE] = MetaDriveType.VEHICLE
+
+        state = np.zeros([agent_i.shape[0], 10])
+
+        agent_state["metadata"] = {
+            "object_id": str(i),
+            "track_length": track_len,
+            "type": MetaDriveType.VEHICLE,
+        }
+        agent_state["state"] = {}
+        agent_state["state"]["position"] = agent_i[:, :2].astype(np.float32)
+        agent_state["state"]["valid"] = np.ones([len(agent_i), ], dtype=np.bool)
+        agent_state["state"]["width"] = np.ones([len(agent_i), ], dtype=np.float32) * 2.332
+        agent_state["state"]["length"] = np.ones([len(agent_i), ], dtype=np.float32) * 5.286
+        agent_state["state"]["heading"] = agent_i[:, 4].reshape(-1, 1).astype(np.float32)
+        agent_state["state"]["velocity"] = agent_i[:, 2:4].astype(np.float32)
+
+        # state[:, :2] = agent_i[:, :2]
+        # state[:, 3] = 5.286
+        # state[:, 4] = 2.332
+        # state[:, 7:9] = agent_i[:, 2:4]
+        # state[:, -1] = 1
+        # state[:, 6] = agent_i[:, 4]  # + np.pi / 2
+        # track['state'] = state
+        # scenario['tracks'][i] = track
+
+    # center_info = other['center_info']
+
+    scenario['map'] = {}
+
+    # Map features
+    scenario[SD.MAP_FEATURES] = {}
     lane = other['unsampled_lane']
     lane_id = np.unique(lane[..., -1]).astype(int)
     for id in lane_id:
-
         a_lane = {}
         id_set = lane[..., -1] == id
         points = lane[id_set]
-        polyline = np.zeros([points.shape[0], 3])
         line_type = points[0, -2]
-        polyline[:, :2] = points[:, :2]
         a_lane['type'] = get_type_class(line_type)
-        a_lane['polyline'] = polyline
-        if id in center_info.keys():
-            a_lane.update(center_info[id])
-        output['map'][id] = a_lane
+        a_lane['polyline'] = points[:, :2]
+        scenario[SD.MAP_FEATURES][str(id)] = a_lane
+
+    # Dynamics state
+    scenario[SD.DYNAMIC_MAP_STATES] = {}
+    traffic_light_compact_state = other["traf"]
+
+    for step_count, step_state in enumerate(traffic_light_compact_state):
+        if step_count >= track_len:
+            break
+        for traffic_light_state in step_state:
+            lane_id = str(traffic_light_state[0])
+            if lane_id not in scenario[SD.DYNAMIC_MAP_STATES]:
+                scenario[SD.DYNAMIC_MAP_STATES][lane_id] = _traffic_light_state_template(lane_id, track_len)
+            scenario[SD.DYNAMIC_MAP_STATES][lane_id]["state"]["lane"][step_count] = traffic_light_state[0]
+            scenario[SD.DYNAMIC_MAP_STATES][lane_id]["state"]["stop_point"][step_count] = traffic_light_state[1:4]
+            scenario[SD.DYNAMIC_MAP_STATES][lane_id]["state"]["object_state"][step_count] = traffic_light_state[4]
+
+    scenario = scenario.to_dict()
+    SD.sanity_check(scenario, check_self_type=True)
 
     with open(save_path, 'wb') as f:
-        pickle.dump(output, f)
+        pickle.dump(scenario, f)
 
     print("MetaDrive-compatible scenario data is saved at: ", save_path)
 
