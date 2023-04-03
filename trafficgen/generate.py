@@ -1,4 +1,4 @@
-from trafficgen.traffic_generator.traffic_generator import trafficgen
+from trafficgen.traffic_generator.traffic_generator import TrafficGen
 from trafficgen.traffic_generator.utils.utils import get_parsed_args
 from trafficgen.utils.config import load_config_init
 
@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
     cfg = load_config_init(args.config)
     print('loading checkpoint...')
-    trafficgen = trafficgen(cfg)
+    trafficgen = TrafficGen(cfg)
     print('Complete.\n')
 
     trafficgen.generate_scenarios(gif=args.gif, save_metadrive=args.save_metadrive)

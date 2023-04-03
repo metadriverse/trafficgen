@@ -15,5 +15,5 @@
 /traffic_generator/ckpt/
 /trafficgen/lightning_logs/
 /trafficgen/traffic_generator/ckpt/
-/trafficgen/init/sample_data/
+/trafficgen/init/_correct_sample_data/
 /trafficgen/act/sample_data/
