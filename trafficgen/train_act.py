@@ -22,13 +22,13 @@ if __name__ == '__main__':
     else:
         wandb_logger = WandbLogger(project="trafficGen_ptl", name=args.exp_name)
         trainer = pl.Trainer(
-            max_epochs=200,
+            max_epochs=cfg['max_epoch'],
             logger=wandb_logger,
             devices=args.devices,
             gradient_clip_val=0.5,
             accelerator=cfg['device'],
             profiler="simple",
-            strategy=cfg['strategy']
+            strategy=cfg['strategy'],
         )
 
     train_set = actDataset(cfg)
