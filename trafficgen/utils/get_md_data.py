@@ -13,7 +13,7 @@ import argparse
 import os
 
 import numpy as np
-from metadrive.scenario import ScenarioDescription as SD, MetaDriveType
+from metadrive.scenario.scenario_description import ScenarioDescription as SD, MetaDriveType
 from metadrive.utils.waymo_utils.utils import read_waymo_data
 from tqdm import tqdm
 

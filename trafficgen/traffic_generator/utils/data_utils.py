@@ -47,7 +47,7 @@ def process_case_to_input(case, agent_range=60):
 
 
 def get_type_class(line_type):
-    from metadrive.scenario import ScenarioDescription as SD, MetaDriveType
+    from metadrive.scenario.scenario_description import ScenarioDescription as SD, MetaDriveType
     from metadrive.constants import LineType
 
     if line_type in range(1, 4):
@@ -123,7 +123,7 @@ def transform_to_agent(agent_i, agent, lane):
 
 def _traffic_light_state_template(object_id, track_length):
     """Borrowed from MetaDrive"""
-    from metadrive.scenario import ScenarioDescription as SD, MetaDriveType
+    from metadrive.scenario.scenario_description import ScenarioDescription as SD, MetaDriveType
     return dict(
         type=MetaDriveType.TRAFFIC_LIGHT,
         state=dict(
@@ -141,7 +141,7 @@ def _traffic_light_state_template(object_id, track_length):
     )
 
 def save_as_metadrive_data(index, pred_i, other, save_path):
-    from metadrive.scenario import ScenarioDescription as SD, MetaDriveType
+    from metadrive.scenario.scenario_description import ScenarioDescription as SD, MetaDriveType
 
     scenario = SD()
 
