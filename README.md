@@ -202,7 +202,16 @@ python train_act.py -c cluster -d 0 1 2 3 -e exp_name
 
 
 
+## Reference
 
+```latex
+@article{feng2022trafficgen,
+  title={TrafficGen: Learning to Generate Diverse and Realistic Traffic Scenarios},
+  author={Feng, Lan and Li, Quanyi and Peng, Zhenghao and Tan, Shuhan and Zhou, Bolei},
+  journal={arXiv preprint arXiv:2210.06609},
+  year={2022}
+}
+```
 
 
 
