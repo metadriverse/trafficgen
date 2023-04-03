@@ -53,37 +53,37 @@ def get_type_class(line_type):
     if line_type in range(1, 4):
         return MetaDriveType.LANE_CENTER_LINE
     elif line_type == 6:
-        return MetaDriveType.BROKEN_GREY_LINE
+        return MetaDriveType.LINE_BROKEN_SINGLE_WHITE
         # return RoadLineType.BROKEN_SINGLE_WHITE
     elif line_type == 7:
-        return MetaDriveType.CONTINUOUS_GREY_LINE
+        return MetaDriveType.LINE_SOLID_SINGLE_WHITE
         # return RoadLineType.SOLID_SINGLE_WHITE
     elif line_type == 8:
-        return MetaDriveType.CONTINUOUS_GREY_LINE
+        return MetaDriveType.LINE_SOLID_DOUBLE_WHITE
         # return RoadLineType.SOLID_DOUBLE_WHITE
     elif line_type == 9:
-        return MetaDriveType.BROKEN_YELLOW_LINE
+        return MetaDriveType.LINE_BROKEN_SINGLE_YELLOW
         # return RoadLineType.BROKEN_SINGLE_YELLOW
     elif line_type == 10:
-        return MetaDriveType.BROKEN_YELLOW_LINE
+        return MetaDriveType.LINE_BROKEN_DOUBLE_YELLOW
         # return RoadLineType.BROKEN_DOUBLE_YELLOW
     elif line_type == 11:
-        return MetaDriveType.CONTINUOUS_YELLOW_LINE
+        return MetaDriveType.LINE_SOLID_SINGLE_YELLOW
         # return RoadLineType.SOLID_SINGLE_YELLOW
     elif line_type == 12:
-        return MetaDriveType.CONTINUOUS_YELLOW_LINE
+        return MetaDriveType.LINE_SOLID_DOUBLE_YELLOW
         # return RoadLineType.SOLID_DOUBLE_YELLOW
     elif line_type == 13:
         # return RoadLineType.PASSING_DOUBLE_YELLOW
-        return MetaDriveType.BROKEN_YELLOW_LINE
+        return MetaDriveType.LINE_BROKEN_DOUBLE_YELLOW
     elif line_type == 15:
         # return RoadEdgeType.BOUNDARY
-        return LineType.SIDE
+        return MetaDriveType.BOUNDARY_LINE
     elif line_type == 16:
         # return RoadEdgeType.MEDIAN
-        return LineType.SIDE
+        return MetaDriveType.BOUNDARY_MEDIAN
     else:
-        return MetaDriveType.UNKNOWN_LINE
+        return MetaDriveType.LINE_UNKNOWN
         # return 'other'
 
 
