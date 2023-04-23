@@ -75,7 +75,7 @@ class TrafficGen:
         return model_output
 
     def place_vehicles(self, vis=True):
-        context_num = 1
+        context_num = self.cfg['context_num']
 
         init_vis_dir = 'traffic_generator/output/vis/scene_initialized'
         if not os.path.exists(init_vis_dir):
