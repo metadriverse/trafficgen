@@ -48,7 +48,7 @@ def process_case_to_input(case, agent_range=60):
 
 def get_type_class(line_type):
     from metadrive.scenario.scenario_description import ScenarioDescription as SD, MetaDriveType
-    from metadrive.constants import LineType
+    # from metadrive.constants import LineType
 
     if line_type in range(1, 4):
         return MetaDriveType.LANE_CENTER_LINE

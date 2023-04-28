@@ -12,6 +12,7 @@ from trafficgen.init.utils.init_dataset import WaymoAgent
 from trafficgen.utils.config import get_parsed_args
 from trafficgen.utils.config import load_config_act
 
+from trafficgen.utils.typedef import AgentType, RoadEdgeType, RoadLineType
 
 def wash(batch):
     """Transform the loaded raw data to pretty pytorch tensor."""
