@@ -10,9 +10,11 @@ REPO_ROOT = os.path.dirname(os.path.dirname(__file__))
 DATA_FOLDER = os.path.join(REPO_ROOT, "trafficgen_v2", "data", "waymo")
 
 
-def wrapped_parse_data(arg_list, input_path, output_path):
+def wrapped_parse_data(arg_list, input_path, output_path, valid_check):
     assert len(arg_list) == 2
-    return parse_data(arg_list[0], worker_index=arg_list[1], input_path=input_path, output_path=output_path)
+    return parse_data(
+        arg_list[0], worker_index=arg_list[1], input_path=input_path, output_path=output_path, valid_check=valid_check
+    )
 
 
 def translate_waymo_to_sd(raw_data_path, output_path, num_workers=8):
@@ -26,7 +28,7 @@ def translate_waymo_to_sd(raw_data_path, output_path, num_workers=8):
         if output_path is not None:
             os.makedirs(output_path, exist_ok=True)
 
-        func = partial(wrapped_parse_data, input_path=raw_data_path, output_path=output_path)
+        func = partial(wrapped_parse_data, input_path=raw_data_path, output_path=output_path, valid_check=False)
 
         # func = lambda file_list, worker_index: parse_data(file_list, worker_index=worker_index, input_path=raw_data_path, output_path=output_path)
 
