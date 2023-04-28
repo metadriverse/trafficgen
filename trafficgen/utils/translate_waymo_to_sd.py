@@ -51,7 +51,7 @@ def translate_waymo_to_sd(raw_data_path, output_path, num_workers=8):
             return list(p.imap(func, argument_list))
 
     else:
-        func = lambda worker_file_list: parse_data(worker_file_list, raw_data_path, output_path)
+        func = lambda worker_file_list: parse_data(worker_file_list, raw_data_path, output_path, valid_check=False)
         return func(file_list)
 
 
