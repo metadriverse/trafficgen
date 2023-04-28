@@ -2,7 +2,7 @@ import argparse
 import multiprocessing
 import os
 
-from metadrive.utils.waymo_utils.script.convert_waymo_to_metadrive import parse_data
+from metadrive.utils.waymo.script.convert_waymo_to_metadrive import parse_data
 from tqdm.auto import tqdm
 
 REPO_ROOT = os.path.dirname(os.path.dirname(__file__))
