@@ -230,13 +230,13 @@ class initializer(pl.LightningModule):
         }
 
     def agent_feature_extract(self, agent_feat, agent_mask, random_mask):
-        agent = agent_feat[..., :-2]
+        agent = agent_feat[..., :-2].float()
         agent_line_type = agent_feat[..., -2].to(int)
         agent_line_traf = agent_feat[..., -1].to(int)
         # agent_line_traf = torch.zeros_like(agent_line_traf).to(agent.device)
 
-        agent_line_type_embed = self.type_embedding(agent_line_type)
-        agent_line_traf_embed = self.traf_embedding(agent_line_traf)
+        agent_line_type_embed = self.type_embedding(agent_line_type).float()
+        agent_line_traf_embed = self.traf_embedding(agent_line_traf).float()
 
         min_agent_num = self.cfg['min_agent']
         if random_mask:
@@ -256,13 +256,13 @@ class initializer(pl.LightningModule):
 
     def map_feature_extract(self, lane_inp, line_mask, context_agent):
 
-        polyline = lane_inp[..., :4]
+        polyline = lane_inp[..., :4].float()
         polyline_type = lane_inp[..., 4].to(int)
         polyline_traf = lane_inp[..., 5].to(int)
         # polyline_traf = torch.zeros_like(polyline_traf).to(agent.device)
 
-        polyline_type_embed = self.type_embedding(polyline_type)
-        polyline_traf_embed = self.traf_embedding(polyline_traf)
+        polyline_type_embed = self.type_embedding(polyline_type).float()
+        polyline_traf_embed = self.traf_embedding(polyline_traf).float()
         # polyline_traf_embed = torch.zeros_like(polyline_traf_embed,device=device)
 
         # agent features

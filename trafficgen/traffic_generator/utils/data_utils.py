@@ -440,7 +440,7 @@ def get_vec_based_rep(case_info):
     case_info['vec_based_rep'] = info_[..., 1:]
     case_info['agent_vec_index'] = info_[..., 0].astype(int)
     case_info['agent_mask'] = agent_mask_
-    case_info["agent"] = agent_
+    case_info["agent"] = agent_.astype(np.float32)
 
     return
 
@@ -581,7 +581,9 @@ def process_data_to_internal_format(data):
 
     other = {}
 
-    other['traf'] = data['traffic_light']
+    traf = data['traffic_light'][:190]
+    traf = [[v.astype(np.float32) for v in s] for s in traf]
+    other['traf'] = traf
 
     agent = copy.deepcopy(data['all_agent'])
     data['all_agent'] = data['all_agent'][0:-1:gap]
@@ -604,8 +606,8 @@ def process_data_to_internal_format(data):
     mask = agent_mask * agent_type_mask * agent_range_mask
 
     agent = WaymoAgent(agent)
-    other['gt_agent'] = agent.get_inp(act=True)
-    other['gt_agent_mask'] = mask
+    other['gt_agent'] = agent.get_inp(act=True)[:190]
+    other['gt_agent_mask'] = mask[:190]
 
     # process agent and lane data
     case_info["agent"], case_info["agent_mask"] = process_agent(data['all_agent'], False)
@@ -629,9 +631,12 @@ def process_data_to_internal_format(data):
     for i in range(case_num):
         dic = {}
         for k, v in case_info.items():
-            dic[k] = v[i]
+            v = v[i]
+            if v.dtype == np.float64:
+                v = v.astype(np.float32)
+            dic[k] = v
         case_list.append(dic)
 
-    case_list[0]['other'] = other
+    case_list[0]['other'] = {k: (v.astype(np.float32) if k != "traf" else v) for k, v in other.items()}
 
     return case_list
