@@ -239,6 +239,21 @@ def save_as_metadrive_data(index, pred_i, other, save_path):
 
     print("MetaDrive-compatible scenario data is saved at: ", save_path)
 
+def get_all_infos(info_path):
+    from metadrive.scenario.utils import read_dataset_summary
+    summary_dict, summary_list = read_dataset_summary(info_path)
+    new_summary_list = []
+    for file in summary_list:
+        p = os.path.join(info_path, file)
+        assert os.path.isfile(p), p
+        if os.path.getsize(p) < 10:
+            print(f"We detect the file has suspicious size {os.path.getsize(p)}: {p}. Skip this sample!")
+            continue
+        else:
+            new_summary_list.append(file)
+    summary_list = new_summary_list
+    summary_dict = {k: summary_dict[k] for k in summary_list}
+    return summary_dict, summary_list, None
 
 class InitDataset(Dataset):
     """
@@ -246,9 +261,19 @@ class InitDataset(Dataset):
     """
     def __init__(self, cfg):
         self.total_data_usage = cfg["data_usage"]
+
         self.data_path = os.path.join(TRAFFICGEN_ROOT, cfg['data_path'])
 
         self.from_metadrive = cfg.get("from_metadrive", False)
+        if self.from_metadrive:
+            self.summary_dict, self.summary_list, self.scenario_id_map = \
+                get_all_infos(self.data_path)
+
+            if len(self.summary_list) < self.total_data_usage:
+                print("=" * 50)
+                print(f"WARNING: Total data {len(self.summary_list)} is less then config data usage {self.total_data_usage}.")
+                print("=" * 50)
+                self.total_data_usage = len(self.summary_list)
 
         self.data_len = None
         self.data_loaded = {}
@@ -257,18 +282,30 @@ class InitDataset(Dataset):
 
     def load_data(self):
 
-        data_path = self.data_path
-        for i in range(self.total_data_usage):
-            data_file_path = os.path.join(data_path, f'{i}.pkl')
-            with open(data_file_path, 'rb+') as f:
-                datas = pickle.load(f)
+        if self.from_metadrive:
+            try:
+                from metadrive.utils.waymo.utils import read_waymo_data
+            except ImportError:
+                from metadrive.utils.waymo_utils.utils import read_waymo_data
 
             if self.from_metadrive:
                 from trafficgen.utils.get_md_data import metadrive_scenario_to_init_data
-                datas = metadrive_scenario_to_init_data(datas)
+                for i in range(self.total_data_usage):
+                    file_name = self.summary_list[i]
+                    p = os.path.join(self.data_path, file_name)
+                    scenario = read_waymo_data(p)
+                    datas = metadrive_scenario_to_init_data(scenario)
+                    data = process_data_to_internal_format(datas)
+                    self.data_loaded[i] = data[0]
 
-            data = process_data_to_internal_format(datas)
-            self.data_loaded[i] = data[0]
+        else:
+            data_path = self.data_path
+            for i in range(self.total_data_usage):
+                data_file_path = os.path.join(data_path, f'{i}.pkl')
+                with open(data_file_path, 'rb+') as f:
+                    datas = pickle.load(f)
+                data = process_data_to_internal_format(datas)
+                self.data_loaded[i] = data[0]
 
     def __len__(self):
 

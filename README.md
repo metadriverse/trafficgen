@@ -42,6 +42,12 @@ python train_init.py -c local
 python train_act.py -c local 
 ````
 
+#### Training with MetaDrive Scenario Description
+
+```bash
+python train_init.py -c local_from_metadrive
+python train_act.py -c local_from_metadrive
+```
 
 ## Download and Process Dataset and Pre-trained Model
 

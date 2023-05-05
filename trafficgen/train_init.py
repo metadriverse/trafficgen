@@ -5,7 +5,10 @@ from pytorch_lightning.loggers import WandbLogger
 from torch.utils.data import DataLoader
 
 from trafficgen.init.model.tg_init import initializer
-from trafficgen.init.utils.init_dataset import initDataset
+
+from trafficgen.traffic_generator.utils.data_utils import InitDataset, save_as_metadrive_data, from_list_to_batch, \
+    transform_to_agent, process_case_to_input
+
 from trafficgen.utils.config import load_config_init, get_parsed_args
 from trafficgen.utils.typedef import AgentType, RoadEdgeType, RoadLineType
 if __name__ == '__main__':
@@ -29,7 +32,7 @@ if __name__ == '__main__':
             strategy=cfg['strategy']
         )
 
-    train_set = initDataset(cfg)
+    train_set = InitDataset(cfg)
 
     # use 20% of training data for validation
     train_set_size = int(len(train_set) * 0.8)

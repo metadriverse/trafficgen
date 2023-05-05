@@ -17,23 +17,59 @@ from metadrive.scenario.scenario_description import ScenarioDescription as SD, M
 from metadrive.utils.waymo_utils.utils import read_waymo_data
 from tqdm import tqdm
 
-ALL_TYPE = {
-    'LANE_FREEWAY': 1,
-    'LANE_SURFACE_STREET': 2,
-    'LANE_BIKE_LANE': 3,
-    'ROAD_LINE_BROKEN_SINGLE_WHITE': 6,
-    'ROAD_LINE_SOLID_SINGLE_WHITE': 7,
-    'ROAD_LINE_SOLID_DOUBLE_WHITE': 8,
-    'ROAD_LINE_BROKEN_SINGLE_YELLOW': 9,
-    'ROAD_LINE_BROKEN_DOUBLE_YELLOW': 10,
-    'ROAD_LINE_SOLID_SINGLE_YELLOW': 11,
-    'ROAD_LINE_SOLID_DOUBLE_YELLOW': 12,
-    'ROAD_LINE_PASSING_DOUBLE_YELLOW': 13,
-    'ROAD_EDGE_BOUNDARY': 15,
-    'ROAD_EDGE_MEDIAN': 16,
-    'STOP_SIGN': 17,
-    'CROSS_WALK': 18,
-    'SPEED_BUMP': 19,
+polyline_type_sd_to_waymo = {
+    # for lane
+    MetaDriveType.LANE_UNKNOWN: -1,
+    MetaDriveType.LANE_FREEWAY: 1,
+    MetaDriveType.LANE_SURFACE_STREET: 2,
+    MetaDriveType.LANE_BIKE_LANE: 3,
+
+    # for roadline
+    MetaDriveType.LINE_UNKNOWN: -1,
+    MetaDriveType.LINE_BROKEN_SINGLE_WHITE: 6,
+    MetaDriveType.LINE_SOLID_SINGLE_WHITE: 7,
+    MetaDriveType.LINE_SOLID_DOUBLE_WHITE: 8,
+    MetaDriveType.LINE_BROKEN_SINGLE_YELLOW: 9,
+    MetaDriveType.LINE_BROKEN_DOUBLE_YELLOW: 10,
+    MetaDriveType.LINE_SOLID_SINGLE_YELLOW: 11,
+    MetaDriveType.LINE_SOLID_DOUBLE_YELLOW: 12,
+    MetaDriveType.LINE_PASSING_DOUBLE_YELLOW: 13,
+
+    # for roadedge
+    MetaDriveType.BOUNDARY_UNKNOWN: -1,
+    MetaDriveType.BOUNDARY_LINE: 15,
+    MetaDriveType.BOUNDARY_MEDIAN: 16,
+
+    # for stopsign
+    MetaDriveType.STOP_SIGN: 17,
+
+    # for crosswalk
+    MetaDriveType.CROSSWALK: 18,
+
+    # for speed bump
+    MetaDriveType.SPEED_BUMP: 19,
+
+    # driveway
+    MetaDriveType.DRIVEWAY: 20,
+}
+
+traffic_light_state_to_int = {
+    None: 0,
+    'LANE_STATE_UNKNOWN': 0,
+
+    # // States for traffic signals with arrows.
+    'LANE_STATE_ARROW_STOP': 1,
+    'LANE_STATE_ARROW_CAUTION': 2,
+    'LANE_STATE_ARROW_GO': 3,
+
+    # // Standard round traffic signals.
+    'LANE_STATE_STOP': 4,
+    'LANE_STATE_CAUTION': 5,
+    'LANE_STATE_GO': 6,
+
+    # // Flashing light signals.
+    'LANE_STATE_FLASHING_STOP': 7,
+    'LANE_STATE_FLASHING_CAUTION': 8,
 }
 
 
@@ -61,7 +97,14 @@ def _extract_map(map_feat, sample_num):
     for map_feat_id, map_feat in map_feat.items():
 
         if "polyline" not in map_feat:
-            map_feat['polyline'] = map_feat['position'][np.newaxis]
+            if "position" in map_feat:
+                pos = map_feat['position'][np.newaxis, :2]
+                # Repeat the polyline to avoid it being ignored in vectorization.
+                map_feat['polyline'] = pos.repeat(3, 1)
+            elif "polygon" in map_feat:
+                map_feat['polyline'] = map_feat['polygon'][:, :2]
+            else:
+                raise ValueError()
 
         poly_unsampled = map_feat['polyline'][:, :2]
 
@@ -71,7 +114,7 @@ def _extract_map(map_feat, sample_num):
         a_lane = np.zeros([len(poly), 4], dtype='float32')
 
         a_lane[:, :2] = np.array(poly)
-        a_lane[:, 2] = ALL_TYPE[map_feat['type']]
+        a_lane[:, 2] = polyline_type_sd_to_waymo[map_feat['type']]
         a_lane[:, 3] = str(map_feat_id)
 
         lanes.append(a_lane)
@@ -105,7 +148,8 @@ def metadrive_scenario_to_init_data(scenario):
         all_agent[:, indx, :2] = track[SD.STATE]['position'][:, :2]
         all_agent[:, indx, 2:4] = track[SD.STATE]['velocity']
         all_agent[:, indx, 4] = track[SD.STATE]['heading'].reshape(track_len)
-        all_agent[:, indx, 5:7] = track[SD.STATE]['size'][:, :2]
+        all_agent[:, indx, 5] = track[SD.STATE]["length"]
+        all_agent[:, indx, 6] = track[SD.STATE]["width"]
         all_agent[:, indx, 7] = 1
         all_agent[:, indx, 8] = track[SD.STATE]['valid'].reshape(track_len)
 
@@ -126,13 +170,13 @@ def metadrive_scenario_to_init_data(scenario):
             traffic_light_step_data = np.zeros(6, dtype='float32')
 
             # The range of this data is int [0, 253]. Will use to filter lanes. It is very useful.
-            traffic_light_step_data[0] = str(traffic_light_state["lane"])
+            traffic_light_step_data[0] = str(traffic_light["lane"])
 
             # TODO: The range of this data is float with shape [200, 3] in range [-352, 169].
-            traffic_light_step_data[1:3] = traffic_light_state["stop_point"][:2]
+            traffic_light_step_data[1:3] = traffic_light["stop_point"][:2]
 
             # Int in range [0, 3], stands for UNKNOWN, STOP, CAUTION, GO
-            traffic_light_step_data[4] = traffic_light_state["object_state"]
+            traffic_light_step_data[4] = traffic_light_state_to_int[traffic_light_state["object_state"]]
 
             # Whether valid
             traffic_light_step_data[5] = 1 if traffic_light_state["object_state"] else 0
