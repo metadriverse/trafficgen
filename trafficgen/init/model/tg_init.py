@@ -26,8 +26,13 @@ class initializer(pl.LightningModule):
         self.CG_line = CG_stacked(5, self.hidden_dim)
         self.agent_encode = MLP_3([17, 256, 512, self.hidden_dim])
         self.line_encode = MLP_3([4, 256, 512, self.hidden_dim])
-        self.type_embedding = nn.Embedding(20, self.hidden_dim)
-        self.traf_embedding = nn.Embedding(4, self.hidden_dim)
+
+        if self.cfg.get("from_metadrive"):
+            self.type_embedding = nn.Embedding(30, self.hidden_dim)
+            self.traf_embedding = nn.Embedding(30, self.hidden_dim)
+        else:
+            self.type_embedding = nn.Embedding(20, self.hidden_dim)
+            self.traf_embedding = nn.Embedding(4, self.hidden_dim)
 
         middle_layer_shape = [self.hidden_dim * 2, self.hidden_dim, 256]
 
