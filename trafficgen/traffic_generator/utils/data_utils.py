@@ -295,7 +295,7 @@ class InitDataset(Dataset):
                     p = os.path.join(self.data_path, file_name)
                     scenario = read_waymo_data(p)
                     datas = metadrive_scenario_to_init_data(scenario)
-                    data = process_data_to_internal_format(datas)
+                    data = process_data_to_internal_format(datas, add_other=False)
                     self.data_loaded[i] = data[0]
 
         else:
@@ -575,7 +575,7 @@ def _process_map_inp(case_info):
     )
     return
 
-def process_data_to_internal_format(data):
+def process_data_to_internal_format(data, add_other=True):
     case_info = {}
     gap = 20
 
@@ -637,6 +637,7 @@ def process_data_to_internal_format(data):
             dic[k] = v
         case_list.append(dic)
 
-    case_list[0]['other'] = {k: (v.astype(np.float32) if k != "traf" else v) for k, v in other.items()}
+    if add_other:
+        case_list[0]['other'] = {k: list(v.astype(np.float32) if k != "traf" else v) for k, v in other.items()}
 
     return case_list
