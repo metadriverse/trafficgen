@@ -27,12 +27,8 @@ class initializer(pl.LightningModule):
         self.agent_encode = MLP_3([17, 256, 512, self.hidden_dim])
         self.line_encode = MLP_3([4, 256, 512, self.hidden_dim])
 
-        if self.cfg.get("from_metadrive"):
-            self.type_embedding = nn.Embedding(30, self.hidden_dim)
-            self.traf_embedding = nn.Embedding(30, self.hidden_dim)
-        else:
-            self.type_embedding = nn.Embedding(20, self.hidden_dim)
-            self.traf_embedding = nn.Embedding(4, self.hidden_dim)
+        self.type_embedding = nn.Embedding(30, self.hidden_dim)
+        self.traf_embedding = nn.Embedding(30, self.hidden_dim)
 
         middle_layer_shape = [self.hidden_dim * 2, self.hidden_dim, 256]
 
@@ -45,10 +41,6 @@ class initializer(pl.LightningModule):
         self.pos_head = MLP_3([*middle_layer_shape, self.K * (1 + 5)])
         self.bbox_head = MLP_3([*middle_layer_shape, self.K * (1 + 5)])
         self.heading_head = MLP_3([*middle_layer_shape, self.K * (1 + 2)])
-
-        # self._kaiming_init()
-        # self.vel_heading_head = MLP_3([*middle_layer_shape, self.K * (1 + 2)])
-        # self.speed_head = MLP_3([*middle_layer_shape, 10 * (1 + 2)])
 
     def training_step(self, batch, batch_idx):
         context_agent = self.agent_feature_extract(batch['agent_feat'], batch['agent_mask'], True)
@@ -241,6 +233,7 @@ class initializer(pl.LightningModule):
         # agent_line_traf = torch.zeros_like(agent_line_traf).to(agent.device)
 
         agent_line_type_embed = self.type_embedding(agent_line_type).float()
+        agent_line_traf[:]=0
         agent_line_traf_embed = self.traf_embedding(agent_line_traf).float()
 
         min_agent_num = self.cfg['min_agent']
@@ -267,6 +260,7 @@ class initializer(pl.LightningModule):
         # polyline_traf = torch.zeros_like(polyline_traf).to(agent.device)
 
         polyline_type_embed = self.type_embedding(polyline_type).float()
+        polyline_traf[:]=0
         polyline_traf_embed = self.traf_embedding(polyline_traf).float()
         # polyline_traf_embed = torch.zeros_like(polyline_traf_embed,device=device)
 

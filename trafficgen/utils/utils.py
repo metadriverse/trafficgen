@@ -114,7 +114,21 @@ def process_lane(lane, max_vec, lane_range, offset=-40):
 
     return all_vec, all_mask.astype(bool)
 
-
+def get_all_infos(info_path):
+    from metadrive.scenario.utils import read_dataset_summary
+    summary_dict, summary_list = read_dataset_summary(info_path)
+    new_summary_list = []
+    for file in summary_list:
+        p = os.path.join(info_path, file)
+        assert os.path.isfile(p), p
+        if os.path.getsize(p) < 10:
+            print(f"We detect the file has suspicious size {os.path.getsize(p)}: {p}. Skip this sample!")
+            continue
+        else:
+            new_summary_list.append(file)
+    summary_list = new_summary_list
+    summary_dict = {k: summary_dict[k] for k in summary_list}
+    return summary_dict, summary_list, None
 def process_map(lane, traf, center_num=384, edge_num=128, lane_range=60, offest=-40):
     lane_with_traf = np.zeros([*lane.shape[:-1], 5])
     lane_with_traf[..., :4] = lane
@@ -147,7 +161,9 @@ def process_map(lane, traf, center_num=384, edge_num=128, lane_range=60, offest=
     speed_bump = lane_type == 19
     cross_ind = cross_walk + speed_bump
 
-    rest = ~(center_ind + bound_ind + cross_walk + speed_bump + cross_ind)
+    driveway = lane_type == 20
+
+    rest = ~(center_ind + bound_ind + cross_walk + speed_bump + cross_ind+driveway)
 
     cent, cent_mask = process_lane(lane[:, center_ind], center_num, lane_range, offest)
     bound, bound_mask = process_lane(lane[:, bound_ind], edge_num, lane_range, offest)

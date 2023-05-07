@@ -10,9 +10,11 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 
 from trafficgen.utils.config import load_config_init, get_parsed_args
-from trafficgen.utils.utils import cal_rel_dir, rotate, process_map, wash
+from trafficgen.utils.utils import cal_rel_dir, rotate, process_map, wash,get_all_infos
+from metadrive.utils.waymo.utils import read_waymo_data
+from trafficgen.utils.get_md_data import metadrive_scenario_to_init_data
 
-
+TRAFFICGEN_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 def get_agent_pos_from_vec(vec, long_lat, speed, vel_heading, heading, bbox):
     x1, y1, x2, y2 = vec[:, 0], vec[:, 1], vec[:, 2], vec[:, 3]
     x_center, y_center = (x1 + x2) / 2, (y1 + y2) / 2
@@ -416,7 +418,112 @@ class WaymoAgent:
 LANE_SAMPLE = 10
 
 
+class InitDataset(Dataset):
+    """
+    If in debug, it will load debug dataset
+    """
+    def __init__(self, cfg):
+        super(InitDataset, self).__init__()
+        self.data_path = os.path.join(TRAFFICGEN_ROOT, cfg['data_path'])
+        self.cfg = cfg
+        self.data_loaded = {}
+        self.total_data_usage = cfg['data_usage']
+        self.summary_dict, self.summary_list, self.scenario_id_map = \
+            get_all_infos(self.data_path)
+
+        if len(self.summary_list) < self.total_data_usage:
+            print("=" * 50)
+            print(f"WARNING: Total data {len(self.summary_list)} is less then config data usage {self.total_data_usage}.")
+            print("=" * 50)
+            self.total_data_usage = len(self.summary_list)
+        self.load_data()
+
+
+    def load_data(self):
+        if self.cfg['use_cache']:
+            data_path = os.path.join(self.data_path, 'init_cache.pkl')
+            with open(data_path, 'rb+') as f:
+                self.data_loaded = pickle.load(f)
+            self.data_len = len(self.data_loaded)
+
+        else:
+            cnt = 0
+
+            for i in tqdm(range(self.total_data_usage)):
+                file_name = self.summary_list[i]
+                p = os.path.join(self.data_path, file_name)
+
+                scenario = read_waymo_data(p)
+                datas = metadrive_scenario_to_init_data(scenario)
+
+                data = self.process(datas)
+                case_cnt = 0
+                for i in range(len(data)):
+                    wash(data[i])
+                    agent_num = data[i]['agent_mask'].sum()
+                    if agent_num < self.cfg['min_agent']:
+                        continue
+                    self.data_loaded[cnt + case_cnt] = data[i]
+                    case_cnt += 1
+                cnt += case_cnt
+
+            self.data_len = cnt
+
+            # save cache
+            data_path = os.path.join(self.data_path, 'init_cache.pkl')
+            with open(data_path, 'wb') as f:
+                pickle.dump(self.data_loaded, f)
+
+    def __len__(self):
+        return self.data_len
+
+    def __getitem__(self, index):
+        """
+        Calculate for saving spaces
+        """
+        return self.data_loaded[index]
+
+    def process(self, data):
+        case_info = {}
+
+        map_size = self.cfg['map_size']
+        gap = self.cfg['sample_gap']
+
+        # sample original data in a fixed interval
+        data['all_agent'] = data['all_agent'][0:-1:gap]
+        data['traffic_light'] = data['traffic_light'][0:-1:gap]
+
+        data['lane'] = transform_coordinate_map(data)
+
+        case_info["agent"], case_info["agent_mask"] = process_agent(data['all_agent'], map_size, False)
+
+        case_info['center'], case_info['center_mask'], case_info['bound'], case_info['bound_mask'], \
+        case_info['cross'], case_info['cross_mask'], case_info['rest'], case_info['rest_mask'] = process_map(
+            data['lane'], data['traffic_light'], lane_range=self.cfg['map_size'], offest=0)
+
+        get_vec_rep(case_info)
+
+        agent = WaymoAgent(case_info['agent'], case_info['vec_based_rep'])
+
+        case_info['agent_feat'] = agent.get_inp()
+
+        process_map_inp(case_info, map_size)
+
+        get_gt(case_info)
+
+        case_num = case_info['agent'].shape[0]
+        case_list = []
+        for i in range(case_num):
+            dic = {}
+            for k, v in case_info.items():
+                dic[k] = v[i]
+            case_list.append(dic)
+
+        return case_list
+
+
 if __name__ == "__main__":
     args = get_parsed_args()
     cfg = load_config_init(args.config)
     cfg['use_cache'] = False
+    InitDataset(cfg)

@@ -14,7 +14,7 @@ import os
 
 import numpy as np
 from metadrive.scenario.scenario_description import ScenarioDescription as SD, MetaDriveType
-from metadrive.utils.waymo_utils.utils import read_waymo_data
+from metadrive.utils.waymo.utils import read_waymo_data
 from tqdm import tqdm
 
 polyline_type_sd_to_waymo = {
