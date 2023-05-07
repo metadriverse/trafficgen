@@ -428,14 +428,7 @@ class InitDataset(Dataset):
         self.cfg = cfg
         self.data_loaded = {}
         self.total_data_usage = cfg['data_usage']
-        self.summary_dict, self.summary_list, self.scenario_id_map = \
-            get_all_infos(self.data_path)
 
-        if len(self.summary_list) < self.total_data_usage:
-            print("=" * 50)
-            print(f"WARNING: Total data {len(self.summary_list)} is less then config data usage {self.total_data_usage}.")
-            print("=" * 50)
-            self.total_data_usage = len(self.summary_list)
         self.load_data()
 
 
@@ -447,8 +440,16 @@ class InitDataset(Dataset):
             self.data_len = len(self.data_loaded)
 
         else:
-            cnt = 0
+            self.summary_dict, self.summary_list, self.scenario_id_map = \
+                get_all_infos(self.data_path)
+            if len(self.summary_list) < self.total_data_usage:
+                print("=" * 50)
+                print(
+                    f"WARNING: Total data {len(self.summary_list)} is less then config data usage {self.total_data_usage}.")
+                print("=" * 50)
+                self.total_data_usage = len(self.summary_list)
 
+            cnt = 0
             for i in tqdm(range(self.total_data_usage)):
                 file_name = self.summary_list[i]
                 p = os.path.join(self.data_path, file_name)
