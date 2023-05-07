@@ -4,7 +4,7 @@ map_size: 50
 device: 'gpu'
 
 debug: False
-data_path: '/data/lanfeng/waymo_data/init_data'
+data_path: '/data0/pengzh/metadrive_processed_waymo/training_20s'
 sample_gap: 20
 use_cache: True
 
