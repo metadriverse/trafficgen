@@ -162,8 +162,10 @@ def process_map(lane, traf, center_num=384, edge_num=128, lane_range=60, offest=
     cross_ind = cross_walk + speed_bump
 
     driveway = lane_type == 20
+    unknown = lane_type == 0
+    unknown1 = lane_type == -1
 
-    rest = ~(center_ind + bound_ind + cross_walk + speed_bump + cross_ind+driveway)
+    rest = ~(center_ind + bound_ind + cross_walk + speed_bump + cross_ind+driveway+unknown+unknown1)
 
     cent, cent_mask = process_lane(lane[:, center_ind], center_num, lane_range, offest)
     bound, bound_mask = process_lane(lane[:, bound_ind], edge_num, lane_range, offest)
