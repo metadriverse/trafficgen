@@ -121,7 +121,7 @@ def get_all_infos(info_path):
     for file in summary_list:
         p = os.path.join(info_path, file)
         assert os.path.isfile(p), p
-        if os.path.getsize(p) < 10:
+        if os.path.getsize(p) < 10 or not 'sd' in p:
             print(f"We detect the file has suspicious size {os.path.getsize(p)}: {p}. Skip this sample!")
             continue
         else:
