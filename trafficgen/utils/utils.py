@@ -116,7 +116,7 @@ def process_lane(lane, max_vec, lane_range, offset=-40):
 
 def get_all_infos(info_path):
     from metadrive.scenario.utils import read_dataset_summary
-    summary_dict, summary_list = read_dataset_summary(info_path)
+    summary_dict, summary_list, mapping = read_dataset_summary(info_path)
     new_summary_list = []
     for file in summary_list:
         p = os.path.join(info_path, file)

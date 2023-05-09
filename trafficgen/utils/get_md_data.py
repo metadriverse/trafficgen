@@ -89,12 +89,12 @@ def _down_sampling(line, sample_num):
 
     return ret
 
-def _extract_map(map_feat, sample_num):
+def _extract_map(map_feats, sample_num):
     lanes = []
 
     center_info = []
 
-    for map_feat_id, map_feat in map_feat.items():
+    for idx,(map_feat_id, map_feat) in enumerate(map_feats.items()):
 
         if "polyline" not in map_feat:
             if "position" in map_feat:
@@ -115,7 +115,7 @@ def _extract_map(map_feat, sample_num):
 
         a_lane[:, :2] = np.array(poly)
         a_lane[:, 2] = polyline_type_sd_to_waymo[map_feat['type']]
-        a_lane[:, 3] = str(map_feat_id)
+        a_lane[:, 3] = idx
 
         lanes.append(a_lane)
 
@@ -145,6 +145,9 @@ def metadrive_scenario_to_init_data(scenario):
             continue
         if id == sdc_id:
             sdc_index = indx
+        for k, v in track[SD.STATE].items():
+            if v.shape[-1] == 1:
+                track[SD.STATE][k] = v.squeeze(-1)
         all_agent[:, indx, :2] = track[SD.STATE]['position'][:, :2]
         all_agent[:, indx, 2:4] = track[SD.STATE]['velocity']
         all_agent[:, indx, 4] = track[SD.STATE]['heading'].reshape(track_len)

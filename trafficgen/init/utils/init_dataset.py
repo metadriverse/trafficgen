@@ -10,9 +10,10 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 
 from trafficgen.utils.config import load_config_init, get_parsed_args
-from trafficgen.utils.utils import cal_rel_dir, rotate, process_map, wash,get_all_infos
+from trafficgen.utils.utils import cal_rel_dir, rotate, process_map, wash
 from metadrive.utils.waymo.utils import read_waymo_data
 from trafficgen.utils.get_md_data import metadrive_scenario_to_init_data
+from metadrive.scenario.utils import read_dataset_summary
 
 TRAFFICGEN_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 def get_agent_pos_from_vec(vec, long_lat, speed, vel_heading, heading, bbox):
@@ -440,19 +441,19 @@ class InitDataset(Dataset):
             self.data_len = len(self.data_loaded)
 
         else:
-            self.summary_dict, self.summary_list, self.scenario_id_map = \
-                get_all_infos(self.data_path)
-            if len(self.summary_list) < self.total_data_usage:
+            summary_dict, summary_list, mapping = read_dataset_summary(self.data_path)
+            if len(summary_list) < self.total_data_usage:
                 print("=" * 50)
                 print(
-                    f"WARNING: Total data {len(self.summary_list)} is less then config data usage {self.total_data_usage}.")
+                    f"WARNING: Total data {len(summary_list)} is less then config data usage {self.total_data_usage}.")
                 print("=" * 50)
-                self.total_data_usage = len(self.summary_list)
+                self.total_data_usage = len(summary_list)
 
             cnt = 0
             for i in tqdm(range(self.total_data_usage)):
-                file_name = self.summary_list[i]
-                p = os.path.join(self.data_path, file_name)
+                file_name = summary_list[i]
+                p = os.path.join(self.data_path,mapping[file_name], file_name)
+                # change this
 
                 scenario = read_waymo_data(p)
                 datas = metadrive_scenario_to_init_data(scenario)
