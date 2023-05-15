@@ -435,10 +435,20 @@ class InitDataset(Dataset):
 
     def load_data(self):
         if self.cfg['use_cache']:
-            data_path = os.path.join(self.data_path, 'init_cache.pkl')
-            with open(data_path, 'rb+') as f:
-                self.data_loaded = pickle.load(f)
-            self.data_len = len(self.data_loaded)
+            pg_and_nu = os.path.join('/data0/pengzh/pg_and_nuplan', 'init_cache.pkl')
+            waymo = os.path.join('/data0/pengzh/metadrive_processed_waymo/training_20s', 'init_cache.pkl')
+            with open(pg_and_nu, 'rb+') as f:
+                pg = pickle.load(f)
+            with open(waymo, 'rb+') as f:
+                waymo = pickle.load(f)
+
+            pg_num = len(pg)
+
+            for k,v in waymo.items():
+                pg[pg_num+k] = waymo.pop(k)
+
+            self.data_loaded = pg
+            self.data_len = len(pg)
 
         else:
             summary_dict, summary_list, mapping = read_dataset_summary(self.data_path)
