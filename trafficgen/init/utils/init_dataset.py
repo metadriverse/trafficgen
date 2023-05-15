@@ -445,6 +445,7 @@ class InitDataset(Dataset):
             pg_num = len(pg)
 
             for k,v in waymo.items():
+                if k>50000:break
                 pg[pg_num+k] = waymo.pop(k)
 
             self.data_loaded = pg
