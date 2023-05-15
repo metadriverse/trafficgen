@@ -78,10 +78,13 @@ traffic_light_state_to_int = {
 def _down_sampling(line, sample_num=8):
     # if is center lane
     line_sample_dist = np.linalg.norm(line[1:]-line[:-1],axis=-1).mean(0)
-    sample_num = int(np.around(sample_num*WAYMO_SAMPLE_DISTANCE/line_sample_dist))
-    sample_num = max(1, sample_num)
-    point_num = line.shape[0]
+    if line_sample_dist < 1e-9:
+        sample_num = 1
+    else:
+        sample_num = int(np.around(sample_num*WAYMO_SAMPLE_DISTANCE/line_sample_dist))
+        sample_num = max(1, sample_num)
 
+    point_num = line.shape[0]
     ret = []
 
     if point_num < sample_num:
