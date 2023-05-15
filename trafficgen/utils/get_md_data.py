@@ -71,7 +71,11 @@ traffic_light_state_to_int = {
     # // Flashing light signals.
     'LANE_STATE_FLASHING_STOP': 7,
     'LANE_STATE_FLASHING_CAUTION': 8,
+
     'TRAFFIC_LIGHT_UNKNOWN': 0,
+    'TRAFFIC_LIGHT_RED': 4,
+    'TRAFFIC_LIGHT_GREEN': 6,
+    'TRAFFIC_LIGHT_YELLOW': 5,
 }
 
 
