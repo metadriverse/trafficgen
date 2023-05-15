@@ -1,10 +1,10 @@
 # Config format schema number
 format_version: 4
-map_size: 50
+map_size: 60
 device: 'gpu'
 
 debug: False
-data_path: '/data0/pengzh/metadrive_processed_waymo/training_20s'
+data_path: '/data0/pengzh/pg_and_nuplan'
 sample_gap: 20
 use_cache: True
 
@@ -13,7 +13,7 @@ num_workers: 10
 batch_size: 64
 lr: 0.0003
 weight_decay: 0.0004
-data_usage: 10000
+data_usage: 90000
 hidden_dim: 1024
 gaussian_comp: 5
 

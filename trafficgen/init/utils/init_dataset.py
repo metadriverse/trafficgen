@@ -102,7 +102,7 @@ def transform_coordinate_map(data):
 
 
 def get_vec_rep(case_info):
-    thres = 5
+    thres = 4
     max_agent_num = 32
     # process future agent
 
@@ -163,7 +163,7 @@ def get_vec_rep(case_info):
 
     coord = rotate(cent_to_agent_x, cent_to_agent_y, np.pi / 2 - dir)
 
-    vec_len = np.clip(np.sqrt(np.square(y2 - y1) + np.square(x1 - x2)), a_min=4.5, a_max=5.5)
+    vec_len = np.clip(np.sqrt(np.square(y2 - y1) + np.square(x1 - x2)), a_min=3.5, a_max=4.5)
 
     lat_perc = np.clip(coord[..., 0], a_min=-vec_len / 2, a_max=vec_len / 2) / vec_len
     long_perc = np.clip(coord[..., 1], a_min=-vec_len / 2, a_max=vec_len / 2) / vec_len

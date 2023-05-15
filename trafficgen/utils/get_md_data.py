@@ -17,6 +17,7 @@ from metadrive.scenario.scenario_description import ScenarioDescription as SD, M
 from metadrive.utils.waymo.utils import read_waymo_data
 from tqdm import tqdm
 
+WAYMO_SAMPLE_DISTANCE = 0.5
 polyline_type_sd_to_waymo = {
     # for lane
     MetaDriveType.LANE_UNKNOWN: -1,
@@ -74,8 +75,11 @@ traffic_light_state_to_int = {
 
 
 
-def _down_sampling(line, sample_num):
+def _down_sampling(line, sample_num=8):
     # if is center lane
+    line_sample_dist = np.linalg.norm(line[1:]-line[:-1],axis=-1).mean(0)
+    sample_num = int(np.around(sample_num*WAYMO_SAMPLE_DISTANCE/line_sample_dist))
+    sample_num = max(1, sample_num)
     point_num = line.shape[0]
 
     ret = []
@@ -190,7 +194,7 @@ def metadrive_scenario_to_init_data(scenario):
 
     ret['traffic_light'] = traffic_light_data
 
-    ret['lane'] = _extract_map(map_feat, sample_num=10)
+    ret['lane'] = _extract_map(map_feat,sample_num=8)
     ret['unsampled_lane'] = _extract_map(map_feat, sample_num=10e9)
 
     # ret["original_metadrive_scenario"] = scenario
