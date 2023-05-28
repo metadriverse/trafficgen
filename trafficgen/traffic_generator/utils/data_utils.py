@@ -5,11 +5,13 @@ import pickle
 import numpy as np
 from torch import Tensor
 from torch.utils.data import Dataset
+from tqdm import tqdm
+
 from trafficgen.utils.get_md_data import metadrive_scenario_to_init_data
 from trafficgen.utils.typedef import AgentType, RoadLineType, RoadEdgeType
-from trafficgen.utils.utils import process_map, rotate, cal_rel_dir, WaymoAgent,get_all_infos
+from trafficgen.utils.utils import process_map, rotate, cal_rel_dir, WaymoAgent,wash
 
-
+from metadrive.scenario.utils import read_dataset_summary
 try:
     from metadrive.utils.waymo.utils import read_waymo_data
 except ImportError:
@@ -251,33 +253,44 @@ class InitDataset(Dataset):
     If in debug, it will load debug dataset
     """
     def __init__(self, cfg):
-        self.total_data_usage = cfg["data_usage"]
-
         self.data_path = os.path.join(TRAFFICGEN_ROOT, cfg['data_path'])
-
-        self.summary_dict, self.summary_list, self.scenario_id_map = \
-            get_all_infos(self.data_path)
-
-        if len(self.summary_list) < self.total_data_usage:
-            print("=" * 50)
-            print(f"WARNING: Total data {len(self.summary_list)} is less then config data usage {self.total_data_usage}.")
-            print("=" * 50)
-            self.total_data_usage = len(self.summary_list)
-
-        self.data_len = None
-        self.data_loaded = {}
         self.cfg = cfg
-        super(InitDataset, self).__init__()
+        self.data_loaded = {}
+        self.total_data_usage = cfg['data_usage']
+
+        self.load_data()
+
 
     def load_data(self):
 
-        for i in range(self.total_data_usage):
-            file_name = self.summary_list[i]
-            p = os.path.join(self.data_path, file_name)
+        summary_dict, summary_list, mapping = read_dataset_summary(self.data_path)
+        if len(summary_list) < self.total_data_usage:
+            print("=" * 50)
+            print(
+                f"WARNING: Total data {len(summary_list)} is less then config data usage {self.total_data_usage}.")
+            print("=" * 50)
+            self.total_data_usage = len(summary_list)
+
+        cnt = 0
+        for i in tqdm(range(self.total_data_usage)):
+            file_name = summary_list[i]
+            p = os.path.join(self.data_path, mapping[file_name], file_name)
+            # change this
+
             scenario = read_waymo_data(p)
             datas = metadrive_scenario_to_init_data(scenario)
-            data = process_data_to_internal_format(datas, add_other=False)
-            self.data_loaded[i] = data[0]
+
+            data = process_data_to_internal_format(datas,add_other=True)
+            data = data[0]
+            self.data_loaded[cnt] = data
+            cnt += 1
+
+        self.data_len = cnt
+
+        # save cache
+        data_path = os.path.join(self.data_path, 'init_cache.pkl')
+        with open(data_path, 'wb') as f:
+            pickle.dump(self.data_loaded, f)
 
 
     def __len__(self):
@@ -299,7 +312,7 @@ class InitDataset(Dataset):
 
 def get_vec_based_rep(case_info):
 
-    thres = 5
+    thres = 4
     max_agent_num = 32
     # process future agent
 
@@ -360,7 +373,7 @@ def get_vec_based_rep(case_info):
 
     coord = rotate(cent_to_agent_x, cent_to_agent_y, np.pi / 2 - dir)
 
-    vec_len = np.clip(np.sqrt(np.square(y2 - y1) + np.square(x1 - x2)), a_min=4.5, a_max=5.5)
+    vec_len = np.clip(np.sqrt(np.square(y2 - y1) + np.square(x1 - x2)), a_min=3.5, a_max=4.5)
 
     lat_perc = np.clip(coord[..., 0], a_min=-vec_len / 2, a_max=vec_len / 2) / vec_len
     long_perc = np.clip(coord[..., 1], a_min=-vec_len / 2, a_max=vec_len / 2) / vec_len
@@ -551,7 +564,7 @@ def _process_map_inp(case_info):
 def process_data_to_internal_format(data, add_other=True):
     case_info = {}
     gap = 20
-
+    data['all_agent'] = data['all_agent'][0:190]
     other = {}
 
     traf = data['traffic_light'][:190]
@@ -567,14 +580,14 @@ def process_data_to_internal_format(data, add_other=True):
 
     # transform agent coordinate
     ego = agent[:, 0]
-    ego_pos = copy.deepcopy(ego[[0], :2])[:, np.newaxis]
-    ego_heading = ego[[0], [4]]
+    ego_pos = copy.deepcopy(ego[:, :2])[:, np.newaxis]
+    ego_heading = ego[:, [4]]
     agent[..., :2] -= ego_pos
     agent[..., :2] = rotate(agent[..., 0], agent[..., 1], -ego_heading)
     agent[..., 2:4] = rotate(agent[..., 2], agent[..., 3], -ego_heading)
     agent[..., 4] -= ego_heading
     agent_mask = agent[..., -1]
-    agent_type_mask = agent[..., -2]
+    agent_type_mask = agent[..., -2] == 1
     agent_range_mask = (abs(agent[..., 0]) < RANGE) * (abs(agent[..., 1]) < RANGE)
     mask = agent_mask * agent_type_mask * agent_range_mask
 
@@ -611,6 +624,9 @@ def process_data_to_internal_format(data, add_other=True):
         case_list.append(dic)
 
     if add_other:
-        case_list[0]['other'] = {k: list(v.astype(np.float32) if k != "traf" else v) for k, v in other.items()}
+        # for case in case_list:
+        #     case['other'] = {k: list(v.astype(np.float32) if k != "traf" else v) for k, v in other.items()}
+        for case in case_list:
+            case['other'] = other
 
     return case_list
