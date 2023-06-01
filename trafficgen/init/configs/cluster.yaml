@@ -4,16 +4,19 @@ map_size: 60
 device: 'gpu'
 
 debug: False
-data_path: '/data0/pengzh/pg_and_nuplan'
+data_path: '/data0/pengzh/'
 sample_gap: 20
 use_cache: True
+
+dataset: ['waymo', 'nuplan', 'pg']
+data_usage: [4,4,4]
+single_frame: False
 
 max_epoch: 100
 num_workers: 10
 batch_size: 64
 lr: 0.0003
 weight_decay: 0.0004
-data_usage: 90000
 hidden_dim: 1024
 gaussian_comp: 5
 

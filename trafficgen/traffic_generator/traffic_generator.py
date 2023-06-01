@@ -11,8 +11,8 @@ from tqdm import tqdm
 
 from trafficgen.act.model.tg_act import actuator
 from trafficgen.init.model.tg_init import initializer
-from trafficgen.init.utils.init_dataset import WaymoAgent
-from trafficgen.traffic_generator.utils.data_utils import InitDataset, save_as_metadrive_data, from_list_to_batch, \
+from trafficgen.init.utils.init_dataset import WaymoAgent,InitDataset
+from trafficgen.traffic_generator.utils.data_utils import save_as_metadrive_data, from_list_to_batch, \
     transform_to_agent, process_case_to_input
 from trafficgen.traffic_generator.utils.vis_utils import draw, draw_seq
 from trafficgen.utils.utils import process_map, rotate
@@ -23,7 +23,7 @@ TRAFFICGEN_ROOT = os.path.dirname(os.path.dirname(__file__))
 class TrafficGen:
     def __init__(self, cfg):
         self.cfg = cfg
-        self.init_model = initializer.load_from_checkpoint(os.path.join(TRAFFICGEN_ROOT, "traffic_generator", "ckpt", "init.ckpt"))
+        self.init_model = initializer.load_from_checkpoint(os.path.join(TRAFFICGEN_ROOT, "traffic_generator", "ckpt", "init_sn.ckpt"))
         # act = actuator()
         # state = torch.load('traffic_generator/ckpt/act.ckpt', map_location='cpu')
         # act = torch.nn.DataParallel(act, device_ids=[0])
@@ -89,10 +89,9 @@ class TrafficGen:
         data_path = self.cfg['data_path']
         with torch.no_grad():
             for idx, data in enumerate(tqdm(self.data_loader)):
-                data_file_path = os.path.join(data_path, f'{idx}.pkl')
-                with open(data_file_path, 'rb+') as f:
-                    original_data = pickle.load(f)
-
+                # data_file_path = os.path.join(data_path, f'{idx}.pkl')
+                # with open(data_file_path, 'rb+') as f:
+                #     original_data = pickle.load(f)
                 batch = copy.deepcopy(data)
 
                 model_output = self.place_vehicles_for_single_scenario(batch, idx, vis, init_vis_dir, context_num)
@@ -107,16 +106,17 @@ class TrafficGen:
                 output['context_num'] = context_num
                 output['all_agent'] = agent
                 output['agent_mask'] = agent_mask
-                output['lane'] = batch['other']['lane'][0].cpu().numpy()
-                output['unsampled_lane'] = batch['other']['unsampled_lane'][0].cpu().numpy()
-                output['traf'] = self.data_loader.dataset[idx]['other']['traf']
-                output['gt_agent'] = batch['other']['gt_agent'][0].cpu().numpy()
-                output['gt_agent_mask'] = batch['other']['gt_agent_mask'][0].cpu().numpy()
 
-                if "center_info" in original_data:
-                    output['center_info'] = original_data['center_info']
-                else:
-                    output["center_info"] = {}
+                output['lane'] = batch['lane'][0]
+                output['unsampled_lane'] = batch['unsampled_lane'][0]
+                output['traf'] = self.data_loader.dataset[idx]['traf']
+                output['gt_agent'] = batch['gt_agent'][0]
+                output['gt_agent_mask'] = batch['gt_agent_mask'][0]
+
+                # if "center_info" in original_data:
+                #     output['center_info'] = original_data['center_info']
+                # else:
+                #     output["center_info"] = {}
 
                 p = os.path.join(tmp_pth, f'{idx}.pkl')
                 with open(p, 'wb') as f:
@@ -136,9 +136,9 @@ class TrafficGen:
             os.makedirs(pkl_path)
 
         self.act_model.eval()
-
+        data_usage = np.sum(self.cfg['data_usage'])
         with torch.no_grad():
-            for i in tqdm(range(self.cfg['data_usage'])):
+            for i in tqdm(range(data_usage)):
                 with open(f'traffic_generator/output/initialized_tmp/{i}.pkl', 'rb+') as f:
                     data = pickle.load(f)
                 pred_i = self.inference_control(data)

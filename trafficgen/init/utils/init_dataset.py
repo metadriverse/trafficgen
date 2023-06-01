@@ -16,6 +16,7 @@ from trafficgen.utils.get_md_data import metadrive_scenario_to_init_data
 from metadrive.scenario.utils import read_dataset_summary
 
 TRAFFICGEN_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+
 def get_agent_pos_from_vec(vec, long_lat, speed, vel_heading, heading, bbox):
     x1, y1, x2, y2 = vec[:, 0], vec[:, 1], vec[:, 2], vec[:, 3]
     x_center, y_center = (x1 + x2) / 2, (y1 + y2) / 2
@@ -83,14 +84,14 @@ def get_gt(case_info):
     case_info['gt_heading'] = gt_vec_based_coord[..., 4]
 
 
-def transform_coordinate_map(data):
-    timestep = data['all_agent'].shape[0]
+def transform_coordinate_map(all_agent, lane):
+    timestep = all_agent.shape[0]
 
     # sdc_theta = data['sdc_theta'][:,np.newaxis]
-    ego = data['all_agent'][:, 0]
+    ego = all_agent[:, 0]
     pos = ego[:, [0, 1]][:, np.newaxis]
 
-    lane = data['lane'][np.newaxis]
+    lane = lane[np.newaxis]
     lane = np.repeat(lane, timestep, axis=0)
     lane[..., :2] -= pos
 
@@ -418,7 +419,6 @@ class WaymoAgent:
 
 LANE_SAMPLE = 10
 
-
 class InitDataset(Dataset):
     """
     If in debug, it will load debug dataset
@@ -426,63 +426,62 @@ class InitDataset(Dataset):
     def __init__(self, cfg):
         super(InitDataset, self).__init__()
         self.data_path = os.path.join(TRAFFICGEN_ROOT, cfg['data_path'])
+        self.dataset = cfg['dataset']
+        self.data_usage = cfg['data_usage']
         self.cfg = cfg
         self.data_loaded = {}
         self.total_data_usage = cfg['data_usage']
-
+        self.single_frame = cfg['single_frame']
         self.load_data()
 
-
     def load_data(self):
+        single_frame_idx = 5
+
         if self.cfg['use_cache']:
-            pg_and_nu = os.path.join('/data0/pengzh/pg_and_nuplan', 'init_cache.pkl')
-            waymo = os.path.join('/data0/pengzh/metadrive_processed_waymo/training_20s', 'init_cache.pkl')
-            with open(pg_and_nu, 'rb+') as f:
-                pg = pickle.load(f)
-            with open(waymo, 'rb+') as f:
-                waymo = pickle.load(f)
-
-            pg_num = len(pg)
-
-            for k,v in waymo.items():
-                if k>80000:break
-                pg[pg_num+k] = v
-            del waymo
-            self.data_loaded = pg
-            self.data_len = len(pg)
+            cache_path = os.path.join(self.data_path, 'init_cache.pkl')
+            with open(cache_path, 'rb+') as f:
+                cache = pickle.load(f)
+            self.data_loaded = cache
+            self.data_len = len(cache)
 
         else:
-            summary_dict, summary_list, mapping = read_dataset_summary(self.data_path)
-            if len(summary_list) < self.total_data_usage:
-                print("=" * 50)
-                print(
-                    f"WARNING: Total data {len(summary_list)} is less then config data usage {self.total_data_usage}.")
-                print("=" * 50)
-                self.total_data_usage = len(summary_list)
-
             cnt = 0
-            for i in tqdm(range(self.total_data_usage)):
-                file_name = summary_list[i]
-                p = os.path.join(self.data_path,mapping[file_name], file_name)
-                # change this
+            for indx, dataset in enumerate(self.dataset):
+                data_usage = self.data_usage[indx]
+                data_path = os.path.join(self.data_path, dataset)
+                summary_dict, summary_list, mapping = read_dataset_summary(data_path)
+                if len(summary_list) < data_usage:
+                    print("=" * 50)
+                    print(
+                        f"WARNING: Total data {len(summary_list)} is less then config data usage {data_usage}.")
+                    print("=" * 50)
+                    data_usage = len(summary_list)
 
-                scenario = read_waymo_data(p)
-                datas = metadrive_scenario_to_init_data(scenario)
+                for i in tqdm(range(data_usage)):
+                    file_name = summary_list[i]
+                    p = os.path.join(data_path,mapping[file_name], file_name)
+                    # change this
+                    scenario = read_waymo_data(p)
+                    raw_data = metadrive_scenario_to_init_data(scenario)
+                    processed_data = self.process(raw_data)
 
-                data = self.process(datas)
-                case_cnt = 0
-                for i in range(len(data)):
-                    wash(data[i])
-                    agent_num = data[i]['agent_mask'].sum()
-                    if agent_num < self.cfg['min_agent']:
-                        continue
-                    self.data_loaded[cnt + case_cnt] = data[i]
-                    case_cnt += 1
-                cnt += case_cnt
+                    if self.single_frame:
+                        processed_data[single_frame_idx]['dataset'] = dataset
+                        self.data_loaded[cnt] = processed_data[single_frame_idx]
+                        cnt += 1
+                    else:
+                        case_cnt = 0
+                        for j in range(len(processed_data)):
+                            wash(processed_data[j])
+                            agent_num = processed_data[j]['agent_mask'].sum()
+                            if agent_num < self.cfg['min_agent']:
+                                continue
+
+                            self.data_loaded[cnt + case_cnt] = processed_data[j]
+                            case_cnt += 1
+                        cnt += case_cnt
 
             self.data_len = cnt
-
-            # save cache
             data_path = os.path.join(self.data_path, 'init_cache.pkl')
             with open(data_path, 'wb') as f:
                 pickle.dump(self.data_loaded, f)
@@ -496,6 +495,21 @@ class InitDataset(Dataset):
         """
         return self.data_loaded[index]
 
+    def get_act_gt(self, agent,map_size):
+        ego = agent[[0], 0]
+        ego_pos = copy.deepcopy(ego[:, :2])[:, np.newaxis]
+        ego_heading = ego[:, [4]]
+        agent[..., :2] -= ego_pos
+        agent[..., :2] = rotate(agent[..., 0], agent[..., 1], -ego_heading)
+        agent[..., 2:4] = rotate(agent[..., 2], agent[..., 3], -ego_heading)
+        agent[..., 4] -= ego_heading
+        agent_mask = agent[..., -1]
+        agent_type_mask = agent[..., -2] == 1
+        agent_range_mask = (abs(agent[..., 0]) < map_size) * (abs(agent[..., 1]) < map_size)
+        mask = agent_mask * agent_type_mask * agent_range_mask
+        agent = WaymoAgent(agent)
+
+        return agent.get_inp(act=True)[:190], mask
     def process(self, data):
         case_info = {}
 
@@ -503,10 +517,14 @@ class InitDataset(Dataset):
         gap = self.cfg['sample_gap']
 
         # sample original data in a fixed interval
+        ori_agent = data['all_agent'][:190].copy()
+
         data['all_agent'] = data['all_agent'][0:-1:gap]
+        traf = data['traffic_light'][:190]
+        traf = [[v.astype(np.float32) for v in s] for s in traf]
         data['traffic_light'] = data['traffic_light'][0:-1:gap]
 
-        data['lane'] = transform_coordinate_map(data)
+        data['lane'] = transform_coordinate_map(data['all_agent'], data['lane'])
 
         case_info["agent"], case_info["agent_mask"] = process_agent(data['all_agent'], map_size, False)
 
@@ -524,6 +542,10 @@ class InitDataset(Dataset):
 
         get_gt(case_info)
 
+        if self.single_frame:
+            case_info['lane'] = data['lane']
+            case_info['unsampled_lane'] = transform_coordinate_map(data['all_agent'], data['unsampled_lane'])
+
         case_num = case_info['agent'].shape[0]
         case_list = []
         for i in range(case_num):
@@ -531,6 +553,12 @@ class InitDataset(Dataset):
             for k, v in case_info.items():
                 dic[k] = v[i]
             case_list.append(dic)
+
+        if self.single_frame:
+            gt_agent, gt_agent_mask = self.get_act_gt(ori_agent,map_size)
+            for case in case_list:
+                case['traf'] = traf
+                case['gt_agent'], case['gt_agent_mask'] = gt_agent, gt_agent_mask
 
         return case_list
 

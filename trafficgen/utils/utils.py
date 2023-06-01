@@ -129,7 +129,7 @@ def get_all_infos(info_path):
     summary_list = new_summary_list
     summary_dict = {k: summary_dict[k] for k in summary_list}
     return summary_dict, summary_list, None
-def process_map(lane, traf, center_num=384, edge_num=128, lane_range=60, offest=-40):
+def process_map(lane, traf, center_num=900, edge_num=200, lane_range=60, offest=-40):
     lane_with_traf = np.zeros([*lane.shape[:-1], 5])
     lane_with_traf[..., :4] = lane
 
@@ -169,8 +169,8 @@ def process_map(lane, traf, center_num=384, edge_num=128, lane_range=60, offest=
 
     cent, cent_mask = process_lane(lane[:, center_ind], center_num, lane_range, offest)
     bound, bound_mask = process_lane(lane[:, bound_ind], edge_num, lane_range, offest)
-    cross, cross_mask = process_lane(lane[:, cross_ind], 32, lane_range, offest)
-    rest, rest_mask = process_lane(lane[:, rest], 192, lane_range, offest)
+    cross, cross_mask = process_lane(lane[:, cross_ind], 100, lane_range, offest)
+    rest, rest_mask = process_lane(lane[:, rest], 500, lane_range, offest)
 
     return cent, cent_mask, bound, bound_mask, cross, cross_mask, rest, rest_mask
 

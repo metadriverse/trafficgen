@@ -49,7 +49,7 @@ def draw(center, agents, other, heat_map=None, save=False, edge=None, path='../v
             x0, y0, x1, y1, = edge[j, :4]
             if x0 == 0:
                 break
-            ax.plot((x0, x1), (y0, y1), lane_color, linewidth=1)
+            ax.plot((x0, x1), (y0, y1), lane_color, linewidth=2)
             # ax.arrow(x0, y0, x1-x0, y1-y0,head_width=1.5,head_length=0.75,width = 0.1)
     if other is not None:
         for j in range(len(other)):
@@ -58,7 +58,7 @@ def draw(center, agents, other, heat_map=None, save=False, edge=None, path='../v
             x0, y0, x1, y1, = other[j, :4]
             if x0 == 0:
                 break
-            ax.plot((x0, x1), (y0, y1), lane_color, linewidth=0.7)
+            ax.plot((x0, x1), (y0, y1), 'black', linewidth=0.7)
 
     for i in range(len(agents)):
 
