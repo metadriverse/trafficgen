@@ -64,7 +64,7 @@ if __name__ == "__main__":
     )
 
     c_list = [dataset_to_color[c] for c in dataset_list]
-    Y = tsne.fit_transform(features.numpy())
+    Y = tsne.fit_transform(features.cpu().numpy())
 
     ret['tsne_points'] = wandb.Image(visualize_tsne_points(Y,c_list))
     wandb.log(ret)
