@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
     test_set = InitDataset(cfg)
 
-    data_loader = DataLoader(test_set, batch_size=1, num_workers=0, shuffle=False, drop_last=True)
+    data_loader = DataLoader(test_set, batch_size=1, num_workers=0, shuffle=True, drop_last=True)
 
     model = initializer.load_from_checkpoint('traffic_generator/ckpt/init_sn.ckpt').to(device)
 
