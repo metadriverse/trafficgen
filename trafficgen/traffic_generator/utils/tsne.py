@@ -152,7 +152,7 @@ def visualize_tsne_images(tx, ty, images, plot_size=3000, max_image_size=600):
     return plt
 
 
-def visualize_tsne_points(Y,c='r'):
+def visualize_tsne_points(Y,c_list):
 
     # initialize matplotlib plot
     # extract x and y coordinates representing the positions of the images on T-SNE plot
@@ -164,7 +164,7 @@ def visualize_tsne_points(Y,c='r'):
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    ax.scatter(tx,ty,s=0.3,c=c)
+    ax.scatter(tx,ty,s=1,c=c_list)
     # finally, show the plot
     return plt
 

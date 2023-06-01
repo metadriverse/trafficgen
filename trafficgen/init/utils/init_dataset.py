@@ -551,7 +551,7 @@ class InitDataset(Dataset):
         for i in range(case_num):
             dic = {}
             for k, v in case_info.items():
-                dic[k] = v[i]
+                dic[k] = v[i].astype(np.float32)
             case_list.append(dic)
 
         if self.single_frame:
