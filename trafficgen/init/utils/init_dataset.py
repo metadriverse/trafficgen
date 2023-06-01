@@ -466,6 +466,7 @@ class InitDataset(Dataset):
                     processed_data = self.process(raw_data)
 
                     if self.single_frame:
+                        if len(processed_data) <= single_frame_idx:continue
                         processed_data[single_frame_idx]['dataset'] = dataset
                         self.data_loaded[cnt] = processed_data[single_frame_idx]
                         cnt += 1
