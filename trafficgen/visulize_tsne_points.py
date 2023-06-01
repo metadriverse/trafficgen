@@ -40,7 +40,7 @@ if __name__ == "__main__":
     model.eval()
 
     datasize = len(data_loader)
-    features = torch.zeros([datasize, 1024], device=cfg['device'])
+    features = torch.zeros([datasize, 1024], device=device)
 
     ret = {}
     dataset_list = []
