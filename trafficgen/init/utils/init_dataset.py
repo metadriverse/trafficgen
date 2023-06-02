@@ -1,6 +1,7 @@
 import copy
 import os
 import pickle
+from random import random
 
 import numpy as np
 import torch
@@ -441,6 +442,8 @@ class InitDataset(Dataset):
             cache_path = os.path.join(self.data_path, 'init_cache.pkl')
             with open(cache_path, 'rb+') as f:
                 cache = pickle.load(f)
+            # randomly pick 30% of the data
+            cache = random.sample(cache, int(len(cache) * 0.3))
             self.data_loaded = cache
             self.data_len = len(cache)
 
