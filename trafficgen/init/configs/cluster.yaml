@@ -11,6 +11,7 @@ use_cache: True
 dataset: ['waymo', 'nuplan', 'pg']
 data_usage: [4,4,4]
 single_frame: False
+data_perc: 0.3
 
 max_epoch: 100
 num_workers: 10
