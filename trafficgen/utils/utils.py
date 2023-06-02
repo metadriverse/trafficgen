@@ -151,7 +151,7 @@ def process_map(lane, traf, center_num=900, edge_num=200, lane_range=60, offest=
     center_1 = lane_type == 1
     center_2 = lane_type == 2
     center_3 = lane_type == 3
-    center_ind = center_1 + center_2 + center_3
+    center_ind = center_2 #center_1 + center_2 + center_3
 
     boundary_1 = lane_type == 15
     boundary_2 = lane_type == 16
