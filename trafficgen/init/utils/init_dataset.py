@@ -431,7 +431,7 @@ class InitDataset(Dataset):
         self.cfg = cfg
         self.data_loaded = {}
         self.total_data_usage = cfg['data_usage']
-        self.single_frame = cfg['single_frame']
+        self.single_frame = cfg['batch_size'] == 1
         self.load_data()
 
     def load_data(self):
