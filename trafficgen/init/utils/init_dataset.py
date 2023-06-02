@@ -9,7 +9,7 @@ from shapely.geometry import Polygon
 from torch import Tensor
 from torch.utils.data import Dataset
 from tqdm import tqdm
-
+from random import Random
 from trafficgen.utils.config import load_config_init, get_parsed_args
 from trafficgen.utils.utils import cal_rel_dir, rotate, process_map, wash
 from metadrive.utils.waymo.utils import read_waymo_data
@@ -443,7 +443,8 @@ class InitDataset(Dataset):
             with open(cache_path, 'rb+') as f:
                 cache = pickle.load(f)
             # randomly pick 30% of the data
-            cache = random.sample(cache, int(len(cache) * 0.3))
+
+            cache = Random(0).sample(cache, int(len(cache) * 0.3))
             self.data_loaded = cache
             self.data_len = len(cache)
 
