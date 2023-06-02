@@ -87,7 +87,14 @@ def draw_rectangle_by_class(image):
 
     # get the color corresponding to image class
     #color = colors_per_class[label]
-    image = cv2.rectangle(image, (0, 0), (image_width - 1, image_height - 1), color=[0,0,0], thickness=2)
+    if c =='red':
+        c=[255,0,0]
+    elif c=='green':
+        c=[0,255,0]
+    elif c=='blue':
+        c=[0,0,255]
+
+    image = cv2.rectangle(image, (0, 0), (image_width - 1, image_height - 1), color=c, thickness=2)
 
     return image
 
@@ -112,7 +119,7 @@ def compute_plot_coordinates(image, x, y, image_centers_area_size, offset):
     return tl_x, tl_y, br_x, br_y
 
 
-def visualize_tsne_images(tx, ty, images, plot_size=3000, max_image_size=600):
+def visualize_tsne_images(tx, ty, images, c_list,plot_size=3000, max_image_size=600):
     # we'll put the image centers in the central area of the plot
     # and use offsets to make sure the images fit the plot
     plt.clf()
@@ -128,6 +135,7 @@ def visualize_tsne_images(tx, ty, images, plot_size=3000, max_image_size=600):
     tsne_plot = 255 * np.ones((plot_size, plot_size, 3), np.uint8)
 
     # now we'll put a small copy of every image to its corresponding T-SNE coordinate
+    cnt=0
     for image_path, x, y in tqdm(
             zip(images, tx, ty),
             desc='Building the T-SNE plot',
@@ -139,13 +147,14 @@ def visualize_tsne_images(tx, ty, images, plot_size=3000, max_image_size=600):
         image = scale_image(image, max_image_size)
 
         # draw a rectangle with a color corresponding to the image class
-        image = draw_rectangle_by_class(image)
+        image = draw_rectangle_by_class(image,c_list[cnt])
 
         # compute the coordinates of the image on the scaled plot visualization
         tl_x, tl_y, br_x, br_y = compute_plot_coordinates(image, x, y, image_centers_area_size, offset)
 
         # put the image to its TSNE coordinates using numpy subarray indices
         tsne_plot[tl_y:br_y, tl_x:br_x, :] = image
+        cnt+=1
 
     ax.imshow(tsne_plot[:, :, ::-1])
 

@@ -24,7 +24,7 @@ if __name__ == "__main__":
     wandb.init(
         project="tsne",
     )
-    #vis_num = 4
+    vis_num = 100
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -66,5 +66,28 @@ if __name__ == "__main__":
     c_list = [dataset_to_color[c] for c in dataset_list]
     Y = tsne.fit_transform(features.cpu().numpy())
 
+    rand_indx = list(range(datasize))
+    np.random.shuffle(rand_indx)
+    c_list = np.array(c_list)[rand_indx]
+    Y = Y[rand_indx]
+
     ret['tsne_points'] = wandb.Image(visualize_tsne_points(Y,c_list))
+
+    sampled_indx = rand_indx[:vis_num]
+    c_list = c_list[sampled_indx]
+
+    img_path = './img'
+    if not os.path.exists(img_path):
+        os.makedirs(img_path)
+    for i in range(vis_num):
+        data = data_loader.dataset[sampled_indx[i]]
+        agent = data['agent']
+        agent_list = []
+        agent_num = agent.shape[0]
+        for a in range(agent_num):
+            agent_list.append(WaymoAgent(agent[[a]]))
+        draw(data['center'], agent_list, other=data['rest'], edge=data['bound'], path=f'./img/{i}.jpg', save=True)
+
+    image_path = [f'./img/{i}.jpg' for i in range(vis_num)]
+    ret['tsne_image'] = wandb.Image(visualize_tsne_images(Y[:vis_num, 0], Y[:vis_num, 1], image_path,c_list))
     wandb.log(ret)
