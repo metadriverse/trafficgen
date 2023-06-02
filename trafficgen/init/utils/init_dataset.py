@@ -444,12 +444,12 @@ class InitDataset(Dataset):
             with open(cache_path, 'rb+') as f:
                 cache = pickle.load(f)
             # randomly pick 30% from cache, cache is a dict
-            cache_keys = list(cache.keys())
-            cache_keys = np.random.choice(cache_keys, int(len(cache_keys) * 0.3), replace=False)
-            sampled_data = {k: cache[cache_keys[k]] for k in range(len(cache_keys))}
-            del cache
-            self.data_loaded = sampled_data
-            self.data_len = len(sampled_data)
+            # cache_keys = list(cache.keys())
+            # cache_keys = np.random.choice(cache_keys, int(len(cache_keys) * 0.3), replace=False)
+            # sampled_data = {k: cache[cache_keys[k]] for k in range(len(cache_keys))}
+            # del cache
+            self.data_loaded = cache
+            self.data_len = len(cache)
 
         else:
             cnt = 0
