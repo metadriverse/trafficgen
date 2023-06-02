@@ -1,12 +1,15 @@
 # Config format schema number
 format_version: 4
 device_num: 1
-map_size: 50
+map_size: 60
 device: 'cpu'
 
 use_cache: False
 debug: True
-data_path: 'dataset/pg'
+data_path: 'dataset'
+# add list of data set [data1, data2, ...]
+dataset: ['waymo', 'nuplan', 'pg']
+data_usage: [4,4,4]
 sample_gap: 20
 
 max_epoch: 50
@@ -14,12 +17,11 @@ num_workers: 0
 batch_size: 4
 lr: 0.0003
 weight_decay: 0.0004
-data_usage: 4
 hidden_dim: 1024
 gaussian_comp: 5
 
-pad_num: 0
-min_agent: 1
+pad_num: 4
+min_agent: 4
 draw: True
 context_num: 1
 
