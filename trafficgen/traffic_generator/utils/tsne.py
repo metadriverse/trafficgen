@@ -82,7 +82,7 @@ def scale_image(image, max_image_size):
     return image
 
 
-def draw_rectangle_by_class(image):
+def draw_rectangle_by_class(image,c):
     image_height, image_width, _ = image.shape
 
     # get the color corresponding to image class
