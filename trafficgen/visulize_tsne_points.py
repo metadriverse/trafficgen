@@ -62,7 +62,13 @@ if __name__ == "__main__":
                     pass
             features[idx] = model(batch)
             dataset_list.append(batch['dataset'][0])
-            batch_list.append(batch)
+            batch_to_save = {}
+            for k in batch.keys():
+                if 'center' not in k or 'agent' not in k or 'bound' not in k or 'rest' not in k:
+                    batch_to_save[k] = batch[k]
+                else:
+                    continue
+            batch_list.append(batch_to_save)
 
     tsne = manifold.TSNE(
         n_components=2,
