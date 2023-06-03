@@ -181,7 +181,7 @@ def visualize_tsne_points(Y,c_list,indx,annotated=False):
     # visualize the numbers in indx on tx,ty
     if annotated:
         for i, txt in enumerate(indx):
-            ax.annotate(txt, (tx[i], ty[i]),fontsize=3)
+            ax.annotate(txt, (tx[i], ty[i]),fontsize=1)
 
     color = sns.color_palette("colorblind")
     red_patch = mpatches.Patch(color=color[2], label='Waymo')
