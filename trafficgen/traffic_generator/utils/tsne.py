@@ -7,7 +7,7 @@ import numpy as np
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-
+import seaborn as sns
 # from animals_dataset import AnimalsDataset, collate_skip_empty, colors_per_class
 # from resnet import ResNet101
 
@@ -88,13 +88,16 @@ def draw_rectangle_by_class(image,c):
 
     # get the color corresponding to image class
     #color = colors_per_class[label]
-    if c =='red':
-        c=[0,0,255]
-    elif c=='green':
-        c=[0,255,0]
-    elif c=='blue':
-        c=[255,0,0]
-
+    # if c =='red':
+    #     c=[0,0,255]
+    # elif c=='green':
+    #     c=[0,255,0]
+    # elif c=='blue':
+    #     c=[255,0,0]
+    c*=255
+    # exchange the first and the last channel in order to convert
+    # it from RGB to BGR
+    c[0],c[-1] = c[-1],c[0]
     image = cv2.rectangle(image, (0, 0), (image_width - 1, image_height - 1), color=c, thickness=2)
 
     return image
@@ -162,7 +165,7 @@ def visualize_tsne_images(tx, ty, images, c_list,plot_size=10000, max_image_size
     return plt
 
 
-def visualize_tsne_points(Y,c_list,indx):
+def visualize_tsne_points(Y,c_list,indx,annotate=False):
 
     # initialize matplotlib plot
     # extract x and y coordinates representing the positions of the images on T-SNE plot
@@ -176,12 +179,14 @@ def visualize_tsne_points(Y,c_list,indx):
 
     ax.scatter(tx,ty,s=1,c=c_list)
     # visualize the numbers in indx on tx,ty
-    for i, txt in enumerate(indx):
-        ax.annotate(txt, (tx[i], ty[i]),fontsize=5)
+    if annotate:
+        for i, txt in enumerate(indx):
+            ax.annotate(txt, (tx[i], ty[i]),fontsize=5)
 
-    red_patch = mpatches.Patch(color='red', label='Waymo')
-    blue_patch = mpatches.Patch(color='blue', label='Nuplan')
-    green_patch = mpatches.Patch(color='green', label='PG')
+    color = sns.color_palette("colorblind")
+    red_patch = mpatches.Patch(color=color[2], label='Waymo')
+    blue_patch = mpatches.Patch(color=color[0], label='Nuplan')
+    green_patch = mpatches.Patch(color=color[3], label='PG')
 
     ax.legend(handles=[red_patch, blue_patch, green_patch])
 

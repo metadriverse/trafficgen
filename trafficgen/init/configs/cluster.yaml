@@ -9,13 +9,13 @@ sample_gap: 20
 use_cache: True
 
 dataset: ['waymo', 'nuplan', 'pg']
-data_usage: [4,4,4]
+data_usage: [5000,5000,5000]
 single_frame: False
 data_perc: 0.3
 
 max_epoch: 100
 num_workers: 10
-batch_size: 64
+batch_size: 1
 lr: 0.0003
 weight_decay: 0.0004
 hidden_dim: 1024

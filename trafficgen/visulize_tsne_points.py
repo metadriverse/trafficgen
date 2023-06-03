@@ -13,11 +13,13 @@ from trafficgen.utils.config import load_config_init, get_parsed_args
 from trafficgen.utils.utils import setup_seed,wash
 from torch.utils.data import DataLoader
 from trafficgen.traffic_generator.utils.vis_utils import draw
+import seaborn as sns
 
+color = sns.color_palette("colorblind")
 dataset_to_color = {
-    'waymo': 'red',
-    'nuplan': 'blue',
-    'pg': 'green',
+    'waymo': color[2],
+    'nuplan': color[0],
+    'pg': color[3],
 }
 
 if __name__ == "__main__":
@@ -34,13 +36,13 @@ if __name__ == "__main__":
 
     data_loader = DataLoader(test_set, batch_size=1, num_workers=0, shuffle=True, drop_last=True)
 
-    model = initializer.load_from_checkpoint('traffic_generator/ckpt/init_sn.ckpt').to(device)
+    model = initializer.load_from_checkpoint('traffic_generator/ckpt/init.ckpt').to(device)
 
     model.eval()
 
     datasize = len(data_loader)
     point_num = min(3000, datasize)
-    vis_num = int(point_num*1)
+    vis_num = int(point_num*0.2)
 
     features = torch.zeros([point_num, 1024], device=device)
 
@@ -76,14 +78,15 @@ if __name__ == "__main__":
     Y = Y[rand_indx]
 
     ret['tsne_points'] = wandb.Image(visualize_tsne_points(Y,c_list,rand_indx))
-
+    ret['tsne_points_annotated'] = wandb.Image(visualize_tsne_points(Y, c_list, rand_indx, annotated=True))
+    wandb.log(ret)
     sampled_indx = rand_indx[:vis_num]
     c_list = c_list[:vis_num]
 
     img_path = './img'
     if not os.path.exists(img_path):
         os.makedirs(img_path)
-    for i in range(len(c_list)):
+    for i in tqdm(range(len(c_list))):
         data = batch_list[sampled_indx[i]]
         agent = data['agent'][0].cpu().numpy()
         agent_list = []
@@ -93,10 +96,8 @@ if __name__ == "__main__":
         draw(data['center'][0].cpu().numpy(), agent_list, other=data['rest'][0].cpu().numpy(), edge=data['bound'][0].cpu().numpy(), path=f'./img/{i}.jpg', save=True)
 
     # save batch_list
-
     torch.save(batch_list, './batch_list.pt')
-
-
+    ret = {}
     image_path = [f'./img/{i}.jpg' for i in range(vis_num)]
     ret['tsne_image'] = wandb.Image(visualize_tsne_images(Y[:vis_num, 0], Y[:vis_num, 1], image_path,c_list))
     wandb.log(ret)
