@@ -85,12 +85,12 @@ if __name__ == "__main__":
         os.makedirs(img_path)
     for i in range(len(c_list)):
         data = batch_list[sampled_indx[i]]
-        agent = data['agent'][0].numpy()
+        agent = data['agent'][0].cpu().numpy()
         agent_list = []
         agent_num = agent.shape[0]
         for a in range(agent_num):
             agent_list.append(WaymoAgent(agent[[a]]))
-        draw(data['center'][0].numpy(), agent_list, other=data['rest'][0].numpy(), edge=data['bound'][0].numpy(), path=f'./img/{i}.jpg', save=True)
+        draw(data['center'][0].cpu().numpy(), agent_list, other=data['rest'][0].cpu().numpy(), edge=data['bound'][0].cpu().numpy(), path=f'./img/{i}.jpg', save=True)
 
     # save batch_list
 
