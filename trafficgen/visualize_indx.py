@@ -10,7 +10,7 @@ wandb.init(
 )
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--idx', 'i', type=int)
+parser.add_argument('--idx', '-i', type=int)
 args = parser.parse_args()
 
 tsne_tmp = torch.load('./tsne_tmp.pt',map_location=torch.device('cpu'))
