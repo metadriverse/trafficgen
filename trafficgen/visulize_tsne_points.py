@@ -64,7 +64,7 @@ if __name__ == "__main__":
             dataset_list.append(batch['dataset'][0])
             batch_to_save = {}
             for k in batch.keys():
-                if 'center' in k or 'agent' in k or 'bound' in k or 'rest' in k:
+                if 'center' == k or 'agent' == k or 'bound' == k or 'rest' == k:
                     batch_to_save[k] = batch[k]
                 else:
                     continue
