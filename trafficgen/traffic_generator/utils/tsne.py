@@ -185,7 +185,7 @@ def visualize_tsne_points(Y,c_list,indx,annotated=False):
 
     color = sns.color_palette("colorblind")
     red_patch = mpatches.Patch(color=color[2], label='Waymo')
-    blue_patch = mpatches.Patch(color=color[0], label='Nuplan')
+    blue_patch = mpatches.Patch(color=color[0], label='nuPlan')
     green_patch = mpatches.Patch(color=color[3], label='PG')
 
     ax.legend(handles=[red_patch, blue_patch, green_patch])
