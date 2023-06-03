@@ -24,7 +24,6 @@ if __name__ == "__main__":
     wandb.init(
         project="tsne",
     )
-    vis_num = 100
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -40,14 +39,18 @@ if __name__ == "__main__":
     model.eval()
 
     datasize = len(data_loader)
-    features = torch.zeros([datasize, 1024], device=device)
+    point_num = min(3000, datasize)
+    vis_num = int(point_num*1)
+
+    features = torch.zeros([point_num, 1024], device=device)
 
     ret = {}
     dataset_list = []
-
+    batch_list = []
     with torch.no_grad():
         for idx, batch in enumerate(tqdm(data_loader)):
-
+            if idx >= point_num:
+                break
             for k in batch:
                 try:
                     batch[k] = batch[k].to(device)
@@ -55,6 +58,7 @@ if __name__ == "__main__":
                     pass
             features[idx] = model(batch)
             dataset_list.append(batch['dataset'][0])
+            batch_list.append(batch)
 
     tsne = manifold.TSNE(
         n_components=2,
@@ -71,22 +75,27 @@ if __name__ == "__main__":
     c_list = np.array(c_list)[rand_indx]
     Y = Y[rand_indx]
 
-    ret['tsne_points'] = wandb.Image(visualize_tsne_points(Y,c_list))
+    ret['tsne_points'] = wandb.Image(visualize_tsne_points(Y,c_list,rand_indx))
 
     sampled_indx = rand_indx[:vis_num]
-    c_list = c_list[sampled_indx]
+    c_list = c_list[:vis_num]
 
     img_path = './img'
     if not os.path.exists(img_path):
         os.makedirs(img_path)
-    for i in range(vis_num):
-        data = data_loader.dataset[sampled_indx[i]]
-        agent = data['agent']
+    for i in range(len(c_list)):
+        data = batch_list[sampled_indx[i]]
+        agent = data['agent'][0].numpy()
         agent_list = []
         agent_num = agent.shape[0]
         for a in range(agent_num):
             agent_list.append(WaymoAgent(agent[[a]]))
-        draw(data['center'], agent_list, other=data['rest'], edge=data['bound'], path=f'./img/{i}.jpg', save=True)
+        draw(data['center'][0].numpy(), agent_list, other=data['rest'][0].numpy(), edge=data['bound'][0].numpy(), path=f'./img/{i}.jpg', save=True)
+
+    # save batch_list
+
+    torch.save(batch_list, './batch_list.pt')
+
 
     image_path = [f'./img/{i}.jpg' for i in range(vis_num)]
     ret['tsne_image'] = wandb.Image(visualize_tsne_images(Y[:vis_num, 0], Y[:vis_num, 1], image_path,c_list))

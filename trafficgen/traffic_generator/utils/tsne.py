@@ -6,6 +6,7 @@ import random
 import numpy as np
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 
 # from animals_dataset import AnimalsDataset, collate_skip_empty, colors_per_class
 # from resnet import ResNet101
@@ -88,11 +89,11 @@ def draw_rectangle_by_class(image,c):
     # get the color corresponding to image class
     #color = colors_per_class[label]
     if c =='red':
-        c=[255,0,0]
+        c=[0,0,255]
     elif c=='green':
         c=[0,255,0]
     elif c=='blue':
-        c=[0,0,255]
+        c=[255,0,0]
 
     image = cv2.rectangle(image, (0, 0), (image_width - 1, image_height - 1), color=c, thickness=2)
 
@@ -119,7 +120,7 @@ def compute_plot_coordinates(image, x, y, image_centers_area_size, offset):
     return tl_x, tl_y, br_x, br_y
 
 
-def visualize_tsne_images(tx, ty, images, c_list,plot_size=3000, max_image_size=600):
+def visualize_tsne_images(tx, ty, images, c_list,plot_size=10000, max_image_size=600):
     # we'll put the image centers in the central area of the plot
     # and use offsets to make sure the images fit the plot
     plt.clf()
@@ -161,7 +162,7 @@ def visualize_tsne_images(tx, ty, images, c_list,plot_size=3000, max_image_size=
     return plt
 
 
-def visualize_tsne_points(Y,c_list):
+def visualize_tsne_points(Y,c_list,indx):
 
     # initialize matplotlib plot
     # extract x and y coordinates representing the positions of the images on T-SNE plot
@@ -174,6 +175,17 @@ def visualize_tsne_points(Y,c_list):
     ax = fig.add_subplot(111)
 
     ax.scatter(tx,ty,s=1,c=c_list)
+    # visualize the numbers in indx on tx,ty
+    for i, txt in enumerate(indx):
+        ax.annotate(txt, (tx[i], ty[i]),fontsize=5)
+
+    red_patch = mpatches.Patch(color='red', label='Waymo')
+    blue_patch = mpatches.Patch(color='blue', label='Nuplan')
+    green_patch = mpatches.Patch(color='green', label='PG')
+
+    ax.legend(handles=[red_patch, blue_patch, green_patch])
+
+    ax.axis('off')
     # finally, show the plot
     return plt
 

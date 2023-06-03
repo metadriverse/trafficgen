@@ -433,21 +433,16 @@ class InitDataset(Dataset):
         self.data_loaded = {}
         self.total_data_usage = cfg['data_usage']
         self.single_frame = cfg['batch_size'] == 1
-        self.data_perc = cfg['data_perc']
+        #self.data_perc = cfg['data_perc']
         self.load_data()
 
     def load_data(self):
         single_frame_idx = 5
-
+        cache_name = 'init_cache_single.pkl' if self.single_frame else 'init_cache.pkl'
         if self.cfg['use_cache']:
-            cache_path = os.path.join(self.data_path, 'init_cache.pkl')
+            cache_path = os.path.join(self.data_path, cache_name)
             with open(cache_path, 'rb+') as f:
                 cache = pickle.load(f)
-            # randomly pick 30% from cache, cache is a dict
-            # cache_keys = list(cache.keys())
-            # cache_keys = np.random.choice(cache_keys, int(len(cache_keys) * 0.3), replace=False)
-            # sampled_data = {k: cache[cache_keys[k]] for k in range(len(cache_keys))}
-            # del cache
             self.data_loaded = cache
             self.data_len = len(cache)
 
@@ -490,7 +485,7 @@ class InitDataset(Dataset):
                         cnt += case_cnt
 
             self.data_len = cnt
-            data_path = os.path.join(self.data_path, 'init_cache.pkl')
+            data_path = os.path.join(self.data_path, cache_name)
             with open(data_path, 'wb') as f:
                 pickle.dump(self.data_loaded, f)
 
