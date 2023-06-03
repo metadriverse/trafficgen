@@ -165,7 +165,7 @@ def visualize_tsne_images(tx, ty, images, c_list,plot_size=10000, max_image_size
     return plt
 
 
-def visualize_tsne_points(Y,c_list,indx,annotate=False):
+def visualize_tsne_points(Y,c_list,indx,annotated=False):
 
     # initialize matplotlib plot
     # extract x and y coordinates representing the positions of the images on T-SNE plot
@@ -179,7 +179,7 @@ def visualize_tsne_points(Y,c_list,indx,annotate=False):
 
     ax.scatter(tx,ty,s=1,c=c_list)
     # visualize the numbers in indx on tx,ty
-    if annotate:
+    if annotated:
         for i, txt in enumerate(indx):
             ax.annotate(txt, (tx[i], ty[i]),fontsize=5)
 
