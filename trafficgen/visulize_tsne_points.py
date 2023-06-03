@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     datasize = len(data_loader)
     point_num = min(3000, datasize)
-    vis_num = int(point_num*0.2)
+    vis_num = int(point_num*0.1)
 
     features = torch.zeros([point_num, 1024], device=device)
 
