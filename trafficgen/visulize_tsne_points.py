@@ -70,7 +70,7 @@ if __name__ == "__main__":
     c_list = [dataset_to_color[c] for c in dataset_list]
     Y = tsne.fit_transform(features.cpu().numpy())
 
-    rand_indx = list(range(datasize))
+    rand_indx = list(range(point_num))
     np.random.shuffle(rand_indx)
     c_list = np.array(c_list)[rand_indx]
     Y = Y[rand_indx]
