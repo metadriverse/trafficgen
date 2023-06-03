@@ -160,14 +160,6 @@ def visualize_tsne_images(tx, ty, images, c_list,plot_size=10000, max_image_size
         tsne_plot[tl_y:br_y, tl_x:br_x, :] = image
         cnt+=1
 
-    color = sns.color_palette("colorblind")
-    red_patch = mpatches.Patch(color=color[2], label='Waymo')
-    blue_patch = mpatches.Patch(color=color[0], label='nuPlan')
-    green_patch = mpatches.Patch(color=color[3], label='PG')
-
-    ax.legend(handles=[red_patch, blue_patch, green_patch])
-
-    ax.axis('off')
     ax.imshow(tsne_plot[:, :, ::-1])
 
     return plt
