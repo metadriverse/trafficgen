@@ -23,6 +23,8 @@ dataset_to_color = {
 }
 
 if __name__ == "__main__":
+    tsne_tmp = {}
+
     wandb.init(
         project="tsne",
     )
@@ -81,12 +83,12 @@ if __name__ == "__main__":
     ret['tsne_points_annotated'] = wandb.Image(visualize_tsne_points(Y, c_list, rand_indx, annotated=True))
     wandb.log(ret)
     sampled_indx = rand_indx[:vis_num]
-    c_list = c_list[:vis_num]
+    sampled_c_list = c_list[:vis_num]
 
     img_path = './img'
     if not os.path.exists(img_path):
         os.makedirs(img_path)
-    for i in tqdm(range(len(c_list))):
+    for i in tqdm(range(len(sampled_c_list))):
         data = batch_list[sampled_indx[i]]
         agent = data['agent'][0].cpu().numpy()
         agent_list = []
@@ -95,9 +97,14 @@ if __name__ == "__main__":
             agent_list.append(WaymoAgent(agent[[a]]))
         draw(data['center'][0].cpu().numpy(), agent_list, other=data['rest'][0].cpu().numpy(), edge=data['bound'][0].cpu().numpy(), path=f'./img/{i}.jpg', save=True)
 
-    # save batch_list
-    torch.save(batch_list, './batch_list.pt')
     ret = {}
     image_path = [f'./img/{i}.jpg' for i in range(vis_num)]
-    ret['tsne_image'] = wandb.Image(visualize_tsne_images(Y[:vis_num, 0], Y[:vis_num, 1], image_path,c_list))
+    ret['tsne_image'] = wandb.Image(visualize_tsne_images(Y[:vis_num, 0], Y[:vis_num, 1], image_path,sampled_c_list))
     wandb.log(ret)
+
+    tsne_tmp['batch_list'] = batch_list
+    tsne_tmp['Y'] = Y
+    tsne_tmp['c_list'] = c_list
+    tsne_tmp['rand_indx'] = rand_indx
+    tsne_tmp['vis_num'] = vis_num
+    torch.save(tsne_tmp, './tsne_tmp.pt')
