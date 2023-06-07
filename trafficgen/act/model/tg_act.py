@@ -100,13 +100,17 @@ class actuator(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         pred = self.forward(batch)
         loss, loss_dict = act_loss(pred, batch)
-        self.log("train/loss", loss_dict)
+        # pred['prob'] = nn.Sigmoid()(pred['prob'])
+
+        loss_dict = {'train/'+k:v for k,v in loss.items()}
+        self.log_dict(loss_dict)
         return loss
 
     def validation_step(self, batch, batch_idx):
         pred = self.forward(batch)
         loss, loss_dict = act_loss(pred, batch)
-        self.log("valid/loss", loss_dict)
+        loss_dict = {'val/' + k: v for k, v in loss.items()}
+        self.log_dict(loss_dict)
         return loss
 
     def configure_optimizers(self):
