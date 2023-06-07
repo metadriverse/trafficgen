@@ -254,43 +254,46 @@ class InitDataset(Dataset):
     """
     def __init__(self, cfg):
         self.data_path = os.path.join(TRAFFICGEN_ROOT, cfg['data_path'])
+        self.dataset = cfg['dataset']
+        self.data_usage = cfg['data_usage']
         self.cfg = cfg
         self.data_loaded = {}
         self.total_data_usage = cfg['data_usage']
-
         self.load_data()
-
 
     def load_data(self):
 
-        summary_dict, summary_list, mapping = read_dataset_summary(self.data_path)
-        if len(summary_list) < self.total_data_usage:
-            print("=" * 50)
-            print(
-                f"WARNING: Total data {len(summary_list)} is less then config data usage {self.total_data_usage}.")
-            print("=" * 50)
-            self.total_data_usage = len(summary_list)
+        for indx, dataset in enumerate(self.dataset):
+            data_usage = self.data_usage[indx]
+            data_path = os.path.join(self.data_path, dataset)
+            summary_dict, summary_list, mapping = read_dataset_summary(data_path)
+            if len(summary_list) < data_usage:
+                print("=" * 50)
+                print(
+                    f"WARNING: Total data {len(summary_list)} is less then config data usage {data_usage}.")
+                print("=" * 50)
+                self.total_data_usage = len(summary_list)
 
-        cnt = 0
-        for i in tqdm(range(self.total_data_usage)):
-            file_name = summary_list[i]
-            p = os.path.join(self.data_path, mapping[file_name], file_name)
-            # change this
+            cnt = 0
+            for i in tqdm(range(self.total_data_usage)):
+                file_name = summary_list[i]
+                p = os.path.join(self.data_path, mapping[file_name], file_name)
+                # change this
 
-            scenario = read_waymo_data(p)
-            datas = metadrive_scenario_to_init_data(scenario)
+                scenario = read_waymo_data(p)
+                datas = metadrive_scenario_to_init_data(scenario)
 
-            data = process_data_to_internal_format(datas,add_other=True)
-            data = data[0]
-            self.data_loaded[cnt] = data
-            cnt += 1
+                data = process_data_to_internal_format(datas,add_other=True)
+                data = data[0]
+                self.data_loaded[cnt] = data
+                cnt += 1
 
-        self.data_len = cnt
+            self.data_len = cnt
 
-        # save cache
-        data_path = os.path.join(self.data_path, 'init_cache.pkl')
-        with open(data_path, 'wb') as f:
-            pickle.dump(self.data_loaded, f)
+            # save cache
+            data_path = os.path.join(self.data_path, 'init_cache.pkl')
+            with open(data_path, 'wb') as f:
+                pickle.dump(self.data_loaded, f)
 
 
     def __len__(self):
@@ -560,6 +563,8 @@ def _process_map_inp(case_info):
         axis=1
     )
     return
+
+
 
 def process_data_to_internal_format(data, add_other=True):
     case_info = {}

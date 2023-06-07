@@ -4,7 +4,7 @@ device_num: 1
 map_size: 60
 device: 'cpu'
 
-use_cache: False
+use_cache: True
 debug: True
 data_path: 'dataset'
 # add list of data set [data1, data2, ...]
@@ -14,7 +14,7 @@ sample_gap: 20
 
 max_epoch: 50
 num_workers: 0
-batch_size: 4
+batch_size: 1
 lr: 0.0003
 weight_decay: 0.0004
 hidden_dim: 1024
