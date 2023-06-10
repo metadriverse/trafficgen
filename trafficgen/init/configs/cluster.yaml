@@ -26,5 +26,5 @@ min_agent: 8
 draw: True
 
 strategy: ddp
-
+context_num: 1
 
