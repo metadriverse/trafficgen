@@ -23,7 +23,7 @@ TRAFFICGEN_ROOT = os.path.dirname(os.path.dirname(__file__))
 class TrafficGen:
     def __init__(self, cfg):
         self.cfg = cfg
-        self.init_model = initializer.load_from_checkpoint(os.path.join(TRAFFICGEN_ROOT, "traffic_generator", "ckpt", "init_sn.ckpt"))
+        self.init_model = initializer.load_from_checkpoint(os.path.join(TRAFFICGEN_ROOT, "traffic_generator", "ckpt", "init.ckpt"))
         # act = actuator()
         # state = torch.load('traffic_generator/ckpt/act.ckpt', map_location='cpu')
         # act = torch.nn.DataParallel(act, device_ids=[0])
@@ -64,12 +64,12 @@ class TrafficGen:
         center = batch['center'][0].cpu().numpy()
         rest = batch['rest'][0].cpu().numpy()
         bound = batch['bound'][0].cpu().numpy()
-
+        dataset = batch['dataset'][0]
         # visualize generated traffic snapshots
         if vis:
             assert vis_dir is not None
             assert index is not None
-            output_path = os.path.join(vis_dir, f'{index}')
+            output_path = os.path.join(vis_dir, f'{dataset}_{index}')
             draw(center, model_output['agent'], other=rest, edge=bound, save=True, path=output_path)
 
         return model_output
