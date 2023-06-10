@@ -22,14 +22,10 @@ TRAFFICGEN_ROOT = os.path.dirname(os.path.dirname(__file__))
 
 class TrafficGen:
     def __init__(self, cfg):
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.cfg = cfg
-        self.init_model = initializer.load_from_checkpoint(os.path.join(TRAFFICGEN_ROOT, "traffic_generator", "ckpt", "init.ckpt"))
-        # act = actuator()
-        # state = torch.load('traffic_generator/ckpt/act.ckpt', map_location='cpu')
-        # act = torch.nn.DataParallel(act, device_ids=[0])
-        # act.load_state_dict(state["state_dict"])
-        # self.act_model = act
-        self.act_model = actuator.load_from_checkpoint(os.path.join(TRAFFICGEN_ROOT, "traffic_generator", "ckpt", "act.ckpt"))
+        self.init_model = initializer.load_from_checkpoint(os.path.join(TRAFFICGEN_ROOT, "traffic_generator", "ckpt", "init.ckpt")).to(self.device)
+        self.act_model = actuator.load_from_checkpoint(os.path.join(TRAFFICGEN_ROOT, "traffic_generator", "ckpt", "act.ckpt")).to(self.device)
         init_dataset = InitDataset(cfg)
         self.data_loader = DataLoader(init_dataset, shuffle=False, batch_size=1, num_workers=0)
 
@@ -40,7 +36,7 @@ class TrafficGen:
                 batch[key] = Tensor(batch[key])
             if isinstance(batch[key], torch.DoubleTensor):
                 batch[key] = batch[key].float()
-            if isinstance(batch[key], torch.Tensor) and self.cfg['device'] == 'cuda':
+            if isinstance(batch[key], torch.Tensor) and self.device == 'cuda':
                 batch[key] = batch[key].cuda()
             if 'mask' in key:
                 batch[key] = batch[key].to(bool)
