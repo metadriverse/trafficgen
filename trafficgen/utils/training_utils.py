@@ -24,11 +24,9 @@ from ray.rllib.evaluation import MultiAgentEpisode, RolloutWorker
 from ray.rllib.policy import Policy
 from ray.tune import CLIReporter
 
-
 from multiprocessing import Queue
 
 from ray.air.integrations.wandb import WandbLoggerCallback, _clean_log
-
 
 root = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 
@@ -106,28 +104,28 @@ def get_api_key_file(wandb_key_file):
 
 
 def train(
-        trainer,
-        config,
-        stop,
-        exp_name,
-        num_seeds=1,
-        num_gpus=0,
-        test_mode=False,
-        suffix="",
-        checkpoint_freq=10,
-        keep_checkpoints_num=None,
-        start_seed=0,
-        local_mode=False,
-        save_pkl=True,
-        custom_callback=None,
-        max_failures=0,
-        # wandb support is removed!
-        wandb_key_file=None,
-        wandb_project=None,
-        wandb_team=None,
-        wandb_log_config=True,
-        init_kws=None,
-        **kwargs
+    trainer,
+    config,
+    stop,
+    exp_name,
+    num_seeds=1,
+    num_gpus=0,
+    test_mode=False,
+    suffix="",
+    checkpoint_freq=10,
+    keep_checkpoints_num=None,
+    start_seed=0,
+    local_mode=False,
+    save_pkl=True,
+    custom_callback=None,
+    max_failures=0,
+    # wandb support is removed!
+    wandb_key_file=None,
+    wandb_project=None,
+    wandb_team=None,
+    wandb_log_config=True,
+    init_kws=None,
+    **kwargs
 ):
     init_kws = init_kws or dict()
     # initialize ray
@@ -275,11 +273,9 @@ def merge_dicts(d1, d2):
     return merged
 
 
-def deep_update(original,
-                new_dict,
-                new_keys_allowed=False,
-                allow_new_subkey_list=None,
-                override_all_if_type_changes=None):
+def deep_update(
+    original, new_dict, new_keys_allowed=False, allow_new_subkey_list=None, override_all_if_type_changes=None
+):
     """Updates original dict with values from new_dict recursively.
     If new key is introduced in new_dict, then if new_keys_allowed is not
     True, an error will be thrown. Further, for sub-dicts, if the key is
@@ -352,10 +348,8 @@ def same_padding(in_size, filter_size, stride_size):
     out_height = np.ceil(float(in_height) / float(stride_height))
     out_width = np.ceil(float(in_width) / float(stride_width))
 
-    pad_along_height = int(
-        ((out_height - 1) * stride_height + filter_height - in_height))
-    pad_along_width = int(
-        ((out_width - 1) * stride_width + filter_width - in_width))
+    pad_along_height = int(((out_height - 1) * stride_height + filter_height - in_height))
+    pad_along_width = int(((out_width - 1) * stride_width + filter_width - in_width))
     pad_top = pad_along_height // 2
     pad_bottom = pad_along_height - pad_top
     pad_left = pad_along_width // 2
@@ -372,8 +366,7 @@ class SafeJSONEncoder(json.JSONEncoder):
 
     def default(self, value):
         try:
-            if (type(value).__module__ == np.__name__
-                    and isinstance(value, np.ndarray)):
+            if (type(value).__module__ == np.__name__ and isinstance(value, np.ndarray)):
                 return value.tolist()
 
             if isinstance(value, np.bool_):
@@ -437,10 +430,7 @@ def setup_logger(debug=False):
 
 
 class DrivingCallbacks(DefaultCallbacks):
-    def on_episode_start(
-            self, *, worker: RolloutWorker, base_env, policies, episode,
-            env_index, **kwargs
-    ):
+    def on_episode_start(self, *, worker: RolloutWorker, base_env, policies, episode, env_index, **kwargs):
         episode.user_data["velocity"] = defaultdict(list)
         episode.user_data["steering"] = defaultdict(list)
         episode.user_data["step_reward"] = defaultdict(list)
@@ -453,7 +443,7 @@ class DrivingCallbacks(DefaultCallbacks):
         # episode.user_data["distance_error_final"] = defaultdict(list)
 
     def on_episode_step(
-            self, *, worker: RolloutWorker, base_env: BaseEnv, episode: MultiAgentEpisode, env_index: int, **kwargs
+        self, *, worker: RolloutWorker, base_env: BaseEnv, episode: MultiAgentEpisode, env_index: int, **kwargs
     ):
         active_keys = list(base_env.vector_env.envs[env_index].vehicles.keys())
 
@@ -481,8 +471,8 @@ class DrivingCallbacks(DefaultCallbacks):
                 episode.user_data["num_neighbours"][k].append(len(info.get("neighbours", [])))
 
     def on_episode_end(
-            self, worker: RolloutWorker, base_env: BaseEnv, policies: Dict[str, Policy], episode: MultiAgentEpisode,
-            **kwargs
+        self, worker: RolloutWorker, base_env: BaseEnv, policies: Dict[str, Policy], episode: MultiAgentEpisode,
+        **kwargs
     ):
         keys = [k for k, _ in episode.agent_rewards.keys()]
         arrive_dest_list = []

@@ -37,7 +37,6 @@ ALL_TYPE = {
 }
 
 
-
 def _down_sampling(line, sample_num):
     # if is center lane
     point_num = line.shape[0]
@@ -52,6 +51,7 @@ def _down_sampling(line, sample_num):
             ret.append(line[i])
 
     return ret
+
 
 def _extract_map(map_feat, sample_num):
     lanes = []
@@ -78,7 +78,6 @@ def _extract_map(map_feat, sample_num):
 
     lanes = np.concatenate(lanes, axis=0)
     return lanes
-
 
 
 def metadrive_scenario_to_init_data(scenario):

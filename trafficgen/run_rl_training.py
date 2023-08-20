@@ -6,6 +6,7 @@ try:
 finally:
     pass
 from metadrive.envs.real_data_envs.waymo_env import WaymoEnv
+from metadrive.envs.gym_wrapper import createGymWrapper
 from trafficgen.utils.training_utils import train, get_train_parser, DrivingCallbacks
 from ray.rllib.agents.ppo import PPOTrainer
 
@@ -22,16 +23,17 @@ You can also use 'dataset/generated_1385_training.zip' to specify pre-generated 
 Please refer to 'dataset/README.md' for more information on pre-generated TrafficGen data.
 """
 
-
 if __name__ == '__main__':
     parser = get_train_parser()
     parser.add_argument("--dataset_train", default="dataset/1385_training", help=HELP)
     parser.add_argument("--dataset_test", default="dataset/validation", help=HELP)
     parser.add_argument("--wandb", action="store_true", help="Whether to upload log to wandb.")
-    parser.add_argument("--case_num_train", default=1385, type=int,
-                        help="Number of scenarios you want to load from training dataset.")
-    parser.add_argument("--case_num_test", default=100, type=int,
-                        help="Number of scenarios you want to load from training dataset.")
+    parser.add_argument(
+        "--case_num_train", default=1385, type=int, help="Number of scenarios you want to load from training dataset."
+    )
+    parser.add_argument(
+        "--case_num_test", default=100, type=int, help="Number of scenarios you want to load from training dataset."
+    )
     args = parser.parse_args()
 
     exp_name = args.exp_name or "TrafficGen_RL"
@@ -44,31 +46,34 @@ if __name__ == '__main__':
 
     data_folder_test = os.path.join(root, args.dataset_test)
     assert os.path.isdir(data_folder_test), (
-            "Can't find " + data_folder_test + ". It seems that you don't download the validation data. "
-                                          "Please refer to 'dataset/README.md' for more information."
+        "Can't find " + data_folder_test + ". It seems that you don't download the validation data. "
+        "Please refer to 'dataset/README.md' for more information."
     )
 
     config = dict(
 
         # ===== Environment =====
-        env=WaymoEnv,
+        env=createGymWrapper(WaymoEnv),
         env_config=dict(
             waymo_data_directory=data_folder_train,
 
             # MetaDrive will load pickle files with index [start_case_index, start_case_index + case_num)
             start_case_index=0,
             case_num=case_num_train,
-
-            replay=False,
+            reactive_traffic=False,
         ),
 
         # ===== Evaluation =====
         evaluation_interval=5,
         evaluation_num_episodes=40,
-        evaluation_config=dict(env_config=dict(
-            case_num=case_num_test, waymo_data_directory=data_folder_test, sequential_seed=True,
-            replay=True
-        )),
+        evaluation_config=dict(
+            env_config=dict(
+                case_num=case_num_test,
+                waymo_data_directory=data_folder_test,
+                sequential_seed=True,
+                reactive_traffic=True
+            )
+        ),
         evaluation_num_workers=2,
         metrics_smoothing_episodes=100,
 
@@ -88,7 +93,6 @@ if __name__ == '__main__':
         num_cpus_per_worker=0.1,
         num_cpus_for_driver=0.5,
         num_workers=5,  # Number of parallel environments
-
     )
 
     kwargs = dict()
