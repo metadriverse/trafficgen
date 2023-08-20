@@ -9,7 +9,6 @@ from torch.utils.data import Dataset
 from trafficgen.utils.typedef import AgentType, RoadLineType, RoadEdgeType
 from trafficgen.utils.utils import process_map, rotate, cal_rel_dir, WaymoAgent
 
-
 TRAFFICGEN_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 
 LANE_SAMPLE = 10
@@ -121,6 +120,7 @@ def transform_to_agent(agent_i, agent, lane):
 
     return all_, lane
 
+
 def _traffic_light_state_template(object_id, track_length):
     """Borrowed from MetaDrive"""
     from metadrive.scenario.scenario_description import ScenarioDescription as SD, MetaDriveType
@@ -139,6 +139,7 @@ def _traffic_light_state_template(object_id, track_length):
             track_length=track_length, type=MetaDriveType.TRAFFIC_LIGHT, object_id=object_id, dataset="waymo"
         )
     )
+
 
 def save_as_metadrive_data(index, pred_i, other, save_path):
     from metadrive.scenario.scenario_description import ScenarioDescription as SD, MetaDriveType
@@ -176,7 +177,9 @@ def save_as_metadrive_data(index, pred_i, other, save_path):
         }
         agent_state["state"] = {}
         agent_state["state"]["position"] = agent_i[:, :2].astype(np.float32)
-        agent_state["state"]["valid"] = np.ones([len(agent_i), ], dtype=np.bool)
+        agent_state["state"]["valid"] = np.ones([
+            len(agent_i),
+        ], dtype=np.bool)
 
         agent_state["state"]["size"] = np.ones([len(agent_i), 2], dtype=np.float32) * 2.332
         agent_state["state"]["size"][:, 0] *= 5.286  # length
@@ -287,6 +290,7 @@ class InitDataset(Dataset):
 
         return self.data_loaded[index]
 
+
 def get_vec_based_rep(case_info):
 
     thres = 5
@@ -371,8 +375,8 @@ def get_vec_based_rep(case_info):
     # 10-11 lane type and traff state
     info = np.concatenate(
         [
-            vec_index[..., np.newaxis], long_perc[..., np.newaxis], lat_perc[..., np.newaxis],
-            v_value[..., np.newaxis], v_relative_dir[..., np.newaxis], relative_dir[..., np.newaxis], the_vec
+            vec_index[..., np.newaxis], long_perc[..., np.newaxis], lat_perc[..., np.newaxis], v_value[..., np.newaxis],
+            v_relative_dir[..., np.newaxis], relative_dir[..., np.newaxis], the_vec
         ], -1
     )
 
@@ -407,6 +411,7 @@ def get_vec_based_rep(case_info):
 
     return
 
+
 def transform_coordinate_map(data):
     """
     Every frame is different
@@ -435,6 +440,7 @@ def transform_coordinate_map(data):
     ego_heading = ego[:, [4]]
     unsampled_lane[..., :2] = rotate(x, y, -ego_heading)
     return lane, unsampled_lane[0]
+
 
 def process_agent(agent, sort_agent):
 
@@ -491,6 +497,7 @@ def process_agent(agent, sort_agent):
             sorted_agent[i, 1:agent_num] = sorted_agent[i, 1:agent_num][permut_idx]
         return sorted_agent[..., :-1], sorted_mask
 
+
 def get_gt(case_info):
 
     # 0: vec_index
@@ -521,6 +528,7 @@ def get_gt(case_info):
     case_info['gt_vel_heading'] = gt_vec_based_coord[..., 3]
     case_info['gt_heading'] = gt_vec_based_coord[..., 4]
 
+
 def _process_map_inp(case_info):
     center = copy.deepcopy(case_info['center'])
     center[..., :4] /= RANGE
@@ -533,10 +541,10 @@ def _process_map_inp(case_info):
 
     case_info['lane_inp'] = np.concatenate([center, edge, cross, rest], axis=1)
     case_info['lane_mask'] = np.concatenate(
-        [case_info['center_mask'], case_info['bound_mask'], case_info['cross_mask'], case_info['rest_mask']],
-        axis=1
+        [case_info['center_mask'], case_info['bound_mask'], case_info['cross_mask'], case_info['rest_mask']], axis=1
     )
     return
+
 
 def process_data_to_internal_format(data):
     case_info = {}

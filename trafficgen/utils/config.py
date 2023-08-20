@@ -5,6 +5,7 @@ import yaml
 
 TRAFFICGEN_ROOT = os.path.dirname(os.path.dirname(__file__))
 
+
 def load_config_act(path):
     """ load config file"""
     path = os.path.join('act/configs', f'{path}.yaml')

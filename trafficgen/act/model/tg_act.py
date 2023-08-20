@@ -102,7 +102,7 @@ class actuator(pl.LightningModule):
         loss, loss_dict = act_loss(pred, batch)
         # pred['prob'] = nn.Sigmoid()(pred['prob'])
 
-        loss_dict = {'train/'+k:v for k,v in loss.items()}
+        loss_dict = {'train/' + k: v for k, v in loss.items()}
         self.log_dict(loss_dict)
         return loss
 

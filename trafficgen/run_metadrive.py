@@ -17,7 +17,6 @@ import os
 
 import tqdm
 
-
 # Path to: trafficgen/traffic_generator
 root = os.path.join(os.path.abspath((os.path.dirname(__file__))))
 
@@ -32,7 +31,12 @@ Please refer to 'dataset/README.md' for more information on pre-generated Traffi
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--replay", action="store_true", help="Whether to replay ego vehicle actions.")
-    parser.add_argument("--no_replay_traffic", action="store_true", help="If True, do not replay traffic vehicles' trajectories but instead use IDM policy to control all traffic vehicles.")
+    parser.add_argument(
+        "--no_replay_traffic",
+        action="store_true",
+        help=
+        "If True, do not replay traffic vehicles' trajectories but instead use IDM policy to control all traffic vehicles."
+    )
     # parser.add_argument("--dataset", default="dataset/validation", help=HELP)
     parser.add_argument("--dataset", default="traffic_generator/output/scene_pkl", help=HELP)
     args = parser.parse_args()
@@ -46,7 +50,6 @@ if __name__ == "__main__":
         # MetaDrive will load pickle files with index [start_case_index, start_case_index + case_num)
         start_scenario_index=0,
         num_scenarios=3,
-
         reactive_traffic=False,
     )
 
