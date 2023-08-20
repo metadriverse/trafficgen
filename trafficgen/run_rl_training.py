@@ -6,6 +6,7 @@ try:
 finally:
     pass
 from metadrive.envs.real_data_envs.waymo_env import WaymoEnv
+from metadrive.envs.gym_wrapper import createGymWrapper
 from trafficgen.utils.training_utils import train, get_train_parser, DrivingCallbacks
 from ray.rllib.agents.ppo import PPOTrainer
 
@@ -51,7 +52,7 @@ if __name__ == '__main__':
     config = dict(
 
         # ===== Environment =====
-        env=WaymoEnv,
+        env=createGymWrapper(WaymoEnv),
         env_config=dict(
             waymo_data_directory=data_folder_train,
 
@@ -59,7 +60,7 @@ if __name__ == '__main__':
             start_case_index=0,
             case_num=case_num_train,
 
-            replay=False,
+            reactive_traffic=False,
         ),
 
         # ===== Evaluation =====
@@ -67,7 +68,7 @@ if __name__ == '__main__':
         evaluation_num_episodes=40,
         evaluation_config=dict(env_config=dict(
             case_num=case_num_test, waymo_data_directory=data_folder_test, sequential_seed=True,
-            replay=True
+            reactive_traffic=True
         )),
         evaluation_num_workers=2,
         metrics_smoothing_episodes=100,

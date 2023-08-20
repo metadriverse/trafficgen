@@ -47,7 +47,7 @@ if __name__ == "__main__":
         start_scenario_index=0,
         num_scenarios=3,
 
-        replay=False,
+        reactive_traffic=False,
     )
 
     if args.replay:
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     for ep in tqdm.trange(100, desc="Episode"):
         env.reset()
         for t in tqdm.trange(1000, desc="Timestep"):
-            o, r, d, i = env.step([0, 1])
+            o, r, d, _, i = env.step([0, 1])
             env.render(mode="topdown")
             if d:
                 break
