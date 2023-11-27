@@ -439,7 +439,7 @@ class DrivingCallbacks(DefaultCallbacks):
         episode.user_data["episode_length"] = defaultdict(list)
         episode.user_data["episode_reward"] = defaultdict(list)
         episode.user_data["num_neighbours"] = defaultdict(list)
-        episode.user_data["distance_error"] = defaultdict(list)
+        # episode.user_data["distance_error"] = defaultdict(list)
         # episode.user_data["distance_error_final"] = defaultdict(list)
 
     def on_episode_step(
@@ -463,7 +463,7 @@ class DrivingCallbacks(DefaultCallbacks):
                 episode.user_data["steering"][k].append(info["steering"])
                 episode.user_data["step_reward"][k].append(info["step_reward"])
                 episode.user_data["acceleration"][k].append(info["acceleration"])
-                episode.user_data["distance_error"][k].append(info["distance_error"])
+                # episode.user_data["distance_error"][k].append(info["distance_error"])
                 # episode.user_data["distance_error_final"][k].append(info["distance_error_final"])
                 episode.user_data["cost"][k].append(info["cost"])
                 episode.user_data["episode_length"][k].append(info["episode_length"])
@@ -484,7 +484,7 @@ class DrivingCallbacks(DefaultCallbacks):
         track_length_list = []
         route_completion_list = []
         current_distance_list = []
-        distance_error_final_list = []
+        # distance_error_final_list = []
 
         for k in keys:
             info = episode.last_info_for(k)
@@ -504,9 +504,9 @@ class DrivingCallbacks(DefaultCallbacks):
             current_distance_list.append(current_distance)
             route_completion_list.append(route_completion)
 
-            distance_error_final = info.get("distance_error_final", None)
-            if distance_error_final is not None:
-                distance_error_final_list.append(distance_error_final)
+            # distance_error_final = info.get("distance_error_final", None)
+            # if distance_error_final is not None:
+            #     distance_error_final_list.append(distance_error_final)
 
             crash = info.get("crash", False)
             out_of_road = info.get("out_of_road", False)
@@ -520,7 +520,7 @@ class DrivingCallbacks(DefaultCallbacks):
         episode.custom_metrics["track_length"] = np.mean(track_length_list)
         episode.custom_metrics["current_distance"] = np.mean(current_distance_list)
         episode.custom_metrics["route_completion"] = np.mean(route_completion_list)
-        episode.custom_metrics["distance_error_final"] = np.mean(distance_error_final_list)
+        # episode.custom_metrics["distance_error_final"] = np.mean(distance_error_final_list)
 
         episode.custom_metrics["success_rate"] = np.mean(arrive_dest_list)
         episode.custom_metrics["crash_rate"] = np.mean(crash_list)
