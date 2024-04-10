@@ -18,11 +18,14 @@ cd trafficgen
 conda create -n trafficgen python=3.8
 conda activate trafficgen
 
-# You should install pytorch by yourself to make them compatible with your GPU
-# For cuda 11.0:
-pip install torch==1.7.1+cu110 torchvision==0.8.2+cu110 torchaudio==0.7.2 -f https://download.pytorch.org/whl/torch_stable.html
+
 # Install basic dependency
 pip install -e .
+
+# You should install pytorch by yourself to make them compatible with your GPU
+# Check torch installation: (should print True)
+python -c "import torch;print(torch.cuda.is_available())"
+
 ```
 
 If you find error messages related to `geos` when installing `Shapely`, checkout [this post](https://stackoverflow.com/questions/19742406/could-not-find-library-geos-c-or-load-any-of-its-variants).
@@ -62,18 +65,6 @@ python trafficgen/scripts/trans20.py PATH_A PATH_B None
 Note: PATH_B is where you store the processed data.
 
 
-[//]: # (The processed data has the following attributes:)
-
-[//]: # (- `id`: scenario id)
-
-[//]: # (- `all_agent`: A `[190, n, 9]` array which contains 190 frames, n agents, 9 features `[coord, velocity, heading, length, width, type, validity]`)
-
-[//]: # (- `traffic_light`: A list containing information about the traffic light)
-
-[//]: # (- `lane`: A `[n,4]` array which contains n points and `[coord, type, id&#40;which lane this point belongs to&#41;]` features.)
-
-[//]: # ()
-
 ### Download and retrieve pretrained TrafficGen model
 
 Please download two models from this link: https://drive.google.com/drive/folders/1TbCV6y-vssvG3YsuA6bAtD9lUX39DH9C?usp=sharing
@@ -92,6 +83,9 @@ Running following scripts will generate images and GIFs (if with `--gif`) visual
 cd TrafficGen/trafficgen
 
 python generate.py [--gif] [--save_metadrive]
+
+# Run this to generate scenarios that can be used in MetaDrive
+python generate.py --save_metadrive
 ```
 
 Set `--gif` flag to generate GIF files.
