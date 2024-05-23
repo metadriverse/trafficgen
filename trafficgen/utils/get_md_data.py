@@ -46,6 +46,9 @@ ALL_TYPE = {
     'DRIVEWAY': 20,
 }
 
+METADRIVE_TYPE_TO_INT = ALL_TYPE
+INT_TO_METADRIVE_TYPE = {v: k for k, v in METADRIVE_TYPE_TO_INT.items()}
+
 
 def _down_sampling(line, sample_num):
     # if is center lane
@@ -88,7 +91,7 @@ def _extract_map(map_feat, sample_num):
         a_lane = np.zeros([len(poly), 4], dtype='float32')
 
         a_lane[:, :2] = np.array(poly)
-        a_lane[:, 2] = ALL_TYPE[map_feat['type']]
+        a_lane[:, 2] = METADRIVE_TYPE_TO_INT[map_feat['type']]
         a_lane[:, 3] = str(map_feat_id)
 
         lanes.append(a_lane)

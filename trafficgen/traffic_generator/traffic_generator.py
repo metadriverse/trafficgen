@@ -250,6 +250,8 @@ class TrafficGen:
                 inp_list.append(process_case_to_input(case))
             batch = from_list_to_batch(inp_list)
 
+            self.wash(batch)
+
             pred = self.act_model(batch)
             prob = pred['prob']
             velo_pred = pred['velo']

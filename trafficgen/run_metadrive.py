@@ -1,9 +1,16 @@
 """
 This script provides a demo on how to create a single-agent MetaDrive environment with TrafficGen generated data.
 The logic is simple: we replace the data folder of native Waymo dataset with the TrafficGen generated data.
-Please read the definition of config, where some details about RL training are specified.
+Before running this script, please do this first:
 
-2023-03-21
+1. Generate TrafficGen data by running the following command:
+```bash
+python generate.py --save_metadrive
+```
+2. Run this script to load the generated data and create a MetaDrive environment.
+
+
+2024-05-23
 PZH
 """
 
@@ -11,7 +18,7 @@ from metadrive.policy.replay_policy import ReplayEgoCarPolicy
 
 import argparse
 
-from metadrive.envs.real_data_envs.waymo_env import WaymoEnv
+from metadrive.envs.scenario_env import ScenarioEnv
 
 import os
 
@@ -45,7 +52,7 @@ if __name__ == "__main__":
     assert os.path.isdir(data_folder), "Can't find {}. ".format(data_folder) + HELP
 
     config = dict(
-        waymo_data_directory=data_folder,
+        data_directory=data_folder,
 
         # MetaDrive will load pickle files with index [start_case_index, start_case_index + case_num)
         start_scenario_index=0,
@@ -56,7 +63,7 @@ if __name__ == "__main__":
     if args.replay:
         config["agent_policy"] = ReplayEgoCarPolicy
 
-    env = WaymoEnv(config)
+    env = ScenarioEnv(config)
 
     for ep in tqdm.trange(100, desc="Episode"):
         env.reset()
