@@ -102,14 +102,14 @@ class actuator(pl.LightningModule):
         loss, loss_dict = act_loss(pred, batch)
         # pred['prob'] = nn.Sigmoid()(pred['prob'])
 
-        loss_dict = {'train/' + k: v for k, v in loss.items()}
+        loss_dict = {'train/' + k: v for k, v in loss_dict.items()}
         self.log_dict(loss_dict)
         return loss
 
     def validation_step(self, batch, batch_idx):
         pred = self.forward(batch)
         loss, loss_dict = act_loss(pred, batch)
-        loss_dict = {'val/' + k: v for k, v in loss.items()}
+        loss_dict = {'val/' + k: v for k, v in loss_dict.items()}
         self.log_dict(loss_dict)
         return loss
 
