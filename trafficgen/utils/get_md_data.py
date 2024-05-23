@@ -11,11 +11,15 @@ The output images after placing vehicles in the scenes will be saved to the TMP_
 """
 import argparse
 import os
+import pickle
 
 import numpy as np
+import torch
 from metadrive.scenario.scenario_description import ScenarioDescription as SD, MetaDriveType
-from metadrive.utils.waymo_utils.utils import read_waymo_data
+from metadrive.scenario.utils import read_scenario_data, read_dataset_summary
 from tqdm import tqdm
+from metadrive.type import MetaDriveType
+import pathlib
 
 ALL_TYPE = {
     'LANE_FREEWAY': 1,
@@ -32,8 +36,14 @@ ALL_TYPE = {
     'ROAD_EDGE_BOUNDARY': 15,
     'ROAD_EDGE_MEDIAN': 16,
     'STOP_SIGN': 17,
+
     'CROSS_WALK': 18,
+    'CROSSWALK': 18,
+
     'SPEED_BUMP': 19,
+
+    # This is newly introduced in WOMD 1.2.0 (TODO: Not sure if setting it to 20 is bug-free)
+    'DRIVEWAY': 20,
 }
 
 
@@ -60,8 +70,15 @@ def _extract_map(map_feat, sample_num):
 
     for map_feat_id, map_feat in map_feat.items():
 
+        if map_feat["type"] == "DRIVEWAY":
+            # TODO: The driveway is not supported in the current version of TrafficGen.
+            continue
+
         if "polyline" not in map_feat:
-            map_feat['polyline'] = map_feat['position'][np.newaxis]
+            if "polygon" in map_feat:
+                map_feat['polyline'] = map_feat['polygon'] #[np.newaxis]
+            else:
+                map_feat['polyline'] = map_feat['position'][np.newaxis]
 
         poly_unsampled = map_feat['polyline'][:, :2]
 
@@ -104,7 +121,8 @@ def metadrive_scenario_to_init_data(scenario):
         all_agent[:, indx, :2] = track[SD.STATE]['position'][:, :2]
         all_agent[:, indx, 2:4] = track[SD.STATE]['velocity']
         all_agent[:, indx, 4] = track[SD.STATE]['heading'].reshape(track_len)
-        all_agent[:, indx, 5:7] = track[SD.STATE]['size'][:, :2]
+        all_agent[:, indx, 5] = track[SD.STATE]['length']  # [:, :2]
+        all_agent[:, indx, 6] = track[SD.STATE]['width']  # [:, :2]
         all_agent[:, indx, 7] = 1
         all_agent[:, indx, 8] = track[SD.STATE]['valid'].reshape(track_len)
 
@@ -125,16 +143,25 @@ def metadrive_scenario_to_init_data(scenario):
             traffic_light_step_data = np.zeros(6, dtype='float32')
 
             # The range of this data is int [0, 253]. Will use to filter lanes. It is very useful.
-            traffic_light_step_data[0] = str(traffic_light_state["lane"])
+            traffic_light_step_data[0] = str(traffic_light["lane"])
 
             # TODO: The range of this data is float with shape [200, 3] in range [-352, 169].
-            traffic_light_step_data[1:3] = traffic_light_state["stop_point"][:2]
+            traffic_light_step_data[1:3] = traffic_light["stop_point"][:2]
 
             # Int in range [0, 3], stands for UNKNOWN, STOP, CAUTION, GO
-            traffic_light_step_data[4] = traffic_light_state["object_state"]
+
+            s = MetaDriveType.simplify_light_status(traffic_light_state["object_state"] )
+            if s == MetaDriveType.LIGHT_RED:
+                traffic_light_step_data[4] = 1
+            elif s == MetaDriveType.LIGHT_YELLOW:
+                traffic_light_step_data[4] = 2
+            elif s == MetaDriveType.LIGHT_GREEN:
+                traffic_light_step_data[4] = 3
+            else:
+                traffic_light_step_data[4] = 0
 
             # Whether valid
-            traffic_light_step_data[5] = 1 if traffic_light_state["object_state"] else 0
+            traffic_light_step_data[5] = not (traffic_light_state["object_state"] == MetaDriveType.LANE_STATE_UNKNOWN)
 
             tl_states_in_one_step.append(traffic_light_step_data)
 
@@ -172,11 +199,15 @@ if __name__ == '__main__':
     parser.add_argument("--input", default="raw_data", help="The folder of input data.")
     parser.add_argument("--output", default="test_output", help="The folder of output data.")
     parser.add_argument("--num_scenarios", "-n", default=-1, type=int)  # -1 stands for loading all
+    parser.add_argument('--config', '-c', type=str, default='local')
     args = parser.parse_args()
 
     input_folder = args.input
     assert os.path.isdir(input_folder)
-    pickle_files = [p for p in os.listdir(input_folder) if p.endswith(".pkl")]
+
+
+    # pickle_files = [p for p in os.listdir(input_folder) if p.endswith(".pkl")]
+    _, _, pickle_files = read_dataset_summary(input_folder)
 
     output_folder = args.output
     os.makedirs(output_folder, exist_ok=True)
@@ -191,31 +222,35 @@ if __name__ == '__main__':
     cnt = 0
 
     from trafficgen.traffic_generator.traffic_generator import TrafficGen
-    from trafficgen.traffic_generator.utils.utils import get_parsed_args
     from trafficgen.utils.config import load_config_init
     from trafficgen.traffic_generator.utils.data_utils import process_data_to_internal_format
 
-    args = get_parsed_args()
     cfg = load_config_init(args.config)
+    cfg["device"] = "cuda" if torch.cuda.is_available() else "cpu"
     model = TrafficGen(cfg)
 
     batch = []
 
-    for index, pickle_file in enumerate(tqdm(pickle_files)):
-        md_path = os.path.join(input_folder, pickle_file)
-        scenario = read_waymo_data(md_path)
+    for index, (pickle_file, path) in enumerate(tqdm(pickle_files.items())):
+        md_path = os.path.join(input_folder, path, pickle_file)
+        scenario = read_scenario_data(md_path)
         transformed = metadrive_scenario_to_init_data(scenario)
 
-        # TODO(PZH): Temporarily remove post-processing. Decide later!
         batch.append(transformed)
 
-        # out_path = os.path.join(output_folder, "{}.pkl".format(cnt))
-        # with open(out_path, "wb") as f:
-        #     pickle.dump(transformed, f)
-        #     print("File is saved at: ", out_path)
-        # cnt += 1
+        out_path = pathlib.Path(output_folder) / "{}.pkl".format(cnt)
+        out_path = out_path.resolve()
+        with open(out_path, "wb") as f:
+            pickle.dump(transformed, f)
+            print("The TrafficGen's internal data is saved at: ", out_path)
+        cnt += 1
 
+
+        print("Visualizing the placed vehicles in the scenario... (Comment this out if you want faster convertion.")
         internal_data = process_data_to_internal_format(transformed)
         data = internal_data[0]
         data = extend_batch_dim(data)
+        for k in data:
+            if isinstance(data[k], torch.Tensor) and (data[k].device != model.act_model.device):
+                data[k] = data[k].to(model.act_model.device)
         model.place_vehicles_for_single_scenario(data, index=index, vis=True, vis_dir=vis_dir)

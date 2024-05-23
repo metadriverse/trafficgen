@@ -75,6 +75,7 @@ class TrafficGen:
             assert index is not None
             output_path = os.path.join(vis_dir, f'{index}')
             draw(center, model_output['agent'], other=rest, edge=bound, save=True, path=output_path)
+            print("Visualization results are saved at", output_path)
 
         return model_output
 
