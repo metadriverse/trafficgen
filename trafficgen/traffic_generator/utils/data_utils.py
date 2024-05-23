@@ -45,45 +45,9 @@ def process_case_to_input(case, agent_range=60):
     return inp
 
 
-def get_type_class(line_type):
-    from metadrive.scenario.scenario_description import ScenarioDescription as SD, MetaDriveType
-    from metadrive.constants import LineType
-
-    if line_type in range(1, 4):
-        return MetaDriveType.LANE_CENTER_LINE
-    elif line_type == 6:
-        return MetaDriveType.LINE_BROKEN_SINGLE_WHITE
-        # return RoadLineType.BROKEN_SINGLE_WHITE
-    elif line_type == 7:
-        return MetaDriveType.LINE_SOLID_SINGLE_WHITE
-        # return RoadLineType.SOLID_SINGLE_WHITE
-    elif line_type == 8:
-        return MetaDriveType.LINE_SOLID_DOUBLE_WHITE
-        # return RoadLineType.SOLID_DOUBLE_WHITE
-    elif line_type == 9:
-        return MetaDriveType.LINE_BROKEN_SINGLE_YELLOW
-        # return RoadLineType.BROKEN_SINGLE_YELLOW
-    elif line_type == 10:
-        return MetaDriveType.LINE_BROKEN_DOUBLE_YELLOW
-        # return RoadLineType.BROKEN_DOUBLE_YELLOW
-    elif line_type == 11:
-        return MetaDriveType.LINE_SOLID_SINGLE_YELLOW
-        # return RoadLineType.SOLID_SINGLE_YELLOW
-    elif line_type == 12:
-        return MetaDriveType.LINE_SOLID_DOUBLE_YELLOW
-        # return RoadLineType.SOLID_DOUBLE_YELLOW
-    elif line_type == 13:
-        # return RoadLineType.PASSING_DOUBLE_YELLOW
-        return MetaDriveType.LINE_BROKEN_DOUBLE_YELLOW
-    elif line_type == 15:
-        # return RoadEdgeType.BOUNDARY
-        return MetaDriveType.BOUNDARY_LINE
-    elif line_type == 16:
-        # return RoadEdgeType.MEDIAN
-        return MetaDriveType.BOUNDARY_MEDIAN
-    else:
-        return MetaDriveType.LINE_UNKNOWN
-        # return 'other'
+def get_metadrive_line_type(line_type):
+    from trafficgen.utils.get_md_data import INT_TO_METADRIVE_TYPE
+    return INT_TO_METADRIVE_TYPE[line_type]
 
 
 def from_list_to_batch(inp_list):
@@ -127,16 +91,16 @@ def _traffic_light_state_template(object_id, track_length):
     return dict(
         type=MetaDriveType.TRAFFIC_LIGHT,
         state=dict(
-            stop_point=np.zeros([track_length, 3], dtype=np.float32),
-            object_state=np.zeros([
-                track_length,
-            ], dtype=int),
-            lane=np.zeros([
-                track_length,
-            ], dtype=int),
+            # stop_point=np.zeros([track_length, 3], dtype=np.float32),
+            object_state=[MetaDriveType.LANE_STATE_UNKNOWN] * track_length,
+            # lane=np.zeros([
+            #     track_length,
+            # ], dtype=int),
         ),
+        lane=str(int(object_id)),
+        stop_point=np.zeros([3], dtype=np.float32),
         metadata=dict(
-            track_length=track_length, type=MetaDriveType.TRAFFIC_LIGHT, object_id=object_id, dataset="waymo"
+            track_length=track_length, type=MetaDriveType.TRAFFIC_LIGHT, object_id=str(int(object_id)),
         )
     )
 
@@ -149,15 +113,16 @@ def save_as_metadrive_data(index, pred_i, other, save_path):
     scenario[SD.ID] = 'TrafficGen-{}'.format(index)
     track_len = len(pred_i)
     scenario[SD.LENGTH] = track_len
-    scenario[SD.VERSION] = "2023-04-01"
+    scenario[SD.VERSION] = "2024-05-23"
 
     scenario['dynamic_map_states'] = [{}]
 
     scenario[SD.METADATA] = {}
     scenario[SD.METADATA][SD.TIMESTEP] = np.array([x / 10 for x in range(190)], dtype=np.float32)
     scenario[SD.METADATA][SD.SDC_ID] = str(0)
-    scenario[SD.METADATA][SD.METADRIVE_PROCESSED] = False
+    scenario[SD.METADATA][SD.METADRIVE_PROCESSED] = True
     scenario[SD.METADATA][SD.COORDINATE] = MetaDriveType.COORDINATE_WAYMO
+    scenario[SD.METADATA]["scenario_id"] = scenario[SD.ID]
 
     # Tracks
     scenario[SD.TRACKS] = {}
@@ -179,25 +144,15 @@ def save_as_metadrive_data(index, pred_i, other, save_path):
         agent_state["state"]["position"] = agent_i[:, :2].astype(np.float32)
         agent_state["state"]["valid"] = np.ones([
             len(agent_i),
-        ], dtype=np.bool)
+        ], dtype=bool)
 
-        agent_state["state"]["size"] = np.ones([len(agent_i), 2], dtype=np.float32) * 2.332
-        agent_state["state"]["size"][:, 0] *= 5.286  # length
-        agent_state["state"]["size"][:, 1] *= 2.332  # width
-
+        agent_state["state"]["height"] = np.ones([len(agent_i),], dtype=np.float32) * 2.332  # Just a random number.
+        agent_state["state"]["length"] = np.ones([len(agent_i),], dtype=np.float32) * 5.286  # length
+        agent_state["state"]["width"] = np.ones([len(agent_i),], dtype=np.float32) * 2.332  # width
         agent_state["state"]["heading"] = agent_i[:, 4].reshape(-1, 1).astype(np.float32)
         agent_state["state"]["velocity"] = agent_i[:, 2:4].astype(np.float32)
 
         scenario[SD.TRACKS][str(i)] = agent_state
-
-        # state[:, :2] = agent_i[:, :2]
-        # state[:, 3] = 5.286
-        # state[:, 4] = 2.332
-        # state[:, 7:9] = agent_i[:, 2:4]
-        # state[:, -1] = 1
-        # state[:, 6] = agent_i[:, 4]  # + np.pi / 2
-        # track['state'] = state
-        # scenario['tracks'][i] = track
 
     # center_info = other['center_info']
 
@@ -210,8 +165,12 @@ def save_as_metadrive_data(index, pred_i, other, save_path):
         id_set = lane[..., -1] == id
         points = lane[id_set]
         line_type = points[0, -2]
-        a_lane['type'] = get_type_class(line_type)
-        a_lane['polyline'] = points[:, :2]
+        a_lane['type'] = get_metadrive_line_type(int(line_type))
+
+        if MetaDriveType.is_crosswalk(a_lane['type']):
+            a_lane['polygon'] = points[:, :2]
+        else:
+            a_lane['polyline'] = points[:, :2]
 
         # The original data stored here has been discarded and can not be recovered.
         # This issue should be addressed in later implementation.
@@ -227,12 +186,22 @@ def save_as_metadrive_data(index, pred_i, other, save_path):
         if step_count >= track_len:
             break
         for traffic_light_state in step_state:
-            lane_id = str(traffic_light_state[0])
+            lane_id = str(int(traffic_light_state[0]))
             if lane_id not in scenario[SD.DYNAMIC_MAP_STATES]:
                 scenario[SD.DYNAMIC_MAP_STATES][lane_id] = _traffic_light_state_template(lane_id, track_len)
-            scenario[SD.DYNAMIC_MAP_STATES][lane_id]["state"]["lane"][step_count] = traffic_light_state[0]
-            scenario[SD.DYNAMIC_MAP_STATES][lane_id]["state"]["stop_point"][step_count] = traffic_light_state[1:4]
-            scenario[SD.DYNAMIC_MAP_STATES][lane_id]["state"]["object_state"][step_count] = traffic_light_state[4]
+
+            if int(traffic_light_state[4]) == 3:
+                l = MetaDriveType.LANE_STATE_GO
+            elif int(traffic_light_state[4]) == 2:
+                l = MetaDriveType.LANE_STATE_CAUTION
+            elif int(traffic_light_state[4]) == 1:
+                l = MetaDriveType.LANE_STATE_STOP
+            else:
+                l = MetaDriveType.LANE_STATE_UNKNOWN
+            scenario[SD.DYNAMIC_MAP_STATES][lane_id]["state"]["object_state"][step_count] = l
+
+            scenario[SD.DYNAMIC_MAP_STATES][lane_id]["stop_point"] = traffic_light_state[1:4]
+
 
     scenario = scenario.to_dict()
     SD.sanity_check(scenario, check_self_type=True)

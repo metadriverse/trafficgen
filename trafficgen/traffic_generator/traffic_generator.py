@@ -75,6 +75,7 @@ class TrafficGen:
             assert index is not None
             output_path = os.path.join(vis_dir, f'{index}')
             draw(center, model_output['agent'], other=rest, edge=bound, save=True, path=output_path)
+            print("Visualization results are saved at", output_path)
 
         return model_output
 
@@ -248,6 +249,8 @@ class TrafficGen:
             for case in case_list:
                 inp_list.append(process_case_to_input(case))
             batch = from_list_to_batch(inp_list)
+
+            self.wash(batch)
 
             pred = self.act_model(batch)
             prob = pred['prob']
