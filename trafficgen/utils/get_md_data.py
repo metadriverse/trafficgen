@@ -66,12 +66,105 @@ def _down_sampling(line, sample_num):
     return ret
 
 
-def _extract_map(map_feat, sample_num):
+class RoadLineType(Enum):
+    UNKNOWN = 0
+    BROKEN_SINGLE_WHITE = 1
+    SOLID_SINGLE_WHITE = 2
+    SOLID_DOUBLE_WHITE = 3
+    BROKEN_SINGLE_YELLOW = 4
+    BROKEN_DOUBLE_YELLOW = 5
+    SOLID_SINGLE_YELLOW = 6
+    SOLID_DOUBLE_YELLOW = 7
+    PASSING_DOUBLE_YELLOW = 8
+
+    @classmethod
+    def lookup(cls, v):
+        for k, vv in cls.__dict__.items():
+            if vv == v:
+                return k
+        return "UNKNOWN"
+
+
+def extract_boundaries(fb):
+    b = []
+    # b = np.zeros([len(fb), 4], dtype='int64')
+    for k in range(len(fb)):
+        c = dict()
+        c['index'] = [fb[k]["lane_start_index"], fb[k]["lane_end_index"]]
+        c['type'] = RoadLineType.lookup(fb[k]["boundary_type"])
+        c['id'] = fb[k]["boundary_feature_id"]
+        b.append(c)
+
+    return b
+
+
+def extract_neighbors(fb):
+    nbs = []
+    for k in range(len(fb)):
+        nb = dict()
+        nb['id'] = fb[k]["feature_id"]
+        nb['indexes'] = [
+            fb[k]["self_start_index"], fb[k]["self_end_index"], fb[k]["neighbor_start_index"], fb[k]["neighbor_end_index"]
+        ]
+        nb['indexes'] = [
+            fb[k]["self_start_index"], fb[k]["self_end_index"], fb[k]["neighbor_start_index"], fb[k]["neighbor_end_index"]
+        ]
+        nb['boundaries'] = extract_boundaries(fb[k]["boundaries"])
+        nb['id'] = fb[k]["feature_id"]
+        nbs.append(nb)
+    return nbs
+
+
+def extract_center(lane):
+    center = {}
+    # f = f.lane
+
+    def down_sampling(line, type=0):
+        # if is center lane
+        point_num = len(line)
+
+        ret = []
+        SAMPLE_NUM = 10
+        if point_num < SAMPLE_NUM or type == 1:
+            for i in range(0, point_num):
+                ret.append(line[i])
+        else:
+            for i in range(0, point_num, SAMPLE_NUM):
+                ret.append(line[i])
+
+        return ret
+
+
+    poly = down_sampling(lane['polyline'][:, :2])
+
+    t = METADRIVE_TYPE_TO_INT[lane["type"]]
+    poly = [np.insert(x, 2, t) for x in poly]
+
+    center['interpolating'] = lane["interpolating"]
+
+    center['entry'] = [x for x in lane["entry_lanes"]]
+
+    center['exit'] = [x for x in lane["exit_lanes"]]
+
+    center['left_boundaries'] = extract_boundaries(lane["left_boundaries"])
+
+    center['right_boundaries'] = extract_boundaries(lane["right_boundaries"])
+
+    center['left_neighbor'] = extract_neighbors(lane["left_neighbor"])
+
+    center['right_neighbor'] = extract_neighbors(lane["right_neighbor"])
+
+    return poly, center
+
+
+
+
+def _extract_map(map_feats, sample_num):
     lanes = []
 
-    center_info = []
+    center_infos = {}
 
-    for map_feat_id, map_feat in map_feat.items():
+    for map_feat_id, map_feat in map_feats.items():
 
         if map_feat["type"] == "DRIVEWAY":
             # TODO: The driveway is not supported in the current version of TrafficGen.
@@ -96,8 +189,14 @@ def _extract_map(map_feat, sample_num):
 
         lanes.append(a_lane)
 
+        if "LANE" in map_feat["type"]:
+            center_info = extract_center(map_feat)
+            center_infos[str(map_feat_id)] = center_info
+
+
+
     lanes = np.concatenate(lanes, axis=0)
-    return lanes
+    return lanes, center_info
 
 
 def metadrive_scenario_to_init_data(scenario):
@@ -172,8 +271,8 @@ def metadrive_scenario_to_init_data(scenario):
 
     ret['traffic_light'] = traffic_light_data
 
-    ret['lane'] = _extract_map(map_feat, sample_num=10)
-    ret['unsampled_lane'] = _extract_map(map_feat, sample_num=10e9)
+    ret['lane'], ret['center_info'] = _extract_map(map_feat, sample_num=10)
+    ret['unsampled_lane'], _ = _extract_map(map_feat, sample_num=10e9)
 
     # ret["original_metadrive_scenario"] = scenario
 
