@@ -57,7 +57,7 @@ Note: it is not necessary to download all the files from Waymo. You can download
 
 Data Preprocess
 ```bash
-python trafficgen/scripts/trans20.py PATH_A PATH_B None
+python trafficgen/utils/trans20.py PATH_A PATH_B None
 ```
 Note: PATH_B is where you store the processed data.
 
